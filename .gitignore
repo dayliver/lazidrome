@@ -1,0 +1,30 @@
+# =========================
+# Database (SQLite)
+# =========================
+backend/database/*.db
+backend/database/*.db-journal
+backend/database/*.db-wal
+
+# =========================
+# Environment file
+# =========================
+backend/.env
+
+# =========================
+# Node modules (frontend & backend)
+# =========================
+frontend/node_modules/
+backend/node_modules/
+
+# (혹은 전체 공통으로 하고 싶으면 이것만 써도 됨)
+node_modules/
+
+# =========================
+# User uploaded files
+# =========================
+backend/storage/images/*
+backend/storage/tracks/*
+
+# 단, 폴더는 유지 (빈 폴더 커밋용)
+!backend/storage/images/.gitkeep
+!backend/storage/tracks/.gitkeep

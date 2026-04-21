@@ -1,0 +1,26 @@
+{
+  "name": "lazidrome-backend",
+  "version": "0.0.1",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/jwt": "^10.0.0",
+    "@fastify/multipart": "^10.0.0",
+    "@fastify/static": "^9.1.1",
+    "better-sqlite3": "^12.9.0",
+    "chokidar": "^5.0.0",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.8.5",
+    "music-metadata": "^11.12.3",
+    "sharp": "^0.34.5",
+    "ulid": "^3.0.2"
+  }
+}
