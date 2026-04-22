@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import fastifyJwt from '@fastify/jwt';
 import cors from '@fastify/cors'; // 💉 수술: CORS 플러그인 추가
 import fastifyStatic from '@fastify/static'; // 💉 추가: 정적 파일 엔진
+import fastifyMultipart from '@fastify/multipart';
 import path from 'node:path'; // 💉 추가: 경로 계산용
 import dotenv from 'dotenv';
 import { initDB } from './db.js';
@@ -13,7 +14,7 @@ import streamRoutes from './routes/stream.js';
 import uploadRoutes from './routes/upload.js';
 import albumsRoutes from './routes/albums.js';
 import tagsRoutes from './routes/tags.js';
-import enrichmentRoutes from './routes/enrichment.js';
+import enrichRoutes from './routes/enrich.js';
 import imagesRoutes from './routes/images.js';
 
 // 1. 환경 변수 로드
@@ -25,7 +26,10 @@ const TRACKS_PATH = process.env.TRACKS_PATH || './storage/tracks';
 const IMAGES_PATH = process.env.IMAGES_PATH || './storage/images';
 startScanner(TRACKS_PATH);
 
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({ 
+  logger: true,
+  bodyLimit: 10485760 
+});
 const PORT = process.env.PORT || 5294;
 
 // ==========================================
@@ -49,6 +53,8 @@ fastify.register(fastifyStatic, {
   // 우리가 직접 images.js에서 라우트를 제어할 것이기 때문입니다.
   decorateReply: true 
 });
+
+fastify.register(fastifyMultipart);
 
 // 전역 인증 데코레이터: API와 오디오 스트리밍을 모두 보호합니다.
 fastify.decorate("authenticate", async (request, reply) => {
@@ -93,7 +99,7 @@ fastify.register(streamRoutes);
 fastify.register(uploadRoutes);
 fastify.register(albumsRoutes);
 fastify.register(tagsRoutes);
-fastify.register(enrichmentRoutes);
+fastify.register(enrichRoutes);
 fastify.register(imagesRoutes);
 
 // ==========================================

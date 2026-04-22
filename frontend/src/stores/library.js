@@ -33,6 +33,7 @@ export const useLibraryStore = defineStore('library', () => {
           auth.fetchWithAuth('/api/albums')
         ])
 
+        // 💡 꼼수 파싱 로직 전면 폐기! 백엔드가 주는 완성품을 그대로 꽂아넣습니다.
         tracks.value = await trackRes.json()
         artists.value = await artistRes.json()
         albums.value = await albumRes.json()
@@ -105,6 +106,43 @@ export const useLibraryStore = defineStore('library', () => {
     }
   }
 
+  // =====================================================================
+  // 💡 [2단계 신규 추가] 국소적 변이 (Local Mutation) 함수들
+  // =====================================================================
+  
+  const updateLocalArtist = (newData) => {
+    const index = artists.value.findIndex(a => a.id === newData.id)
+    if (index !== -1) {
+      // 1. 기존 객체 속성 유지하며 새 데이터 덮어쓰기
+      const updatedArtist = { ...artists.value[index], ...newData }
+      
+      // 2. 화면(UI) 업데이트를 위해 tags 문자열을 topTags 배열로 즉시 파싱!
+      if (newData.tags !== undefined) {
+        try {
+          updatedArtist.topTags = newData.tags ? JSON.parse(newData.tags).slice(0, 3) : []
+        } catch (e) {
+          updatedArtist.topTags = []
+        }
+      }
+      // 3. 배열 갈아끼우기 (Vue 반응성 트리거)
+      artists.value[index] = updatedArtist
+    }
+  }
+
+  const updateLocalAlbum = (newData) => {
+    const index = albums.value.findIndex(a => a.id === newData.id)
+    if (index !== -1) {
+      albums.value[index] = { ...albums.value[index], ...newData }
+    }
+  }
+
+  const updateLocalTrack = (newData) => {
+    const index = tracks.value.findIndex(t => t.id === newData.id)
+    if (index !== -1) {
+      tracks.value[index] = { ...tracks.value[index], ...newData }
+    }
+  }
+
   return {
     tracks,
     artists,
@@ -117,7 +155,10 @@ export const useLibraryStore = defineStore('library', () => {
     getAlbums,
     getTracks,
     updateTrackRating,
-    getArtistById, // 💉 리턴 객체에 반드시 추가해야 컴포넌트에서 쓸 수 있습니다.
-    getAlbumById   // 💉 앨범도 추가
+    getArtistById,
+    getAlbumById,
+    updateLocalArtist,
+    updateLocalAlbum,
+    updateLocalTrack
   }
 })

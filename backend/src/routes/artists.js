@@ -7,14 +7,15 @@ export default async function artistRoutes(fastify) {
     try {
       const db = getDB();
 
+      // 💡 수술: GROUP_CONCAT(t.tags) 삭제. 오직 a.tags(본인 태그)만 가져옵니다!
       const artists = db.prepare(`
         SELECT 
           a.id, 
           a.name, 
-          a.cover_type, -- 💉 수정: has_cover 대신 cover_type 조회
+          a.cover_type, 
+          a.tags,
           COUNT(DISTINCT ta.track_id) as trackCount,
-          ROUND(AVG(NULLIF(t.rating, 0)), 1) as avgRating,
-          GROUP_CONCAT(t.tags, '||') as all_tags
+          ROUND(AVG(NULLIF(t.rating, 0)), 1) as avgRating
         FROM artists a
         LEFT JOIN track_artists ta ON a.id = ta.artist_id
         LEFT JOIN track_metadata t ON ta.track_id = t.id
@@ -22,6 +23,7 @@ export default async function artistRoutes(fastify) {
         ORDER BY a.name COLLATE NOCASE ASC
       `).all();
 
+      // 대표곡 3곡 가져오기 (이 로직은 순수하므로 그대로 유지)
       const topTracksData = db.prepare(`
         SELECT artist_id, track_id, title
         FROM (
@@ -42,27 +44,17 @@ export default async function artistRoutes(fastify) {
         topTracksMap[row.artist_id].push({ id: row.track_id, title: row.title });
       }
 
+      // 💡 수술: 복잡한 태그 카운팅 로직 전면 폐기!
       const formattedArtists = artists.map(artist => {
-        let topTags = [];
+        let parsedTags = [];
         
-        if (artist.all_tags) {
-          const tagCounts = {};
-          artist.all_tags.split('||').forEach(tagString => {
-            if (!tagString) return;
-            try {
-              const tags = JSON.parse(tagString);
-              tags.forEach(tag => {
-                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-              });
-            } catch (e) {
-              // 에러 무시
-            }
-          });
-          
-          topTags = Object.entries(tagCounts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 2)
-            .map(entry => entry[0]);
+        // 오직 본인(artist)의 tags 컬럼만 파싱합니다. (목록 화면을 위해 최대 3개만 자름)
+        if (artist.tags) {
+          try {
+            parsedTags = JSON.parse(artist.tags).slice(0, 3);
+          } catch (e) {
+            // 파싱 에러 시 빈 배열 유지
+          }
         }
 
         return {
@@ -71,7 +63,7 @@ export default async function artistRoutes(fastify) {
           cover_type: artist.cover_type,
           trackCount: artist.trackCount,
           avgRating: artist.avgRating || 0,
-          topTags: topTags,
+          topTags: parsedTags, // 프론트엔드가 topTags라는 이름의 배열을 기다립니다.
           topTracks: topTracksMap[artist.id] || []
         };
       });

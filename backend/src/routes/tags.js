@@ -30,16 +30,18 @@ export default async function tagRoutes(fastify) {
   fastify.get('/api/tags/:name/tracks', async (request, reply) => {
     const { name } = request.params;
     try {
-      // 💉 JSON_EXTRACT와 LIKE를 이용하거나, json_each를 활용해 해당 태그를 가진 곡을 찾습니다.
+      // 💉 수정완료: album_tracks 교차 테이블을 거쳐 대표 앨범(is_primary = 1)을 조인합니다.
       const tracks = db.prepare(`
         SELECT 
           t.id, t.title, t.rating, t.play_count, t.year,
           f.duration,
+          alb.id as albumId,
           alb.name as albumName,
           GROUP_CONCAT(ar.name, ', ') as artist
         FROM track_metadata t
         JOIN track_filedata f ON t.file_id = f.id
-        LEFT JOIN albums alb ON t.album_id = alb.id
+        LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
+        LEFT JOIN albums alb ON at.album_id = alb.id
         LEFT JOIN track_artists ta ON t.id = ta.track_id
         LEFT JOIN artists ar ON ta.artist_id = ar.id
         WHERE EXISTS (

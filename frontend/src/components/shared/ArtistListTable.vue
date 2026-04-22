@@ -1,9 +1,10 @@
 <script setup>
 import { useRouter } from 'vue-router'
-import { Play, MoreVertical, Users } from 'lucide-vue-next'
+import { Play, MoreVertical, Users, Sparkles } from 'lucide-vue-next'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
+import { useEnrichmentStore } from '@/stores/enrichment'
 
 import { getCoverUrl } from '@/lib/image'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -23,6 +24,7 @@ const router = useRouter()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const auth = useAuthStore()
+const enrichment = useEnrichmentStore()
 
 const goToArtistDetail = (artistId) => router.push({ name: 'artist-detail', params: { id: artistId } })
 
@@ -56,6 +58,11 @@ const getArtistImageUrl = (id) => {
 const renderStars = (rating) => {
   const r = Math.round(rating || 0)
   return '★'.repeat(r) + '☆'.repeat(5 - r)
+}
+
+const fetchMetadata = (artistId) => {
+  if (!artistId) return
+  enrichment.fetchPreview('artist', artistId)
 }
 </script>
 
@@ -146,6 +153,9 @@ const renderStars = (rating) => {
               </DropdownMenuItem>
               <DropdownMenuItem @click.stop="goToArtistDetail(artist.id)">
                 <Users class="mr-2 h-4 w-4" /> 상세 정보 보기
+              </DropdownMenuItem>
+              <DropdownMenuItem @click.stop="fetchMetadata(artist.id)">
+                <Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> 메타데이터 업데이트
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

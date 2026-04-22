@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth' // 💉 추가됨
 import PlayerWrapper from '@/components/player/PlayerWrapper.vue'
 import { Button } from '@/components/ui/button'
 import { Menu, X, Compass, Users, Disc, Music, Hash, Settings } from 'lucide-vue-next'
-import MetadataReviewer from '@/components/ui/MetadataReviewer.vue'
+import EnrichmentDialog from '@/components/enrichment/EnrichmentDialog.vue'
 
 const library = useLibraryStore()
 const player = usePlayerStore()
@@ -107,7 +107,7 @@ onMounted(async () => {
 
     <PlayerWrapper :is-sidebar-expanded="isSidebarExpanded" />
 
-    <MetadataReviewer />
+    <EnrichmentDialog />
 
   </div>
 </template>

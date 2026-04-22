@@ -30,15 +30,22 @@ CREATE TABLE artists (
     mbid TEXT UNIQUE
 );
 
--- 3. 앨범 정보
+-- 3. 앨범 정보 (main_artist_id 제거)
 CREATE TABLE albums (
     id TEXT PRIMARY KEY,             -- ULID
     name TEXT NOT NULL,
-    main_artist_id TEXT,
-    cover_type TEXT,                 -- 💉 수정됨: 기존 has_cover 대체
+    cover_type TEXT,                 -- NULL이면 이미지 없음, 값이 있으면 확장자 (예: '.jpg', '.png')
     year INTEGER,
-    mbid TEXT UNIQUE,
-    FOREIGN KEY (main_artist_id) REFERENCES artists(id)
+    mbid TEXT UNIQUE
+);
+
+-- [신규] 3-1. 앨범-아티스트 교차 테이블 (다대다 관계)
+CREATE TABLE album_artists (
+    album_id TEXT NOT NULL,
+    artist_id TEXT NOT NULL,
+    PRIMARY KEY (album_id, artist_id),
+    FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE
 );
 
 -- 4. 논리 트랙 메타데이터 (앨범 의존성 제거)

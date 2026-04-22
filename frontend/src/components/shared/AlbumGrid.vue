@@ -3,15 +3,17 @@ import { useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
+// 💉 1. Enrichment 스토어 임포트
+import { useEnrichmentStore } from '@/stores/enrichment'
 
 import { formatDuration } from '@/lib/audio'
 import { getCoverUrl } from '@/lib/image'
 
-import { Play, MoreVertical, Shuffle, Info, Disc } from 'lucide-vue-next'
+// 💉 2. Sparkles 아이콘 임포트 추가
+import { Play, MoreVertical, Shuffle, Info, Disc, Sparkles } from 'lucide-vue-next'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 
-// 💉 1. Props 정의: 외부에서 앨범 배열 데이터를 주입받습니다.
 const props = defineProps({
   albums: {
     type: Array,
@@ -24,6 +26,8 @@ const router = useRouter()
 const library = useLibraryStore()
 const auth = useAuthStore()
 const player = usePlayerStore()
+// 💉 3. 스토어 인스턴스화
+const enrichment = useEnrichmentStore()
 
 const getAlbumImageUrl = (id) => {
   return getCoverUrl(auth.serverUrl, 'album', id, auth.token)
@@ -41,6 +45,12 @@ const playAlbumShuffle = async (albumName) => {
 
 const goToAlbumDetail = (albumId) => {
   router.push({ name: 'album-detail', params: { id: albumId } })
+}
+
+// 💉 4. 앨범 메타데이터 모달 호출 함수
+const fetchMetadata = (albumId) => {
+  if (!albumId) return
+  enrichment.fetchPreview('album', albumId)
 }
 </script>
 
@@ -99,6 +109,9 @@ const goToAlbumDetail = (albumId) => {
               </DropdownMenuItem>
               <DropdownMenuItem @click.stop="goToAlbumDetail(item.id)">
                 <Info class="mr-2 h-4 w-4" /> 앨범 정보
+              </DropdownMenuItem>
+              <DropdownMenuItem @click.stop="fetchMetadata(item.id)">
+                <Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> 메타데이터 업데이트
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

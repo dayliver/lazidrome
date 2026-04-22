@@ -5,12 +5,8 @@ import { ulid } from 'ulid';
 import crypto from 'node:crypto';
 import * as mm from 'music-metadata';
 import db from '../db.js';
-// 💉 1. sharp 라이브러리 추가
 import sharp from 'sharp';
 
-/**
- * 파일의 SHA256 해시를 계산합니다.
- */
 function getFileHash(filePath) {
   const fileBuffer = fs.readFileSync(filePath);
   return crypto.createHash('sha256').update(fileBuffer).digest('hex');
@@ -24,7 +20,6 @@ export function startScanner(watchPath) {
   });
 
   const IMAGES_PATH = process.env.IMAGES_PATH || './storage/images';
-
   console.log(`🔍 스캐너 가동: ${watchPath} 감시 중...`);
 
   const handleFile = async (filePath) => {
@@ -34,7 +29,6 @@ export function startScanner(watchPath) {
     try {
       const newHash = getFileHash(filePath);
       const stats = fs.statSync(filePath);
-      // 💉 내장 이미지 추출을 위해 metadata 분석
       const metadata = await mm.parseFile(filePath);
       
       const title = metadata.common.title || path.basename(filePath, ext);
@@ -45,12 +39,16 @@ export function startScanner(watchPath) {
       const trackNo = metadata.common.track?.no || null;
       const discNo = metadata.common.disk?.no || null;
       
-      const artistRaw = metadata.common.artist || 'Unknown Artist';
-      const artistNames = artistRaw.split(/[,/;]|\s&\s/).map(s => s.trim()).filter(Boolean);
+      // 💡 1. 트랙 아티스트와 앨범 아티스트 분리 추출
+      const trackArtistRaw = metadata.common.artist || 'Unknown Artist';
+      const trackArtistNames = trackArtistRaw.split(/[,/;]|\s&\s/).map(s => s.trim()).filter(Boolean);
+      
+      // 컴필레이션/합작 앨범을 위해 albumartist 태그를 우선 확인
+      const albumArtistRaw = metadata.common.albumartist || trackArtistRaw;
+      const albumArtistNames = albumArtistRaw.split(/[,/;]|\s&\s/).map(s => s.trim()).filter(Boolean);
 
       let albumId = null;
 
-      // 2. DB 트랜잭션 (메타데이터 저장)
       const transaction = db.transaction(() => {
         const existingByHash = db.prepare('SELECT id, path FROM track_filedata WHERE id = ?').get(newHash);
         const existingByPath = db.prepare('SELECT id as hash FROM track_filedata WHERE path = ?').get(filePath);
@@ -62,26 +60,52 @@ export function startScanner(watchPath) {
           return; 
         }
 
-        const artistIds = artistNames.map(name => {
-          let artist = db.prepare('SELECT id FROM artists WHERE name = ?').get(name);
-          if (!artist) {
-            const newId = ulid();
-            db.prepare('INSERT INTO artists (id, name) VALUES (?, ?)').run(newId, name);
-            return newId;
-          }
-          return artist.id;
-        });
+        // 💡 헬퍼 함수: 아티스트 배열을 받아 DB 확인 후 ID 배열 반환
+        const getOrCreateArtistIds = (names) => {
+          return names.map(name => {
+            let artist = db.prepare('SELECT id FROM artists WHERE name = ?').get(name);
+            if (!artist) {
+              const newId = ulid();
+              db.prepare('INSERT INTO artists (id, name) VALUES (?, ?)').run(newId, name);
+              return newId;
+            }
+            return artist.id;
+          });
+        };
 
-        const mainArtistId = artistIds[0];
+        const trackArtistIds = getOrCreateArtistIds(trackArtistNames);
+        const albumArtistIds = getOrCreateArtistIds(albumArtistNames);
+
+        // 💡 2. 앨범 찾기 (다대다 구조 반영)
         const safeAlbumName = albumName || `Unknown Album (${title})`;
-
-        let album = db.prepare('SELECT id FROM albums WHERE name = ? AND main_artist_id = ?').get(safeAlbumName, mainArtistId);
         
-        if (!album) {
+        // 동일한 이름을 가진 앨범 후보들을 모두 가져옴
+        const candidateAlbums = db.prepare('SELECT id FROM albums WHERE name = ?').all(safeAlbumName);
+        
+        for (const row of candidateAlbums) {
+          // 해당 앨범에 속한 아티스트 목록 가져오기
+          const existingArtists = db.prepare('SELECT artist_id FROM album_artists WHERE album_id = ?').all(row.id).map(a => a.artist_id);
+          
+          // 두 아티스트 그룹(배열)이 동일한지 검사
+          const sortedA = [...albumArtistIds].sort().join(',');
+          const sortedB = [...existingArtists].sort().join(',');
+
+          if (sortedA === sortedB) {
+            albumId = row.id;
+            break; // 완벽히 일치하는 앨범을 찾음!
+          }
+        }
+
+        // 일치하는 앨범이 없다면 새로 생성
+        if (!albumId) {
           albumId = ulid();
-          db.prepare('INSERT INTO albums (id, name, main_artist_id, year) VALUES (?, ?, ?, ?)').run(albumId, safeAlbumName, mainArtistId, year);
-        } else {
-          albumId = album.id;
+          db.prepare('INSERT INTO albums (id, name, year) VALUES (?, ?, ?)').run(albumId, safeAlbumName, year);
+          
+          // album_artists 교차 테이블에 관계 생성
+          const insertAlbumArtist = db.prepare('INSERT INTO album_artists (album_id, artist_id) VALUES (?, ?)');
+          for (const aId of albumArtistIds) {
+            insertAlbumArtist.run(albumId, aId);
+          }
         }
 
         let currentTrackId;
@@ -111,7 +135,7 @@ export function startScanner(watchPath) {
         }
 
         if (currentTrackId) {
-          artistIds.forEach((id, index) => {
+          trackArtistIds.forEach((id, index) => {
             const role = index === 0 ? 1 : 16;
             db.prepare('INSERT OR IGNORE INTO track_artists (track_id, artist_id, role_mask) VALUES (?, ?, ?)').run(currentTrackId, id, role);
           });
@@ -127,11 +151,9 @@ export function startScanner(watchPath) {
 
       transaction();
 
-      // 💉 3. 이미지 처리 (트랜잭션 완료 후 비동기 진행)
       if (albumId && metadata.common.picture && metadata.common.picture.length > 0) {
         const albumCover = db.prepare('SELECT cover_type FROM albums WHERE id = ?').get(albumId);
         
-        // 이미 커버가 등록되어 있다면(Last.fm 등에서 이미 가져왔다면) 넘어갑니다.
         if (!albumCover?.cover_type) {
           const pic = metadata.common.picture[0];
           const fileName = `${albumId}.jpg`;
@@ -139,14 +161,10 @@ export function startScanner(watchPath) {
 
           try {
             await sharp(pic.data)
-              .resize(600, 600, { // 1:1 비율로 크롭 및 리사이징
-                fit: 'cover',
-                position: 'center'
-              })
-              .jpeg({ quality: 85 }) // 용량을 위해 JPEG로 압축 저장
+              .resize(600, 600, { fit: 'cover', position: 'center' })
+              .jpeg({ quality: 85 })
               .toFile(targetPath);
 
-            // DB에 확장자 정보 업데이트
             db.prepare('UPDATE albums SET cover_type = ? WHERE id = ?').run('.jpg', albumId);
             console.log(`🖼️ [Scanner] 내장 커버 추출 완료: ${albumId}.jpg`);
           } catch (sharpErr) {

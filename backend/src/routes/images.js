@@ -51,10 +51,16 @@ export default async function imageRoutes(fastify) {
    */
   fastify.get('/api/images/artist/:id', async (req, reply) => {
     const { id } = req.params;
+    
+    // DB에서 cover_type(확장자)을 조회합니다.
     const artist = db.prepare('SELECT cover_type FROM artists WHERE id = ?').get(id);
-    if (artist?.cover_type && fileExists(`artist_${id}${artist.cover_type}`)) {
-      return reply.sendFile(`artist_${id}${artist.cover_type}`);
+
+    // 💡 접두사 artist_ 를 제거하고 ID와 확장자만 결합합니다.
+    if (artist?.cover_type) {
+      const fileName = `${id}${artist.cover_type}`;
+      if (fileExists(fileName)) return reply.sendFile(fileName);
     }
+    
     return reply.sendFile('default.png');
   });
 }

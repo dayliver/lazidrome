@@ -6,18 +6,23 @@ export default async function albumRoutes(fastify) {
   // 1. 전체 앨범 목록 조회
   fastify.get('/api/albums', async (request, reply) => {
     try {
-      // 💉 v2.1 스키마 반영: album_tracks 교차 테이블을 통해 조인합니다.
+      // 💉 v2.1 다대다 스키마 반영: 
+      // album_artists 테이블을 서브쿼리로 연결해 여러 아티스트를 쉼표로 묶어 displayArtist 생성
       const albums = db.prepare(`
         SELECT 
           a.id, 
           a.name, 
           a.year, 
-          a.cover_type, -- 💉 수정: has_cover 대신 cover_type 조회
-          ar.name as displayArtist,
-          COUNT(t.id) as trackCount,
+          a.cover_type,
+          (
+            SELECT GROUP_CONCAT(ar.name, ', ')
+            FROM album_artists aa
+            JOIN artists ar ON aa.artist_id = ar.id
+            WHERE aa.album_id = a.id
+          ) as displayArtist,
+          COUNT(DISTINCT t.id) as trackCount,
           SUM(f.duration) as totalDuration
         FROM albums a
-        LEFT JOIN artists ar ON a.main_artist_id = ar.id
         LEFT JOIN album_tracks at ON a.id = at.album_id
         LEFT JOIN track_metadata t ON at.track_id = t.id
         LEFT JOIN track_filedata f ON t.file_id = f.id
@@ -38,27 +43,33 @@ export default async function albumRoutes(fastify) {
 
     try {
       // 2-1. 앨범 기본 정보 및 메인 아티스트 이름, 총 재생 시간 가져오기
-      // 💉 여기도 album_tracks 교차 테이블을 통과해야 합니다.
+      // 💉 앨범 상세 정보도 서브쿼리를 이용하여 카테시안 곱(데이터 뻥튀기) 에러 원천 차단
       const album = db.prepare(`
         SELECT 
-          a.id, a.name, a.year, a.cover_type, -- 💉 수정: has_cover 대신 cover_type 조회
-          ar.name as displayArtist,
-          SUM(f.duration) as totalDuration
+          a.id, a.name, a.year, a.cover_type,
+          (
+            SELECT GROUP_CONCAT(ar.name, ', ')
+            FROM album_artists aa
+            JOIN artists ar ON aa.artist_id = ar.id
+            WHERE aa.album_id = a.id
+          ) as displayArtist,
+          (
+            SELECT SUM(f.duration)
+            FROM album_tracks at
+            JOIN track_metadata t ON at.track_id = t.id
+            JOIN track_filedata f ON t.file_id = f.id
+            WHERE at.album_id = a.id
+          ) as totalDuration
         FROM albums a
-        LEFT JOIN artists ar ON a.main_artist_id = ar.id
-        LEFT JOIN album_tracks at ON a.id = at.album_id
-        LEFT JOIN track_metadata t ON at.track_id = t.id
-        LEFT JOIN track_filedata f ON t.file_id = f.id
         WHERE a.id = ?
-        GROUP BY a.id
       `).get(id);
 
       if (!album) {
         return reply.code(404).send({ error: 'Album not found' });
       }
 
-      // 2-2. 앨범에 속한 곡 목록 가져오기 (가수 이름도 예쁘게 묶어서)
-      // 💉 v2.1 스키마의 꽃: album_tracks의 disc_number, track_number를 가져와 완벽하게 정렬합니다.
+      // 2-2. 앨범에 속한 곡 목록 가져오기
+      // (트랙-아티스트 관계인 track_artists는 변경되지 않았으므로 기존 쿼리 유지)
       const tracks = db.prepare(`
         SELECT 
           t.id, t.title, t.rating, t.play_count, 
