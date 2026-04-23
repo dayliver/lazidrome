@@ -5,7 +5,7 @@ import { ref, watch } from 'vue'
 import AlbumBasicInfoTab from './tabs/AlbumBasicInfoTab.vue'
 import AlbumArtistsTab from './tabs/AlbumArtistsTab.vue'
 import AlbumTracksTab from './tabs/AlbumTracksTab.vue'
-import CoverArtTab from './tabs/CoverArtTab.vue'
+import CoverArtTab from '../shared/tabs/CoverArtTab.vue'
 import ExternalAlbumTab from './tabs/ExternalAlbumTab.vue'
 
 const props = defineProps(['item', 'activeTab'])

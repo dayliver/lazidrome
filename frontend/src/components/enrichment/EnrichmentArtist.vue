@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 
 // 💡 아티스트용 탭 컴포넌트 임포트
 import ArtistBasicInfoTab from './tabs/ArtistBasicInfoTab.vue'
-import CoverArtTab from './tabs/CoverArtTab.vue'
+import CoverArtTab from '../shared/tabs/CoverArtTab.vue'
 import ExternalArtistTab from './tabs/ExternalArtistTab.vue'
 
 const props = defineProps(['item', 'activeTab'])

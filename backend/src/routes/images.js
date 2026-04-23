@@ -63,4 +63,26 @@ export default async function imageRoutes(fastify) {
     
     return reply.sendFile('default.png');
   });
+
+  /**
+   * [GET] /api/images/playlist/:id
+   */
+  fastify.get('/api/images/playlist/:id', async (req, reply) => {
+    const { id } = req.params;
+    
+    // 1. DB에서 플레이리스트의 cover_type을 조회합니다.
+    const playlist = db.prepare('SELECT cover_type FROM playlists WHERE id = ?').get(id);
+
+    // 2. cover_type이 존재한다면 (선생님의 규칙: 접두어 없이 id + 확장자)
+    if (playlist?.cover_type) {
+      // 💡 만약 DB에 '.' 없이 'jpg'로 저장되어 있을 경우를 대비한 안전장치
+      const ext = playlist.cover_type.startsWith('.') ? playlist.cover_type : `.${playlist.cover_type}`;
+      const fileName = `${id}${ext}`; 
+      
+      if (fileExists(fileName)) return reply.sendFile(fileName);
+    }
+    
+    // 3. 파일이 없거나 cover_type이 없으면 기본 이미지를 반환합니다.
+    return reply.sendFile('default.png'); // 또는 플레이리스트 전용 디폴트 이미지
+  });
 }

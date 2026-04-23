@@ -106,26 +106,26 @@ CREATE TABLE play_history (
     FOREIGN KEY (track_id) REFERENCES track_metadata(id) ON DELETE CASCADE
 );
 
--- 9. 플레이리스트 (앨범과 유사한 구조로 통일)
+-- 9. 플레이리스트 통합 테이블
 CREATE TABLE playlists (
     id TEXT PRIMARY KEY,             -- ULID
     name TEXT NOT NULL,
     description TEXT,
-    cover_type TEXT,                 -- 💉 수정됨: 기존 has_cover 대체
-    is_compilation INTEGER DEFAULT 1,
+    cover_type TEXT,                 -- 커버 확장자 (.jpg 등)
+    type TEXT DEFAULT 'list',        -- 💡 핵심: 'list' 또는 'mix'
+    rules TEXT,                      -- 💡 핵심: mix일 경우 조건식 JSON 저장
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- 10. 플레이리스트 곡 순서 (ULID PK 추가 및 필드명 통일)
+-- 10. 플레이리스트 곡 순서 (수동 playlist 전용)
 CREATE TABLE playlist_tracks (
-    id TEXT PRIMARY KEY,             -- ULID (앨범 트랙과 통일)
+    id TEXT PRIMARY KEY,             -- ULID
     playlist_id TEXT NOT NULL,
     track_id TEXT NOT NULL,
-    position INTEGER NOT NULL,       -- 앨범의 track_number와 같은 역할
+    position INTEGER NOT NULL,       -- 곡 순서 정렬용
     added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
-    FOREIGN KEY (track_id) REFERENCES track_metadata(id) ON DELETE CASCADE,
-    UNIQUE(playlist_id, track_id)
+    FOREIGN KEY (track_id) REFERENCES track_metadata(id) ON DELETE CASCADE
 );
 
 -- 11. 앱 전역 설정

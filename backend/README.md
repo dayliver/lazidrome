@@ -1,5 +1,6 @@
 # 폴더 구조
 
+```
 backend/
 ├── database/            # SQL 스키마 및 실제 .db 파일 보관
 │   ├── schema.sql       # 우리가 만든 설계도
@@ -19,6 +20,7 @@ backend/
 │       └── stream.js    # 실시간 음원 스트리밍 (FFmpeg 처리 가능)
 ├── .env                 # 환경 변수 (음악 폴더 경로 등)
 └── package.json
+```
 
 # 파일별 핵심 기능 및 메소드 요약
 

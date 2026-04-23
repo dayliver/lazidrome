@@ -1,41 +1,40 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 
-// 💉 1. 아이콘 임포트
 import { Search, Plus, Trash2, Disc, Star } from 'lucide-vue-next'
-
-// 💉 2. shadcn-vue UI 컴포넌트 임포트
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-// 💉 3. 스토어 임포트
 import { useLibraryStore } from '@/stores/library'
+import { useAuthStore } from '@/stores/auth' // 💡 추가
+import { getCoverUrl } from '@/lib/image'    // 💡 추가
+import SafeImage from '@/components/ui/SafeImage.vue' // 💡 추가
 
 const props = defineProps({
-  modelValue: { type: Object, required: true }, // formData 객체 전체를 받음
+  modelValue: { type: Object, required: true },
   item: { type: Object, required: true }
 })
 const emit = defineEmits(['update:modelValue'])
 
 const library = useLibraryStore()
+const auth = useAuthStore() // 💡 추가
 
-// 💡 누락되었던 상태 변수(ref)들 복구
 const searchQuery = ref('')
 const searchResults = ref([])
 const allTracks = ref([])
 const isFocused = ref(false)
 
-// 💡 앨범 수록곡 추가 시 검색을 위해 전체 트랙을 로드
+// 💡 헬퍼 함수 추가
+const getTrackImageUrl = (id) => getCoverUrl(auth.serverUrl, 'track', id, auth.token)
+
 onMounted(async () => {
   allTracks.value = await library.getTracks()
 })
 
-// 💡 부모의 formData.albumTracks를 안전하게 업데이트하는 헬퍼 함수
 const updateTracks = (newTracks) => {
   emit('update:modelValue', { ...props.modelValue, albumTracks: newTracks })
 }
 
-// 트랙 검색 로직
 const handleSearch = () => {
   const query = searchQuery.value.trim().toLowerCase()
   if (!query) {
@@ -47,20 +46,14 @@ const handleSearch = () => {
     .slice(0, 5)
 }
 
-// 검색창 포커스 아웃 처리 (클릭 이벤트가 무시되지 않도록 지연)
 const handleBlur = () => {
-  setTimeout(() => {
-    isFocused.value = false
-  }, 200)
+  setTimeout(() => { isFocused.value = false }, 200)
 }
 
-// 트랙 추가
 const addTrack = (track) => {
   const currentTracks = props.modelValue.albumTracks || []
-  // 중복 검사
   if (currentTracks.some(t => t.track_id === track.id)) return
   
-  // 가장 큰 트랙 번호 찾아서 + 1
   const nextNo = currentTracks.reduce((max, t) => Math.max(max, t.track_number || 0), 0) + 1
   
   const updated = [...currentTracks, {
@@ -69,18 +62,17 @@ const addTrack = (track) => {
     artist: track.artist,
     disc_number: 1,
     track_number: nextNo,
-    is_primary: 1
+    is_primary: 1,
+    custom_cover_type: track.custom_cover_type, // 💡 커버 메타데이터도 함께 복사
+    albumCoverType: track.albumCoverType
   }]
   
   updateTracks(updated)
-  
-  // 검색 초기화
   searchQuery.value = ''
   searchResults.value = []
   isFocused.value = false
 }
 
-// 트랙 제거
 const removeTrack = (index) => {
   const currentTracks = props.modelValue.albumTracks || []
   const updated = [...currentTracks]
@@ -88,18 +80,15 @@ const removeTrack = (index) => {
   updateTracks(updated)
 }
 
-// 대표 앨범 토글
 const togglePrimary = (track) => {
   track.is_primary = track.is_primary === 1 ? 0 : 1
   updateTracks([...(props.modelValue.albumTracks || [])])
 }
 
-// 입력창(CD, No) 숫자 변경 시 즉시 반영
 const triggerUpdate = () => {
   updateTracks([...(props.modelValue.albumTracks || [])])
 }
 
-// 정렬된 트랙 리스트 반환 (CD 순서 -> 트랙 번호 순서)
 const sortedTracks = computed(() => {
   const tracks = props.modelValue.albumTracks || []
   return [...tracks].sort((a, b) => {
@@ -137,6 +126,11 @@ const sortedTracks = computed(() => {
             @click.stop="addTrack(res)"
             class="w-full text-left px-4 py-3 text-sm hover:bg-muted flex items-center justify-between group transition-colors border-b last:border-none"
           >
+            <div class="shrink-0 relative w-8 h-8 rounded-md overflow-hidden bg-secondary border flex items-center justify-center mr-3">
+              <Disc class="w-4 h-4 opacity-20 absolute" />
+              <SafeImage :src="getTrackImageUrl(res.id)" type="track" class="w-full h-full object-cover relative z-10" />
+            </div>
+
             <div class="flex flex-col min-w-0 flex-1 pr-4">
               <span class="font-bold truncate">{{ res.title }}</span>
               <span class="text-xs text-muted-foreground truncate">{{ res.artist || 'Unknown Artist' }}</span>
@@ -185,13 +179,17 @@ const sortedTracks = computed(() => {
             </div>
           </div>
 
+          <div class="shrink-0 relative w-10 h-10 rounded-md overflow-hidden bg-secondary border flex items-center justify-center">
+            <Disc class="w-5 h-5 opacity-20 absolute" />
+            <SafeImage :src="getTrackImageUrl(track.track_id)" type="track" class="w-full h-full object-cover relative z-10" />
+          </div>
+
           <div class="flex-1 min-w-0 flex flex-col justify-center">
             <span class="font-bold text-sm truncate">{{ track.title }}</span>
             <span class="text-xs text-muted-foreground truncate">{{ track.artist || 'Unknown Artist' }}</span>
           </div>
 
           <div class="flex items-center gap-1 shrink-0">
-            
             <button 
               @click="togglePrimary(track)" 
               class="flex flex-col items-center justify-center w-12 h-12 rounded-lg hover:bg-muted transition-colors focus:outline-none"
@@ -219,7 +217,6 @@ const sortedTracks = computed(() => {
 .list-enter-active, .list-leave-active { transition: all 0.3s ease; }
 .list-enter-from, .list-leave-to { opacity: 0; transform: translateX(-10px); }
 
-/* number 인풋 화살표 숨기기 */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
