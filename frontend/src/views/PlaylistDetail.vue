@@ -8,7 +8,7 @@ import { usePlayerStore } from '@/stores/player'
 import { formatDuration } from '@/lib/audio'
 import { getCoverUrl } from '@/lib/image'
 
-import { Play, Shuffle, RefreshCw, ListMusic, Zap } from 'lucide-vue-next'
+import { Play, Shuffle, RefreshCw, ListMusic, Zap, Edit } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import DetailLayout from '@/components/layout/DetailLayout.vue'
 import TrackListTable from '@/components/shared/TrackListTable.vue'
@@ -83,6 +83,10 @@ const refreshMix = async () => {
   await fetchDetail()
   isRefreshing.value = false
 }
+
+const handleEdit = () => {
+  console.log('편집')
+}
 </script>
 
 <template>
@@ -103,6 +107,13 @@ const refreshMix = async () => {
     ]"
   >
     
+    <template #actions>
+      <Button variant="outline" size="sm" @click="handleEdit">
+        <Edit class="w-4 h-4 mr-2" />
+        편집
+      </Button>
+    </template>
+
     <div class="flex items-center gap-4 mb-4 px-2">
       <Button @click="playSequential" class="rounded-full shadow-lg px-8">
         <Play class="w-4 h-4 mr-2 fill-current" /> 재생
@@ -124,7 +135,7 @@ const refreshMix = async () => {
     </div>
 
     <section class="space-y-4">
-      <div class="bg-card border rounded-xl overflow-hidden shadow-sm">
+      <div class="bg-card overflow-hidden">
         <TrackListTable 
           :tracks="playlist.tracks" 
           :show-album="true" 

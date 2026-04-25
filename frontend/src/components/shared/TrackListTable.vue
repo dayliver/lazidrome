@@ -151,8 +151,8 @@ const removeSelectedFromPlaylist = async () => {
 <template>
   <div class="w-full relative">
     
-    <div class="hidden md:block pb-20"> 
-      <Table>
+    <div class="hidden md:block pb-2"> 
+      <Table class="border-b">
         <TableHeader>
           <TableRow class="bg-muted/30">
             <TableHead v-if="playlistId" class="w-8"></TableHead>

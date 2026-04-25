@@ -157,7 +157,8 @@ export function startScanner(watchPath) {
         if (!albumCover?.cover_type) {
           const pic = metadata.common.picture[0];
           const fileName = `${albumId}.jpg`;
-          const targetPath = path.join(IMAGES_PATH, fileName);
+          fs.mkdirSync(path.join(IMAGES_PATH, 'albums'), { recursive: true });
+          const targetPath = path.join(IMAGES_PATH, 'albums', fileName);
 
           try {
             await sharp(pic.data)

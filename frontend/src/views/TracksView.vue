@@ -72,7 +72,7 @@ const handleLoadMore = () => {
       <p>Lazidrome에서 곡 목록을 가져오고 있습니다...</p>
     </div>
 
-    <div v-else class="bg-card md:border md:rounded-lg md:shadow-sm overflow-hidden pb-4">
+    <div v-else class="bg-card overflow-hidden pb-4">
       
       <TrackListTable :tracks="tracksData" />
 

@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { getCoverUrl } from '@/lib/image'
 
 // 💉 빠졌던 Users 아이콘 추가
-import { Users } from 'lucide-vue-next'
+import { Users, Edit } from 'lucide-vue-next'
 
 import { VisXYContainer, VisStackedBar, VisAxis } from '@unovis/vue'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
@@ -72,6 +72,10 @@ const chartData = computed(() => {
   return Object.entries(counts).map(([star, count]) => ({ star: `${star}점`, count }))
 })
 
+const handleEdit = () => {
+  console.log('편집')
+}
+
 onMounted(async () => {
   // TS의 'as string' 제거
   artist.value = await library.getArtistById(route.params.id)
@@ -88,6 +92,13 @@ onMounted(async () => {
     :is-round-image="true"
   >
     
+    <template #actions>
+      <Button variant="outline" size="sm" @click="handleEdit">
+        <Edit class="w-4 h-4 mr-2" />
+        편집
+      </Button>
+    </template>
+  
     <section v-if="artist.bio" class="max-w-4xl">
       <p class="text-sm md:text-base text-muted-foreground leading-relaxed">
         {{ artist.bio }}

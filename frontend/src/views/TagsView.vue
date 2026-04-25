@@ -1,139 +1,148 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useLibraryStore } from '@/stores/library'
-import { usePlayerStore } from '@/stores/player'
-import { useAuthStore } from '@/stores/auth' // fetchWithAuth 사용을 위해 필요할 수 있음
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Hash, Play, Shuffle, MoreVertical, ListMusic } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth'
+import { getCoverUrl } from '@/lib/image' // 💡 공통 이미지 URL 생성기
+
+import { Input } from '@/components/ui/input'
+import SafeImage from '@/components/ui/SafeImage.vue'
+import { Search, Hash, Tags, ChevronRight, Plus } from 'lucide-vue-next'
 
 const router = useRouter()
-const library = useLibraryStore()
-const player = usePlayerStore()
-const auth = useAuthStore()
+const authStore = useAuthStore()
 
-const tagsData = ref([])
+const tags = ref([])
 const isLoading = ref(true)
+const searchQuery = ref('')
 
-// API에서 태그 목록 가져오기
-const loadTags = async () => {
-  isLoading.value = true
+// 💡 1. 백엔드에서 통합 태그 데이터를 가져옵니다.
+const fetchTags = async () => {
   try {
-    // 💡 참고: library.js에 getTags() 메서드를 추가해야 합니다!
-    // 임시로 직접 fetch 하는 로직을 작성해 둡니다.
-    const res = await auth.fetchWithAuth('/api/tags')
-    if (res.ok) {
-      tagsData.value = await res.json()
+    const res = await authStore.fetchWithAuth('/api/tags')
+    const result = await res.json()
+    if (result.success) {
+      tags.value = result.data
     }
-  } catch (error) {
-    console.error("태그 데이터를 불러오는 중 에러 발생:", error)
+  } catch (err) {
+    console.error('태그 로드 실패:', err)
   } finally {
     isLoading.value = false
   }
 }
 
-onMounted(() => {
-  loadTags()
+onMounted(fetchTags)
+
+// 💡 2. 검색어에 맞춰 태그 필터링
+const filteredTags = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return tags.value
+  return tags.value.filter(t => t.name.toLowerCase().includes(q))
 })
 
-// 특정 태그의 곡들을 가져와서 재생하는 로직
-const playTagTracks = async (tagName, isShuffle = false) => {
-  try {
-    const res = await auth.fetchWithAuth(`/api/tags/${encodeURIComponent(tagName)}/tracks`)
-    if (res.ok) {
-      const tracks = await res.json()
-      if (tracks.length > 0) {
-        player.isShuffle = isShuffle
-        const startIndex = isShuffle ? Math.floor(Math.random() * tracks.length) : 0
-        player.playNewQueue(tracks, startIndex)
-      }
-    }
-  } catch (error) {
-    console.error("태그 재생 중 에러 발생:", error)
-  }
+// 💡 3. 이미지가 있는 태그만 따로 뽑아 상단(Featured)에 배치
+const featuredTags = computed(() => {
+  return filteredTags.value.filter(t => t.hasImage)
+})
+
+// 태그 상세 페이지로 이동
+const goToTag = (name) => {
+  router.push({ name: 'tag-detail', params: { name } })
+}
+
+// 💡 태그 이미지 URL 생성 
+// (주의: 백엔드 images.js에 '/api/images/tag/:id' 라우트를 추가해야 합니다!)
+const getTagImageUrl = (name) => getCoverUrl(authStore.serverUrl, 'tag', name, authStore.token)
+
+const handleCreate = () => {
+  console.log('파일 업로드 탐색기 띄우기 (나중에 연결)')
 }
 </script>
 
 <template>
-  <div class="w-full space-y-6">
+  <div class="w-full space-y-8 animate-in fade-in duration-500">
     
     <div class="flex items-end justify-between border-b pb-4">
-      <h1 class="text-3xl font-black tracking-tight">Tags</h1>
-      <p class="text-sm font-medium text-muted-foreground">
-        분류된 태그 (총 {{ tagsData.length }}개)
-      </p>
+      <div>
+        <h1 class="text-3xl font-black tracking-tight flex items-center gap-3">
+          <Tags class="w-8 h-8 text-primary" /> Tags
+        </h1>
+        <p class="text-sm font-medium text-muted-foreground mt-1">
+          음악을 분류하는 모든 태그 (총 {{ tags.length }}개)
+        </p>
+      </div>
     </div>
 
-    <div v-if="isLoading" class="p-16 text-center text-muted-foreground flex flex-col items-center gap-4">
-      <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      <p>태그 데이터를 분석하고 있습니다...</p>
-    </div>
-    
-    <div v-else-if="tagsData.length === 0" class="p-16 text-center text-muted-foreground flex flex-col items-center gap-4">
-      <Hash class="w-12 h-12 opacity-20" />
-      <p>등록된 태그가 없습니다. 곡에 태그를 추가해 보세요!</p>
+    <div v-if="isLoading" class="py-20 flex flex-col items-center justify-center text-muted-foreground">
+      <span class="animate-spin border-4 border-primary/30 border-t-primary rounded-full w-10 h-10 mb-4"></span>
+      <p class="font-bold tracking-tight">태그 데이터를 분석 중입니다...</p>
     </div>
 
-    <div v-else class="bg-card border rounded-lg shadow-sm overflow-hidden">
-      <Table>
-        <TableHeader class="bg-muted/30">
-          <TableRow>
-            <TableHead class="w-[60px] text-center">#</TableHead>
-            <TableHead>태그 이름</TableHead>
-            <TableHead class="text-center w-[120px]">보유 곡 수</TableHead>
-            <TableHead class="text-center w-[120px]">총 재생 횟수</TableHead>
-            <TableHead class="w-[80px] text-right"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow 
-            v-for="(tag, index) in tagsData" 
-            :key="tag.name"
-            class="group hover:bg-muted/50 transition-colors"
+    <template v-else>
+      <section v-if="featuredTags.length > 0" class="space-y-4 animate-in slide-in-from-bottom-4">
+        <h2 class="text-lg font-black tracking-tight flex items-center gap-2 px-1">
+          <span class="text-primary">✨</span> 시각적 태그
+        </h2>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div
+            v-for="tag in featuredTags"
+            :key="`feat-${tag.name}`"
+            @click="goToTag(tag.name)"
+            class="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group shadow-sm border border-border/50 bg-muted"
           >
-            <TableCell class="text-center text-muted-foreground font-mono text-xs">
-              {{ index + 1 }}
-            </TableCell>
-
-            <TableCell>
-              <div class="flex items-center gap-2 font-bold text-base cursor-pointer hover:text-primary transition-colors" @click="playTagTracks(tag.name, false)">
-                <Hash class="w-4 h-4 text-muted-foreground opacity-50" />
-                {{ tag.name }}
-              </div>
-            </TableCell>
-
-            <TableCell class="text-center font-medium text-muted-foreground tabular-nums">
-              {{ tag.trackCount || 0 }}곡
-            </TableCell>
-
-            <TableCell class="text-center font-bold text-primary/80 tabular-nums">
-              {{ tag.totalPlays || 0 }}회
-            </TableCell>
+            <SafeImage
+              :src="getTagImageUrl(tag.name)"
+              type="tag"
+              class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10 opacity-80 group-hover:opacity-100 transition-opacity"></div>
             
-            <TableCell class="text-right">
-              <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                  <Button variant="ghost" size="icon" class="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none">
-                    <MoreVertical class="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="w-48">
-                  <DropdownMenuItem @click="playTagTracks(tag.name, false)">
-                    <Play class="mr-2 h-4 w-4" /> 처음부터 재생
-                  </DropdownMenuItem>
-                  <DropdownMenuItem @click="playTagTracks(tag.name, true)">
-                    <Shuffle class="mr-2 h-4 w-4" /> 셔플 재생
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </TableCell>
+            <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-white">
+              <span class="font-black text-2xl tracking-tight text-center drop-shadow-lg group-hover:text-primary transition-colors">{{ tag.name }}</span>
+              <span class="text-[11px] font-bold opacity-80 mt-1 uppercase tracking-widest">{{ tag.count }} 항목</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
-          </TableRow>
-        </TableBody>
-      </Table>
-    </div>
+      <section class="space-y-4 pt-4 animate-in slide-in-from-bottom-8">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border">
+          <h2 class="text-lg font-black tracking-tight px-1">모든 태그</h2>
+          <div class="relative w-full sm:w-80">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              v-model="searchQuery"
+              placeholder="태그 검색..."
+              class="pl-9 bg-background border-2 focus-visible:ring-primary font-bold shadow-sm"
+            />
+          </div>
+        </div>
+
+        <div v-if="filteredTags.length === 0" class="py-16 text-center border-2 border-dashed rounded-2xl bg-muted/5">
+          <Hash class="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+          <p class="font-bold text-muted-foreground text-lg">검색된 태그가 없습니다.</p>
+        </div>
+
+        <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div
+            v-for="tag in filteredTags"
+            :key="tag.name"
+            @click="goToTag(tag.name)"
+            class="flex items-center justify-between p-3.5 bg-card border-2 rounded-xl hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all group"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <Hash class="w-4 h-4 text-muted-foreground/50 group-hover:text-primary transition-colors shrink-0" />
+              <span class="font-bold text-sm truncate group-hover:text-foreground transition-colors">{{ tag.name }}</span>
+            </div>
+            <span class="text-[10px] font-mono font-black text-muted-foreground bg-muted px-2 py-1 rounded-md group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+              {{ tag.count }}
+            </span>
+          </div>
+        </div>
+
+      </section>
+    </template>
 
   </div>
 </template>

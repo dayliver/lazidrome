@@ -9,7 +9,7 @@ const router = createRouter({
     { path: '/albums', name: 'albums', component: () => import('@/views/AlbumsView.vue') },
     { path: '/tracks', name: 'tracks', component: () => import('@/views/TracksView.vue') },
     { path: '/tags', name: 'tags', component: () => import('@/views/TagsView.vue') },
-    { path: '/playlists', name: 'tags', component: () => import('@/views/PlaylistsView.vue') },
+    { path: '/playlists', name: 'playlists', component: () => import('@/views/PlaylistsView.vue') },
     { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },
     
     // 💉 이 두 줄이 모두 살아있어야 합니다!

@@ -5,6 +5,12 @@ import { Label } from '@/components/ui/label'
 import { useAuthStore } from '@/stores/auth'
 import { getCoverUrl } from '@/lib/image'
 
+// 💡 TagsInput UI 컴포넌트 임포트
+import { 
+  TagsInput, TagsInputInput, TagsInputItem, 
+  TagsInputItemDelete, TagsInputItemText 
+} from '@/components/ui/tags-input'
+
 const props = defineProps({
   modelValue: { type: Object, required: true },
   item: { type: Object, required: true }
@@ -40,6 +46,21 @@ const updateField = (field, value) => {
           class="bg-background font-black text-center text-lg h-12 border-2"
         />
       </div>
+    </div>
+
+    <div class="space-y-3 pt-2">
+      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">앨범 분류 태그</Label>
+      <TagsInput 
+        :model-value="modelValue.tags" 
+        @update:model-value="val => updateField('tags', val)"
+        class="w-full bg-background rounded-xl border-2 p-2 min-h-[50px]"
+      >
+        <TagsInputItem v-for="tag in modelValue.tags" :key="tag" :value="tag" class="bg-primary text-primary-foreground">
+          <TagsInputItemText class="text-xs font-bold" />
+          <TagsInputItemDelete />
+        </TagsInputItem>
+        <TagsInputInput placeholder="태그 입력..." class="text-sm" />
+      </TagsInput>
     </div>
 
     <div class="pt-6">

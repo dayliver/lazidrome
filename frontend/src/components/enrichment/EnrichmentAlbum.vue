@@ -11,10 +11,11 @@ import ExternalAlbumTab from './tabs/ExternalAlbumTab.vue'
 const props = defineProps(['item', 'activeTab'])
 const emit = defineEmits(['update:activeTab'])
 
-// 앨범에게 꼭 필요한 데이터만 정의 (스키마 v2.1 반영)
+// 💡 스키마 v2.1 반영: tags 배열 추가
 const localData = ref({
   title: '',
   year: '',
+  tags: [], // <-- 추가됨!
   albumArtists: [],
   albumTracks: [],
   mbid: '',
@@ -28,6 +29,7 @@ watch(() => props.item, (newItem) => {
     localData.value = {
       title: newItem.local.name || '',
       year: newItem.local.year || '',
+      tags: newItem.local.tags || [], // <-- 추가됨!
       albumArtists: newItem.local.albumArtists || [],
       albumTracks: newItem.local.tracks || [],
       mbid: newItem.local.mbid || '',

@@ -5,25 +5,20 @@ import { useAuthStore } from './auth'
 export const useEnrichmentStore = defineStore('enrichment', () => {
   const auth = useAuthStore()
   
-  // 상태 관리
   const reviewQueue = ref([])
   const isFetching = ref(false)
 
-  // Getters
   const hasItemsInQueue = computed(() => reviewQueue.value.length > 0)
   const currentItem = computed(() => reviewQueue.value[0] || null)
 
-  // 큐(Queue) 제어
   const shiftQueue = () => reviewQueue.value.shift()
   const clearQueue = () => { reviewQueue.value = [] }
 
-  // ---------------------------------------------------------------------------
-  // 💡 데이터 Fetching 메서드
-  // ---------------------------------------------------------------------------
   const fetchPreview = async (type, id) => {
     isFetching.value = true
     try {
-      const res = await auth.fetchWithAuth(`/api/enrich/${type}/${id}?mode=preview`, { method: 'POST' })
+      // 💡 주소 변경: /api/albums/123/enrich 형태로 전송
+      const res = await auth.fetchWithAuth(`/api/${type}s/${id}/enrich?mode=preview`, { method: 'POST' })
       const result = await res.json()
       if (res.ok && result.success) {
         reviewQueue.value.push({ type, id, local: result.local, external: result.external })
@@ -36,7 +31,8 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
   const applyEnrichment = async (item, customTitle, customArtist) => {
     isFetching.value = true
     try {
-      const url = `/api/enrich/${item.type}/${item.id}?mode=force&title=${encodeURIComponent(customTitle || '')}&artist=${encodeURIComponent(customArtist || '')}`
+      // 💡 주소 변경
+      const url = `/api/${item.type}s/${item.id}/enrich?mode=force&title=${encodeURIComponent(customTitle || '')}&artist=${encodeURIComponent(customArtist || '')}`
       const res = await auth.fetchWithAuth(url, { method: 'POST' })
       const result = await res.json()
       if (res.ok && result.success) shiftQueue()
@@ -50,7 +46,8 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
     isFetching.value = true
     try {
       const { type, id } = currentItem.value
-      const url = `/api/enrich/${type}/${id}?mode=preview&title=${encodeURIComponent(customTitle)}&artist=${encodeURIComponent(customArtist)}`
+      // 💡 주소 변경
+      const url = `/api/${type}s/${id}/enrich?mode=preview&title=${encodeURIComponent(customTitle)}&artist=${encodeURIComponent(customArtist)}`
       const res = await auth.fetchWithAuth(url, { method: 'POST' })
       const result = await res.json()
       if (res.ok && result.success) currentItem.value.external = result.external
@@ -59,9 +56,6 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
     } finally { isFetching.value = false }
   }
 
-  // ---------------------------------------------------------------------------
-  // 💡 [핵심] API 통신 메서드 (Multipart 통합 지원)
-  // ---------------------------------------------------------------------------
   const updateMetadata = async (type, id, payloadData) => {
     try {
       const isMultipart = payloadData instanceof FormData;
@@ -69,7 +63,8 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
 
       if (!isMultipart) headers['Content-Type'] = 'application/json';
 
-      const res = await auth.fetchWithAuth(`/api/enrich/${type}/${id}`, {
+      // 💡 주소 변경: PATCH /api/albums/123 형태로 전송
+      const res = await auth.fetchWithAuth(`/api/${type}s/${id}`, {
         method: 'PATCH',
         headers,
         body: isMultipart ? payloadData : JSON.stringify(payloadData)
@@ -81,22 +76,16 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
 
       const result = await res.json()
       if (result.success) {
-        console.log(`✅ [${type}] 저장 완료`) 
-        // 💡 1. 여기서 호출하던 shiftQueue()를 제거합니다 (다이얼로그가 책임지도록).
-        // 💡 2. true 대신, 백엔드에서 받은 따끈따끈한 최신 데이터를 반환합니다!
         return result.data 
       }
       throw new Error(result.error || '저장 실패')
     } catch (err) {
       console.error('🚨 저장 중 오류 발생:', err.message)
       alert(err.message) 
-      return null // false 대신 null 반환
+      return null
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // 💡 [모듈화] 데이터 조립 및 저장 (Facade 패턴)
-  // ---------------------------------------------------------------------------
   const saveEnrichmentData = async (item, formData) => {
     if (!item?.local?.id) return false;
     isFetching.value = true;
@@ -106,7 +95,6 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
       const isMultipart = !!formData.newCoverFile;
       let payload;
 
-      // 1. 공통 데이터 바인딩
       if (isMultipart) {
         payload = new FormData();
         payload.append('title', formData.title || '');
@@ -122,7 +110,6 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
         };
       }
 
-      // 2. 타입별 특수 데이터 바인딩 (선생님 제안대로 내부 로직 분리!)
       if (type === 'track') {
         _attachTrackData(payload, formData, isMultipart);
       } else if (type === 'album') {
@@ -131,23 +118,23 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
         _attachArtistData(payload, formData, isMultipart);
       }
 
-      // 3. API 호출
       return await updateMetadata(type, item.local.id, payload);
     } finally {
       isFetching.value = false;
     }
   }
 
-  // 내부 헬퍼 함수들 (은닉화)
+  // 💡 [버그 완치] 태그(배열) 직렬화 및 빈 배열 방어 로직
   const _attachTrackData = (payload, formData, isMultipart) => {
+    const safeTags = Array.isArray(formData.tags) ? formData.tags : [];
     if (isMultipart) {
-      payload.append('tags', JSON.stringify(formData.tags || []));
-      if (formData.genre) payload.append('genre', formData.genre);
+      payload.append('tags', JSON.stringify(safeTags));
+      payload.append('genre', formData.genre || '');
       payload.append('artists', JSON.stringify(formData.artists || []));
       if (formData.albumId) payload.append('albumId', formData.albumId);
       if (formData.albumName) payload.append('albumName', formData.albumName);
     } else {
-      payload.tags = formData.tags || [];
+      payload.tags = safeTags;
       payload.genre = formData.genre;
       payload.artists = formData.artists || [];
       payload.albumId = formData.albumId;
@@ -156,22 +143,25 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
   }
 
   const _attachAlbumData = (payload, formData, isMultipart) => {
+    const safeTags = Array.isArray(formData.tags) ? formData.tags : [];
     if (isMultipart) {
-      // 💉 v2.1 스키마: mainArtist 버리고 albumArtists 배열 사용
+      payload.append('tags', JSON.stringify(safeTags));
       payload.append('albumArtists', JSON.stringify(formData.albumArtists || []));
       payload.append('albumTracks', JSON.stringify(formData.albumTracks || []));
     } else {
+      payload.tags = safeTags;
       payload.albumArtists = formData.albumArtists || [];
       payload.albumTracks = formData.albumTracks || [];
     }
   }
 
   const _attachArtistData = (payload, formData, isMultipart) => {
+    const safeTags = Array.isArray(formData.tags) ? formData.tags : [];
     if (isMultipart) {
-      payload.append('tags', JSON.stringify(formData.tags || []));
+      payload.append('tags', JSON.stringify(safeTags));
       if (formData.biography) payload.append('biography', formData.biography);
     } else {
-      payload.tags = formData.tags || [];
+      payload.tags = safeTags;
       payload.biography = formData.biography;
     }
   }
@@ -179,6 +169,6 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
   return {
     reviewQueue, isFetching, hasItemsInQueue, currentItem,
     fetchPreview, shiftQueue, clearQueue, applyEnrichment, reFetchPreview,
-    updateMetadata, saveEnrichmentData // 💉 공개 API
+    updateMetadata, saveEnrichmentData
   }
 })

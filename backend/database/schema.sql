@@ -35,6 +35,7 @@ CREATE TABLE albums (
     id TEXT PRIMARY KEY,             -- ULID
     name TEXT NOT NULL,
     cover_type TEXT,                 -- NULL이면 이미지 없음, 값이 있으면 확장자 (예: '.jpg', '.png')
+    tags TEXT,                       -- JSON: ["신남", "드라이브"]
     year INTEGER,
     mbid TEXT UNIQUE
 );

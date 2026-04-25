@@ -14,7 +14,7 @@ import streamRoutes from './routes/stream.js';
 import uploadRoutes from './routes/upload.js';
 import albumsRoutes from './routes/albums.js';
 import tagsRoutes from './routes/tags.js';
-import enrichRoutes from './routes/enrich.js';
+import searchRoutes from './routes/search.js';
 import imagesRoutes from './routes/images.js';
 import playlistsRoutes from './routes/playlists.js';
 
@@ -100,7 +100,7 @@ fastify.register(streamRoutes);
 fastify.register(uploadRoutes);
 fastify.register(albumsRoutes);
 fastify.register(tagsRoutes);
-fastify.register(enrichRoutes);
+fastify.register(searchRoutes);
 fastify.register(imagesRoutes);
 fastify.register(playlistsRoutes);
 

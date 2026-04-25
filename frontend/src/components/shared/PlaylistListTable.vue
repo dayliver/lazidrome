@@ -71,7 +71,7 @@ const formatDate = (dateString) => {
   <div class="w-full">
     
     <div class="hidden md:block">
-      <Table>
+      <Table class="border-b">
         <TableHeader>
           <TableRow class="bg-muted/30">
             <TableHead class="w-[60px] text-center">#</TableHead>

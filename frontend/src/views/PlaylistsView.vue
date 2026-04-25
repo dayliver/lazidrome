@@ -52,7 +52,7 @@ onMounted(async () => {
       </Button>
     </div>
 
-    <div v-if="!isLoading" class="bg-card md:border md:rounded-lg md:shadow-sm overflow-hidden pb-4">
+    <div v-if="!isLoading" class="bg-card overflow-hidden pb-4">
       <PlaylistListTable 
         :playlists="playlistStore.playlists" 
         @edit="openEditModal" 

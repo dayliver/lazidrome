@@ -142,5 +142,22 @@ export const lastfmService = {
       console.error(`[Last.fm] 트랙 정보 조회 실패 (${title}):`, err.message);
       return null;
     }
+  },
+
+  async searchAlbums(query) {
+    const API_KEY = process.env.LASTFM_API_KEY;
+    const url = `http://ws.audioscrobbler.com/2.0/?method=album.search&album=${encodeURIComponent(query)}&api_key=${API_KEY}&format=json`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.error || !data.results?.albummatches?.album) return [];
+
+    return data.results.albummatches.album.map(a => ({
+      name: a.name,
+      artist: a.artist,
+      imageUrl: a.image?.find(img => img.size === 'extralarge')?.['#text'] || a.image?.[a.image.length - 1]?.['#text'],
+      mbid: a.mbid
+    }));
   }
 };

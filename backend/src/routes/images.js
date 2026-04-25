@@ -1,88 +1,13 @@
-// backend/src/routes/images.js
-import path from 'path';
-import fs from 'fs';
-import { getDB } from '../db.js';
+import { 
+  getAlbumImageHandler, 
+  getTrackImageHandler, 
+  getArtistImageHandler, 
+  getPlaylistImageHandler 
+} from '../handlers/images.get.js';
 
 export default async function imageRoutes(fastify) {
-  const db = getDB();
-  const IMAGES_PATH = process.env.IMAGES_PATH || './storage/images';
-
-  const fileExists = (fileName) => fs.existsSync(path.join(IMAGES_PATH, fileName));
-
-  /**
-   * [GET] /api/images/album/:id
-   */
-  fastify.get('/api/images/album/:id', async (req, reply) => {
-    const { id } = req.params;
-    const album = db.prepare('SELECT cover_type FROM albums WHERE id = ?').get(id);
-
-    // 💉 cover_type(확장자)이 있다면 해당 파일을 찾아서 전송
-    if (album?.cover_type) {
-      const fileName = `${id}${album.cover_type}`;
-      if (fileExists(fileName)) return reply.sendFile(fileName);
-    }
-    return reply.sendFile('default.png');
-  });
-
-  /**
-   * [GET] /api/images/track/:id (폴백 로직 포함)
-   */
-  fastify.get('/api/images/track/:id', async (req, reply) => {
-    const { id } = req.params;
-    const track = db.prepare(`
-      SELECT t.custom_cover_type, alb.id as album_id, alb.cover_type as album_cover_type
-      FROM track_metadata t
-      LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
-      LEFT JOIN albums alb ON at.album_id = alb.id
-      WHERE t.id = ?
-    `).get(id);
-
-    if (track?.custom_cover_type && fileExists(`track_${id}${track.custom_cover_type}`)) {
-      return reply.sendFile(`track_${id}${track.custom_cover_type}`);
-    }
-    if (track?.album_id && track?.album_cover_type && fileExists(`${track.album_id}${track.album_cover_type}`)) {
-      return reply.sendFile(`${track.album_id}${track.album_cover_type}`);
-    }
-    return reply.sendFile('default.png');
-  });
-
-  /**
-   * [GET] /api/images/artist/:id
-   */
-  fastify.get('/api/images/artist/:id', async (req, reply) => {
-    const { id } = req.params;
-    
-    // DB에서 cover_type(확장자)을 조회합니다.
-    const artist = db.prepare('SELECT cover_type FROM artists WHERE id = ?').get(id);
-
-    // 💡 접두사 artist_ 를 제거하고 ID와 확장자만 결합합니다.
-    if (artist?.cover_type) {
-      const fileName = `${id}${artist.cover_type}`;
-      if (fileExists(fileName)) return reply.sendFile(fileName);
-    }
-    
-    return reply.sendFile('default.png');
-  });
-
-  /**
-   * [GET] /api/images/playlist/:id
-   */
-  fastify.get('/api/images/playlist/:id', async (req, reply) => {
-    const { id } = req.params;
-    
-    // 1. DB에서 플레이리스트의 cover_type을 조회합니다.
-    const playlist = db.prepare('SELECT cover_type FROM playlists WHERE id = ?').get(id);
-
-    // 2. cover_type이 존재한다면 (선생님의 규칙: 접두어 없이 id + 확장자)
-    if (playlist?.cover_type) {
-      // 💡 만약 DB에 '.' 없이 'jpg'로 저장되어 있을 경우를 대비한 안전장치
-      const ext = playlist.cover_type.startsWith('.') ? playlist.cover_type : `.${playlist.cover_type}`;
-      const fileName = `${id}${ext}`; 
-      
-      if (fileExists(fileName)) return reply.sendFile(fileName);
-    }
-    
-    // 3. 파일이 없거나 cover_type이 없으면 기본 이미지를 반환합니다.
-    return reply.sendFile('default.png'); // 또는 플레이리스트 전용 디폴트 이미지
-  });
+  fastify.get('/api/images/album/:id', getAlbumImageHandler);
+  fastify.get('/api/images/track/:id', getTrackImageHandler);
+  fastify.get('/api/images/artist/:id', getArtistImageHandler);
+  fastify.get('/api/images/playlist/:id', getPlaylistImageHandler);
 }

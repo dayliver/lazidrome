@@ -1,38 +1,35 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router' // 💡 useRouter 추가
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 
-// 💉 1. 공통 유틸리티 임포트
 import { formatDuration } from '@/lib/audio'
 import { getCoverUrl } from '@/lib/image'
 
-import { Play, Shuffle, Users } from 'lucide-vue-next'
+import { Play, Shuffle, Users, Edit } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import DetailLayout from '@/components/layout/DetailLayout.vue'
 
-// 💉 2. 우리가 만든 공유 컴포넌트 임포트!
 import TrackListTable from '@/components/shared/TrackListTable.vue'
 import ArtistListTable from '@/components/shared/ArtistListTable.vue'
 
 const route = useRoute()
+const router = useRouter() // 💡 라우터 추가 (태그 클릭 시 이동용)
 const library = useLibraryStore()
 const auth = useAuthStore()
 const player = usePlayerStore()
 
 const album = ref(null)
-const allArtists = ref([]) // 관련 아티스트 매칭을 위한 전체 데이터
+const allArtists = ref([]) 
 const isLoading = ref(true)
 
-// 💉 3. 유틸리티를 활용한 이미지 URL
 const imageUrl = computed(() => {
   if (!album.value?.id) return ''
   return getCoverUrl(auth.serverUrl, 'album', album.value.id, auth.token)
 })
 
-// 💉 4. 핵심 로직: 앨범 트랙들에서 참여 아티스트를 추출하여 전체 아티스트 목록과 매칭합니다.
 const albumArtists = computed(() => {
   if (!album.value?.tracks || !allArtists.value.length) return []
   
@@ -43,14 +40,12 @@ const albumArtists = computed(() => {
     }
   })
   
-  // 전체 아티스트 중 이 앨범에 참여한 아티스트 객체만 필터링합니다.
   return allArtists.value.filter(a => artistNames.has(a.name))
 })
 
 onMounted(async () => {
   isLoading.value = true
   try {
-    // 앨범 정보와 전체 아티스트 정보를 동시에 병렬로 가져옵니다.
     const [albumData, artistsData] = await Promise.all([
       library.getAlbumById(route.params.id),
       library.getArtists()
@@ -74,6 +69,10 @@ const playShuffle = () => {
     player.playNewQueue(album.value.tracks, Math.floor(Math.random() * album.value.tracks.length))
   }
 }
+
+const handleEdit = () => {
+  console.log('편집')
+}
 </script>
 
 <template>
@@ -94,6 +93,13 @@ const playShuffle = () => {
     ]"
   >
     
+    <template #actions>
+      <Button variant="outline" size="sm" @click="handleEdit">
+        <Edit class="w-4 h-4 mr-2" />
+        편집
+      </Button>
+    </template>
+
     <div class="flex items-center gap-4 mb-4 px-2">
       <Button @click="playSequential" class="rounded-full shadow-lg px-8">
         <Play class="w-4 h-4 mr-2 fill-current" /> 재생
@@ -103,8 +109,19 @@ const playShuffle = () => {
       </Button>
     </div>
 
+    <div v-if="album.tags && album.tags.length > 0" class="flex flex-wrap gap-2 px-2 mb-6">
+      <span 
+        v-for="tag in album.tags" 
+        :key="tag" 
+        @click="router.push({ name: 'tags' })" 
+        class="px-3 py-1.5 bg-muted text-muted-foreground text-[10px] font-black rounded-md uppercase tracking-wider border hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+      >
+        #{{ tag }}
+      </span>
+    </div>
+
     <section class="space-y-4">
-      <div class="bg-card border rounded-xl overflow-hidden shadow-sm">
+      <div class="bg-card overflow-hidden">
         <TrackListTable 
           :tracks="album.tracks" 
           :show-album="false" 

@@ -29,7 +29,7 @@ onMounted(async () => {
       <p class="text-sm font-medium text-muted-foreground">총 {{ artistsData.length }}명의 아티스트</p>
     </div>
 
-    <div class="bg-card border rounded-lg shadow-sm overflow-hidden">
+    <div class="bg-card rounded-lg overflow-hidden">
       <div v-if="isLoading" class="p-16 flex flex-col items-center gap-4 text-muted-foreground">
         <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         <p>아티스트 통계 데이터를 분석하고 있습니다...</p>

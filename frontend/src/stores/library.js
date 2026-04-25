@@ -68,7 +68,8 @@ export const useLibraryStore = defineStore('library', () => {
 
   const updateTrackRating = async (trackId, rating) => {
     try {
-      const res = await auth.fetchWithAuth(`/api/tracks/${trackId}`, {
+      // 💡 주소 끝에 /rating을 명시적으로 붙여줍니다!
+      const res = await auth.fetchWithAuth(`/api/tracks/${trackId}/rating`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating })
@@ -80,6 +81,24 @@ export const useLibraryStore = defineStore('library', () => {
       }
     } catch (err) {
       console.error('별점 서버 전송 실패:', err)
+    }
+  }
+
+  const toggleTrackStar = async (trackId, starred) => {
+    try {
+      // 💡 별점과 하트 모두 퀵 업데이트이므로 같은 라우트를 재사용합니다.
+      const res = await auth.fetchWithAuth(`/api/tracks/${trackId}/rating`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ starred: starred ? 1 : 0 }) // SQLite를 위해 1/0으로 변환
+      })
+
+      if (res.ok) {
+        const track = tracks.value.find(t => t.id === trackId)
+        if (track) track.starred = starred
+      }
+    } catch (err) {
+      console.error('좋아요 서버 전송 실패:', err)
     }
   }
 
@@ -113,33 +132,37 @@ export const useLibraryStore = defineStore('library', () => {
   const updateLocalArtist = (newData) => {
     const index = artists.value.findIndex(a => a.id === newData.id)
     if (index !== -1) {
-      // 1. 기존 객체 속성 유지하며 새 데이터 덮어쓰기
-      const updatedArtist = { ...artists.value[index], ...newData }
+      const parsedTags = typeof newData.tags === 'string' 
+        ? (newData.tags ? JSON.parse(newData.tags).slice(0, 3) : []) 
+        : (newData.tags || []);
       
-      // 2. 화면(UI) 업데이트를 위해 tags 문자열을 topTags 배열로 즉시 파싱!
-      if (newData.tags !== undefined) {
-        try {
-          updatedArtist.topTags = newData.tags ? JSON.parse(newData.tags).slice(0, 3) : []
-        } catch (e) {
-          updatedArtist.topTags = []
-        }
-      }
-      // 3. 배열 갈아끼우기 (Vue 반응성 트리거)
-      artists.value[index] = updatedArtist
+      // 💡 새 객체 생성 대신 기존 객체에 덮어씌우기 (Object.assign)
+      Object.assign(artists.value[index], {
+        ...newData,
+        topTags: parsedTags
+      });
     }
   }
 
   const updateLocalAlbum = (newData) => {
     const index = albums.value.findIndex(a => a.id === newData.id)
     if (index !== -1) {
-      albums.value[index] = { ...albums.value[index], ...newData }
+      Object.assign(albums.value[index], newData);
     }
   }
 
   const updateLocalTrack = (newData) => {
     const index = tracks.value.findIndex(t => t.id === newData.id)
     if (index !== -1) {
-      tracks.value[index] = { ...tracks.value[index], ...newData }
+      const processedData = { ...newData }
+      // 태그 파싱 방어 로직 추가
+      if (typeof newData.tags === 'string') {
+        try { processedData.tags = JSON.parse(newData.tags) }
+        catch (e) { processedData.tags = [] }
+      }
+      
+      // 💡 핵심: 기존 객체의 메모리 주소를 유지한 채 내용물만 업데이트!
+      Object.assign(tracks.value[index], processedData);
     }
   }
 
@@ -155,6 +178,7 @@ export const useLibraryStore = defineStore('library', () => {
     getAlbums,
     getTracks,
     updateTrackRating,
+    toggleTrackStar,
     getArtistById,
     getAlbumById,
     updateLocalArtist,
