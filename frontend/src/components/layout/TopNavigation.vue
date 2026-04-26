@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button'
 
 const navItems = [
   { name: '홈', path: '/', icon: Home },
-  { name: '라이브러리', path: '/library', icon: Library },
+  { name: '앨범', path: '/albums', icon: Library },
   { name: '통계', path: '/stats', icon: BarChart2 },
-  { name: '설정', path: '/settings', icon: Settings },
+  { name: '설정', path: '/settings', icon: Settings }
 ]
 </script>
 

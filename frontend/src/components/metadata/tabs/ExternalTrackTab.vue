@@ -8,7 +8,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { useEnrichmentStore } from '@/stores/enrichment'
+import { useMetadataEditStore } from '@/stores/metadataEdit'
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -16,7 +16,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue'])
 
-const enrichment = useEnrichmentStore()
+const metadataEdit = useMetadataEditStore()
 
 // 검색 모드 및 필드
 const searchMethod = ref('text')
@@ -27,10 +27,10 @@ const searchMbid = ref(props.modelValue.mbid || '')
 const handleFetch = async () => {
   if (searchMethod.value === 'text') {
     if (!searchTitle.value || !searchArtist.value) return alert('가수와 제목을 입력하세요.')
-    await enrichment.reFetchPreview(searchTitle.value, searchArtist.value)
+    await metadataEdit.reFetchPreview(searchTitle.value, searchArtist.value)
   } else {
     if (!searchMbid.value) return alert('MBID를 입력하세요.')
-    await enrichment.reFetchPreview(null, null, searchMbid.value)
+    await metadataEdit.reFetchPreview(null, null, searchMbid.value)
   }
 }
 
@@ -129,8 +129,8 @@ const applyAll = () => {
       </div>
 
       <div class="flex justify-end pt-2">
-        <Button @click="handleFetch" :disabled="enrichment.isFetching" class="font-black px-8">
-          <RefreshCw class="w-4 h-4 mr-2" :class="{ 'animate-spin': enrichment.isFetching }" />
+        <Button @click="handleFetch" :disabled="metadataEdit.isFetching" class="font-black px-8">
+          <RefreshCw class="w-4 h-4 mr-2" :class="{ 'animate-spin': metadataEdit.isFetching }" />
           외부 데이터 불러오기
         </Button>
       </div>

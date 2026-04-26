@@ -198,8 +198,6 @@ export const usePlaylistStore = defineStore('playlist', () => {
 
   // 7. 플레이리스트 자체 삭제
   const deletePlaylist = async (id) => {
-    if (!confirm('정말 이 플레이리스트를 삭제하시겠습니까?')) return false
-    
     try {
       const res = await auth.fetchWithAuth(`/api/playlists/${id}`, { method: 'DELETE' })
       if ((await res.json()).success) {

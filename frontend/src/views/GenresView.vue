@@ -1,37 +1,46 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useLibraryStore } from '@/stores/library'
+import { useAuthStore } from '@/stores/auth'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import ViewHeader from '@/components/shared/ViewHeader.vue'
 
 const library = useLibraryStore()
+const auth = useAuthStore()
 
 const genresData = ref([])
 const isLoading = ref(true)
 
-// DB가 준비되면 스토어에서 장르 통계 데이터를 가져옵니다.
-watch(() => library.isDBReady, async (isReady) => {
-  if (!isReady) return
-  
-  isLoading.value = true
-  try {
-    genresData.value = await library.getGenres()
-  } catch (error) {
-    console.error("장르 데이터를 불러오는 중 에러 발생:", error)
-  } finally {
-    isLoading.value = false
-  }
-}, { immediate: true })
+watch(
+  () => auth.isAuthenticated,
+  async (isReady) => {
+    if (!isReady) return
+
+    isLoading.value = true
+    try {
+      genresData.value = await library.getGenres()
+    } catch (error) {
+      console.error('장르 데이터를 불러오는 중 에러 발생:', error)
+    } finally {
+      isLoading.value = false
+    }
+  },
+  { immediate: true }
+)
+
+const handleCreateGenre = () => {
+  console.log('새 장르 생성')
+}
 </script>
 
 <template>
   <div class="container max-w-5xl py-8 space-y-6">
     
-    <div class="flex items-end justify-between border-b pb-4">
-      <h1 class="text-3xl font-black tracking-tight">Genres</h1>
-      <p class="text-sm font-medium text-muted-foreground">
-        총 {{ genresData.length }}개의 장르
-      </p>
-    </div>
+    <ViewHeader
+      title="Genres"
+      :description="`총 ${genresData.length}개의 장르`"
+      @action="handleCreateGenre"
+    />
 
     <div class="bg-card border rounded-lg shadow-sm overflow-hidden">
       

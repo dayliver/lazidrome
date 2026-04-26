@@ -2,6 +2,7 @@
 import { computed, nextTick, watch, ref } from 'vue'
 import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
+import { getCoverUrl } from '@/lib/image'
 // 💉 수술 1: md5 제거
 import { ScrollArea } from '@/components/ui/scroll-area'
 
@@ -9,10 +10,9 @@ const player = usePlayerStore()
 const auth = useAuthStore()
 const scrollAreaRef = ref(null)
 
-// 💉 수술 2: 복잡한 authQueryString 삭제 및 커버 URL 함수 단순화
-const getCoverUrl = (trackId) => {
-  if (!trackId) return null
-  return auth.getCoverUrl(trackId)
+const trackCoverSrc = (track) => {
+  if (!track?.id) return ''
+  return getCoverUrl(auth.serverUrl, 'track', track.id, auth.token)
 }
 
 const playFromQueue = (index) => {
@@ -58,7 +58,7 @@ watch(() => player.isQueueView, (isOpen) => {
           </div>
 
           <div class="w-12 h-12 rounded-lg overflow-hidden border border-white/5 bg-muted shrink-0">
-            <img v-if="getCoverUrl(track.id)" :src="getCoverUrl(track.id)" crossorigin="anonymous" loading="lazy" class="w-full h-full object-cover" />
+            <img v-if="trackCoverSrc(track)" :src="trackCoverSrc(track)" crossorigin="anonymous" loading="lazy" class="w-full h-full object-cover" />
             <div v-else class="w-full h-full flex items-center justify-center text-[10px] font-black opacity-20">LAZI</div>
           </div>
 

@@ -2,7 +2,8 @@ import {
   resolveAlbumImage, 
   resolveTrackImage, 
   resolveArtistImage, 
-  resolvePlaylistImage, 
+  resolvePlaylistImage,
+  resolveTagImage,
   getDefaultImage 
 } from '../services/imageService.js';
 
@@ -39,5 +40,14 @@ export async function getArtistImageHandler(request, reply) {
 export async function getPlaylistImageHandler(request, reply) {
   const { id } = request.params;
   const imagePath = resolvePlaylistImage(id);
+  return sendImageResponse(reply, imagePath);
+}
+
+export async function getTagImageHandler(request, reply) {
+  const name = request.query.name;
+  if (!name || typeof name !== 'string') {
+    return reply.code(400).send({ error: 'name query is required' });
+  }
+  const imagePath = resolveTagImage(name);
   return sendImageResponse(reply, imagePath);
 }

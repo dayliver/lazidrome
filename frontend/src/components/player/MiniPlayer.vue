@@ -15,17 +15,10 @@ const player = usePlayerStore()
 const auth = useAuthStore()
 const currentTrack = computed(() => player.currentTrack)
 
-// 💉 2. 이미지 호출 로직을 새 유틸리티와 스키마에 맞춰 수정
+// 트랙 id만 있으면 URL 생성 — 이미지 API가 DB에서 앨범/커스텀 커버를 해석함
 const coverUrl = computed(() => {
   if (!currentTrack.value?.id) return ''
-  
-  // 트랙 자체 커버나 소속 앨범 커버 정보가 있을 때만 URL을 생성합니다.
-  // (백엔드 tracks.js에서 custom_cover_type과 albumCoverType을 보내주도록 수정했었습니다.)
-  if (currentTrack.value.custom_cover_type || currentTrack.value.albumCoverType) {
-    return getCoverUrl(auth.serverUrl, 'track', currentTrack.value.id, auth.token)
-  }
-  
-  return ''
+  return getCoverUrl(auth.serverUrl, 'track', currentTrack.value.id, auth.token)
 })
 
 // 💉 3. 아티스트 표시 로직 (DB에서 묶어서 보내주는 'artist' 필드 활용)

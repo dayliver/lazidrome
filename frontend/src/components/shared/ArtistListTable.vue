@@ -4,12 +4,13 @@ import { Play, MoreVertical, Users, Sparkles } from 'lucide-vue-next'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
-import { useEnrichmentStore } from '@/stores/enrichment'
+import { useMetadataEditStore } from '@/stores/metadataEdit'
 
 import { getCoverUrl } from '@/lib/image'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+import SafeImage from '@/components/shared/SafeImage.vue'
 
 // 💉 Props 정의: 외부에서 아티스트 배열을 주입받습니다.
 const props = defineProps({
@@ -24,7 +25,7 @@ const router = useRouter()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const auth = useAuthStore()
-const enrichment = useEnrichmentStore()
+const metadataEdit = useMetadataEditStore()
 
 const goToArtistDetail = (artistId) => router.push({ name: 'artist-detail', params: { id: artistId } })
 
@@ -62,7 +63,7 @@ const renderStars = (rating) => {
 
 const fetchMetadata = (artistId) => {
   if (!artistId) return
-  enrichment.fetchPreview('artist', artistId)
+  metadataEdit.fetchPreview('artist', artistId)
 }
 </script>
 
@@ -86,13 +87,11 @@ const fetchMetadata = (artistId) => {
           <div class="flex items-center gap-4">
             <div class="relative w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden bg-muted group-hover:shadow-md shrink-0 border"
                  @click.stop="playArtistRandom(artist.name)">
-              <img 
-                v-if="artist.cover_type" 
-                :src="getArtistImageUrl(artist.id)" 
-                @error="(e) => e.target.style.display='none'" 
-                crossorigin="anonymous" 
-                loading="lazy" 
-                class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-40" 
+              <SafeImage
+                v-if="artist.cover_type"
+                :src="getArtistImageUrl(artist.id)"
+                type="artist"
+                class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-40"
               />
               <div v-else class="w-full h-full flex items-center justify-center font-bold text-muted-foreground bg-secondary text-lg">
                 {{ artist.name[0].toUpperCase() }}

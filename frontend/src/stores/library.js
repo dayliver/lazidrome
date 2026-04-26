@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
+import { aggregateGenresFromTracks } from '@/lib/libraryAggregates'
 
 export const useLibraryStore = defineStore('library', () => {
   const auth = useAuthStore()
@@ -13,9 +14,18 @@ export const useLibraryStore = defineStore('library', () => {
   const syncStatusText = ref('대기 중')
   
   // 💉 수술: 현재 진행 중인 API 요청을 담아둘 변수
-  let fetchPromise = null 
+  let fetchPromise = null
+
+  /** 메타데이터 저장 후 앨범/태그/플레이리스트 등 "별도 배열"에 붙은 트랙 행을 갱신하기 위한 구독자 */
+  const trackExternalSyncListeners = new Set()
 
   const trackCount = computed(() => tracks.value.length)
+
+  /** 트랙 메타의 genre 기준 집계 (전용 API 없음) */
+  const getGenres = async () => {
+    const allTracks = await getTracks()
+    return aggregateGenresFromTracks(allTracks)
+  }
 
   const fetchLibrary = async () => {
     // 💉 핵심: 이미 누군가 요청을 보냈다면, 그 요청(Promise)을 똑같이 던져주어 같이 기다리게 합니다.
@@ -151,19 +161,45 @@ export const useLibraryStore = defineStore('library', () => {
     }
   }
 
-  const updateLocalTrack = (newData) => {
-    const index = tracks.value.findIndex(t => t.id === newData.id)
-    if (index !== -1) {
-      const processedData = { ...newData }
-      // 태그 파싱 방어 로직 추가
-      if (typeof newData.tags === 'string') {
-        try { processedData.tags = JSON.parse(newData.tags) }
-        catch (e) { processedData.tags = [] }
+  const normalizeTrackServerPayload = (newData) => {
+    if (!newData?.id) return null
+    const processedData = { ...newData }
+    if (typeof newData.tags === 'string') {
+      try {
+        processedData.tags = JSON.parse(newData.tags)
+      } catch {
+        processedData.tags = []
       }
-      
-      // 💡 핵심: 기존 객체의 메모리 주소를 유지한 채 내용물만 업데이트!
-      Object.assign(tracks.value[index], processedData);
     }
+    return processedData
+  }
+
+  const subscribeTrackExternalSync = (listener) => {
+    if (typeof listener !== 'function') return () => {}
+    trackExternalSyncListeners.add(listener)
+    return () => trackExternalSyncListeners.delete(listener)
+  }
+
+  const emitTrackExternalSync = (normalized) => {
+    if (!normalized) return
+    for (const fn of trackExternalSyncListeners) {
+      try {
+        fn(normalized)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }
+
+  const updateLocalTrack = (newData) => {
+    const processedData = normalizeTrackServerPayload(newData)
+    if (!processedData) return
+
+    const index = tracks.value.findIndex((t) => String(t.id) === String(processedData.id))
+    if (index !== -1) {
+      Object.assign(tracks.value[index], processedData)
+    }
+    emitTrackExternalSync(processedData)
   }
 
   return {
@@ -173,6 +209,7 @@ export const useLibraryStore = defineStore('library', () => {
     trackCount,
     isSyncing,
     syncStatusText,
+    getGenres,
     fetchLibrary,
     getArtists,
     getAlbums,
@@ -183,6 +220,7 @@ export const useLibraryStore = defineStore('library', () => {
     getAlbumById,
     updateLocalArtist,
     updateLocalAlbum,
-    updateLocalTrack
+    updateLocalTrack,
+    subscribeTrackExternalSync
   }
 })

@@ -2,8 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { useLibraryStore } from '@/stores/library'
 import { Button } from '@/components/ui/button'
-// 💉 새로 만든 공유 컴포넌트 임포트
 import TrackListTable from '@/components/shared/TrackListTable.vue'
+import ViewHeader from '@/components/shared/ViewHeader.vue'
 
 const library = useLibraryStore()
 
@@ -55,17 +55,20 @@ const handleLoadMore = () => {
   offset.value += limit
   loadTracks(true)
 }
+
+const handleCreateTrack = () => {
+  console.log('새 음원 업로드')
+}
 </script>
 
 <template>
   <div class="w-full space-y-6">
     
-    <div class="flex items-end justify-between border-b pb-4">
-      <h1 class="text-3xl font-black tracking-tight">Tracks</h1>
-      <p class="text-sm font-medium text-muted-foreground">
-        조회된 전체 트랙 ({{ tracksData.length }}곡 로드됨)
-      </p>
-    </div>
+    <ViewHeader
+      title="Tracks"
+      :description="`조회된 전체 트랙 (${tracksData.length}곡 로드됨)`"
+      @action="handleCreateTrack"
+    />
 
     <div v-if="isLoading && tracksData.length === 0" class="p-16 text-center text-muted-foreground flex flex-col items-center gap-4">
       <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>

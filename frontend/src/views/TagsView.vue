@@ -5,8 +5,9 @@ import { useAuthStore } from '@/stores/auth'
 import { getCoverUrl } from '@/lib/image' // 💡 공통 이미지 URL 생성기
 
 import { Input } from '@/components/ui/input'
-import SafeImage from '@/components/ui/SafeImage.vue'
-import { Search, Hash, Tags, ChevronRight, Plus } from 'lucide-vue-next'
+import SafeImage from '@/components/shared/SafeImage.vue'
+import { Search, Hash, Tags } from 'lucide-vue-next'
+import ViewHeader from '@/components/shared/ViewHeader.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -61,16 +62,15 @@ const handleCreate = () => {
 <template>
   <div class="w-full space-y-8 animate-in fade-in duration-500">
     
-    <div class="flex items-end justify-between border-b pb-4">
-      <div>
-        <h1 class="text-3xl font-black tracking-tight flex items-center gap-3">
-          <Tags class="w-8 h-8 text-primary" /> Tags
-        </h1>
-        <p class="text-sm font-medium text-muted-foreground mt-1">
-          음악을 분류하는 모든 태그 (총 {{ tags.length }}개)
-        </p>
-      </div>
-    </div>
+    <ViewHeader
+      title="Tags"
+      :description="`음악을 분류하는 모든 태그 (총 ${tags.length}개)`"
+      @action="handleCreate"
+    >
+      <template #title-prefix>
+        <Tags class="inline w-8 h-8 text-primary mr-3" />
+      </template>
+    </ViewHeader>
 
     <div v-if="isLoading" class="py-20 flex flex-col items-center justify-center text-muted-foreground">
       <span class="animate-spin border-4 border-primary/30 border-t-primary rounded-full w-10 h-10 mb-4"></span>

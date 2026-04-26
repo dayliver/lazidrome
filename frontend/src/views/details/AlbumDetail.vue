@@ -1,12 +1,13 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router' // 💡 useRouter 추가
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
+import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useCoverUrl } from '@/composables/useCoverUrl'
 import { useLibraryStore } from '@/stores/library'
-import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 
 import { formatDuration } from '@/lib/audio'
-import { getCoverUrl } from '@/lib/image'
 
 import { Play, Shuffle, Users, Edit } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -14,47 +15,39 @@ import DetailLayout from '@/components/layout/DetailLayout.vue'
 
 import TrackListTable from '@/components/shared/TrackListTable.vue'
 import ArtistListTable from '@/components/shared/ArtistListTable.vue'
+import SectionHeader from '@/components/shared/SectionHeader.vue'
 
 const route = useRoute()
-const router = useRouter() // 💡 라우터 추가 (태그 클릭 시 이동용)
+const router = useRouter()
 const library = useLibraryStore()
-const auth = useAuthStore()
 const player = usePlayerStore()
 
-const album = ref(null)
-const allArtists = ref([]) 
-const isLoading = ref(true)
+const { data, isLoading } = useAsyncResource(
+  () => route.params.id,
+  async (id) => {
+    const [albumData, artistsData] = await Promise.all([library.getAlbumById(id), library.getArtists()])
+    return { album: albumData, allArtists: artistsData || [] }
+  }
+)
 
-const imageUrl = computed(() => {
-  if (!album.value?.id) return ''
-  return getCoverUrl(auth.serverUrl, 'album', album.value.id, auth.token)
-})
+const album = computed(() => data.value?.album ?? null)
+const allArtists = computed(() => data.value?.allArtists ?? [])
+
+useSyncTrackListWithLibrary(() => album.value?.tracks)
+
+const imageUrl = useCoverUrl('album', () => album.value?.id)
 
 const albumArtists = computed(() => {
   if (!album.value?.tracks || !allArtists.value.length) return []
-  
+
   const artistNames = new Set()
-  album.value.tracks.forEach(t => {
+  album.value.tracks.forEach((t) => {
     if (t.artist) {
-      t.artist.split(', ').forEach(name => artistNames.add(name))
+      t.artist.split(', ').forEach((name) => artistNames.add(name))
     }
   })
-  
-  return allArtists.value.filter(a => artistNames.has(a.name))
-})
 
-onMounted(async () => {
-  isLoading.value = true
-  try {
-    const [albumData, artistsData] = await Promise.all([
-      library.getAlbumById(route.params.id),
-      library.getArtists()
-    ])
-    album.value = albumData
-    allArtists.value = artistsData || []
-  } finally {
-    isLoading.value = false
-  }
+  return allArtists.value.filter((a) => artistNames.has(a.name))
 })
 
 const playSequential = () => {
@@ -81,7 +74,8 @@ const handleEdit = () => {
     <p>앨범 정보를 불러오고 있습니다...</p>
   </div>
 
-  <DetailLayout v-else-if="album"
+  <DetailLayout
+    v-else-if="album"
     :title="album.name"
     :subtitle="album.displayArtist || 'Unknown Artist'"
     :is-round-image="false"
@@ -92,7 +86,6 @@ const handleEdit = () => {
       { label: '총 재생 시간', value: formatDuration(album.totalDuration) }
     ]"
   >
-    
     <template #actions>
       <Button variant="outline" size="sm" @click="handleEdit">
         <Edit class="w-4 h-4 mr-2" />
@@ -110,11 +103,11 @@ const handleEdit = () => {
     </div>
 
     <div v-if="album.tags && album.tags.length > 0" class="flex flex-wrap gap-2 px-2 mb-6">
-      <span 
-        v-for="tag in album.tags" 
-        :key="tag" 
-        @click="router.push({ name: 'tags' })" 
+      <span
+        v-for="tag in album.tags"
+        :key="tag"
         class="px-3 py-1.5 bg-muted text-muted-foreground text-[10px] font-black rounded-md uppercase tracking-wider border hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+        @click="router.push({ name: 'tag-detail', params: { name: tag } })"
       >
         #{{ tag }}
       </span>
@@ -122,11 +115,7 @@ const handleEdit = () => {
 
     <section class="space-y-4">
       <div class="bg-card overflow-hidden">
-        <TrackListTable 
-          :tracks="album.tracks" 
-          :show-album="false" 
-          :show-cover="false" 
-        />
+        <TrackListTable :tracks="album.tracks" :show-album="false" :show-cover="false" />
       </div>
       <div v-if="album.tracks?.length > 0" class="px-2 text-[10px] text-muted-foreground opacity-50 text-right">
         총 {{ album.tracks.length }}곡 참여 • {{ formatDuration(album.totalDuration) }}
@@ -134,16 +123,14 @@ const handleEdit = () => {
     </section>
 
     <section v-if="albumArtists.length > 0" class="space-y-6 pb-12 mt-12">
-      <div class="flex items-center gap-2 border-b pb-2">
-        <Users class="w-6 h-6 text-primary" />
-        <h2 class="text-2xl font-black tracking-tight">Featured Artists</h2>
-      </div>
+      <SectionHeader title="Featured Artists">
+        <template #icon>
+          <Users class="w-6 h-6 text-primary" />
+        </template>
+      </SectionHeader>
       <ArtistListTable :artists="albumArtists" />
     </section>
-
   </DetailLayout>
 
-  <div v-else class="p-16 text-center text-muted-foreground">
-    앨범 정보를 찾을 수 없습니다.
-  </div>
+  <div v-else class="p-16 text-center text-muted-foreground">앨범 정보를 찾을 수 없습니다.</div>
 </template>

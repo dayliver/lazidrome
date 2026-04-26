@@ -1,14 +1,15 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
+import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useCoverUrl } from '@/composables/useCoverUrl'
 import { usePlaylistStore } from '@/stores/playlist'
-import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 
 import { formatDuration } from '@/lib/audio'
-import { getCoverUrl } from '@/lib/image'
 
-import { Play, Shuffle, RefreshCw, ListMusic, Zap, Edit } from 'lucide-vue-next'
+import { Play, Shuffle, RefreshCw, ListMusic, Edit } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import DetailLayout from '@/components/layout/DetailLayout.vue'
 import TrackListTable from '@/components/shared/TrackListTable.vue'
@@ -16,52 +17,39 @@ import TrackListTable from '@/components/shared/TrackListTable.vue'
 const route = useRoute()
 const router = useRouter()
 const playlistStore = usePlaylistStore()
-const auth = useAuthStore()
 const player = usePlayerStore()
 
-const playlist = ref(null)
-const isLoading = ref(true)
-const isRefreshing = ref(false) // 믹스 다시 섞기용 로딩 상태
+const isRefreshing = ref(false)
 
-// 💡 1. 총 재생 시간 계산 (백엔드에서 주지 않으므로 트랙들의 duration을 합산)
+const { data: playlist, isLoading, reload: reloadPlaylist } = useAsyncResource(
+  () => route.params.id,
+  async (id) => playlistStore.fetchPlaylistDetails(id)
+)
+
+useSyncTrackListWithLibrary(() => playlist.value?.tracks)
+
+const imageUrl = useCoverUrl('playlist', () => playlist.value?.id)
+
 const totalDuration = computed(() => {
   if (!playlist.value?.tracks) return 0
   return playlist.value.tracks.reduce((acc, track) => acc + (track.duration || 0), 0)
 })
 
-// 💡 2. 서브타이틀 동적 생성 (믹스 조건 또는 설명)
 const subtitleText = computed(() => {
   if (!playlist.value) return ''
   if (playlist.value.type === 'list') {
     return playlist.value.description || '수동 플레이리스트'
-  } else {
-    if (playlist.value.description) return playlist.value.description
-    if (playlist.value.rules && playlist.value.rules.conditions?.length > 0) {
-      return playlist.value.rules.conditions.map(c => {
+  }
+  if (playlist.value.description) return playlist.value.description
+  if (playlist.value.rules && playlist.value.rules.conditions?.length > 0) {
+    return playlist.value.rules.conditions
+      .map((c) => {
         const fieldName = c.field === 'rating' ? '별점' : c.field === 'tags' ? '태그' : c.field
         return `${fieldName} ${c.value}`
-      }).join(' • ')
-    }
-    return '스마트 믹스'
+      })
+      .join(' • ')
   }
-})
-
-const imageUrl = computed(() => {
-  if (!playlist.value?.id) return ''
-  return getCoverUrl(auth.serverUrl, 'playlist', playlist.value.id, auth.token)
-})
-
-const fetchDetail = async () => {
-  const data = await playlistStore.fetchPlaylistDetails(route.params.id)
-  if (data) {
-    playlist.value = data
-  }
-}
-
-onMounted(async () => {
-  isLoading.value = true
-  await fetchDetail()
-  isLoading.value = false
+  return '스마트 믹스'
 })
 
 const playSequential = () => {
@@ -77,10 +65,9 @@ const playShuffle = () => {
   }
 }
 
-// 💡 3. 스마트 믹스 전용: 곡 다시 섞기 기능!
 const refreshMix = async () => {
   isRefreshing.value = true
-  await fetchDetail()
+  await reloadPlaylist()
   isRefreshing.value = false
 }
 
@@ -95,7 +82,8 @@ const handleEdit = () => {
     <p>플레이리스트를 불러오고 있습니다...</p>
   </div>
 
-  <DetailLayout v-else-if="playlist"
+  <DetailLayout
+    v-else-if="playlist"
     :title="playlist.name"
     :subtitle="subtitleText"
     :is-round-image="false"
@@ -106,7 +94,6 @@ const handleEdit = () => {
       { label: '총 재생 시간', value: formatDuration(totalDuration) }
     ]"
   >
-    
     <template #actions>
       <Button variant="outline" size="sm" @click="handleEdit">
         <Edit class="w-4 h-4 mr-2" />
@@ -122,24 +109,24 @@ const handleEdit = () => {
         <Shuffle class="w-4 h-4 mr-2" /> 셔플
       </Button>
 
-      <Button 
-        v-if="playlist.type === 'mix'" 
-        @click="refreshMix" 
-        variant="secondary" 
+      <Button
+        v-if="playlist.type === 'mix'"
+        variant="secondary"
         class="rounded-full px-4 border shadow-sm transition-all hover:bg-purple-500 hover:text-white"
         :disabled="isRefreshing"
+        @click="refreshMix"
       >
-        <RefreshCw class="w-4 h-4 mr-2" :class="{'animate-spin': isRefreshing}" /> 
+        <RefreshCw class="w-4 h-4 mr-2" :class="{ 'animate-spin': isRefreshing }" />
         믹스 다시 섞기
       </Button>
     </div>
 
     <section class="space-y-4">
       <div class="bg-card overflow-hidden">
-        <TrackListTable 
-          :tracks="playlist.tracks" 
-          :show-album="true" 
-          :show-cover="true" 
+        <TrackListTable
+          :tracks="playlist.tracks"
+          :show-album="true"
+          :show-cover="true"
           :playlist-id="playlist.type === 'list' ? playlist.id : null"
         />
       </div>
@@ -147,13 +134,15 @@ const handleEdit = () => {
         총 {{ playlist.tracks.length }}곡 • {{ formatDuration(totalDuration) }}
       </div>
     </section>
-
   </DetailLayout>
 
-  <div v-else class="p-16 text-center text-muted-foreground flex flex-col items-center gap-4 border-2 border-dashed rounded-2xl m-8">
+  <div
+    v-else
+    class="p-16 text-center text-muted-foreground flex flex-col items-center gap-4 border-2 border-dashed rounded-2xl m-8"
+  >
     <ListMusic class="w-12 h-12 opacity-20" />
     <h2 class="text-xl font-bold text-foreground">플레이리스트를 찾을 수 없습니다</h2>
     <p class="text-sm">삭제되었거나 접근할 수 없는 목록입니다.</p>
-    <Button variant="outline" @click="router.push('/playlists')" class="mt-2">목록으로 돌아가기</Button>
+    <Button variant="outline" class="mt-2" @click="router.push('/playlists')">목록으로 돌아가기</Button>
   </div>
 </template>

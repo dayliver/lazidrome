@@ -4,6 +4,7 @@ import { Upload, Link, Clipboard, X, Check, Image as ImageIcon } from 'lucide-vu
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { toast } from 'vue-sonner'
 
 const props = defineProps({
   modelValue: { type: Object, required: true }
@@ -17,7 +18,7 @@ const fileInput = ref(null)
 // 💡 1. 파일 처리 핵심 로직 (미리보기 및 데이터 바인딩)
 const processFile = (file) => {
   if (!file || !file.type.startsWith('image/')) {
-    alert('이미지 파일만 업로드 가능합니다.')
+    toast.error('이미지 파일만 업로드할 수 있습니다.')
     return
   }
   
@@ -28,7 +29,7 @@ const processFile = (file) => {
   
   previewUrl.value = URL.createObjectURL(file)
   
-  // 부모(EnrichmentDialog)의 formData 업데이트
+  // 부모(MetadataEditDialog 등)의 formData 업데이트
   emit('update:modelValue', { 
     ...props.modelValue, 
     newCoverFile: file, 

@@ -1,22 +1,21 @@
 <script setup>
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { useLibraryStore } from '@/stores/library'
-import { useEnrichmentStore } from '@/stores/enrichment'
+import { useMetadataEditStore } from '@/stores/metadataEdit'
 import { Button } from '@/components/ui/button'
-import { X, Save, Info, Users, Image as ImageIcon, Globe, ListMusic, LayoutDashboard } from 'lucide-vue-next'
+import { X, Save, Info, Users, Image as ImageIcon, Globe, ListMusic } from 'lucide-vue-next'
 
-// 전문가 컴포넌트들
-const EnrichmentTrack = defineAsyncComponent(() => import('./EnrichmentTrack.vue'))
-const EnrichmentAlbum = defineAsyncComponent(() => import('./EnrichmentAlbum.vue'))
-const EnrichmentArtist = defineAsyncComponent(() => import('./EnrichmentArtist.vue'))
+const TrackMetadataPanel = defineAsyncComponent(() => import('./TrackMetadataPanel.vue'))
+const AlbumMetadataPanel = defineAsyncComponent(() => import('./AlbumMetadataPanel.vue'))
+const ArtistMetadataPanel = defineAsyncComponent(() => import('./ArtistMetadataPanel.vue'))
 
 const library = useLibraryStore()
-const enrichment = useEnrichmentStore()
-const item = computed(() => enrichment.currentItem)
+const metadataEdit = useMetadataEditStore()
+const item = computed(() => metadataEdit.currentItem)
 const activeTab = ref('basic')
 const wrapperRef = ref(null)
 
-const wrapperMap = { track: EnrichmentTrack, album: EnrichmentAlbum, artist: EnrichmentArtist }
+const wrapperMap = { track: TrackMetadataPanel, album: AlbumMetadataPanel, artist: ArtistMetadataPanel }
 const currentWrapper = computed(() => item.value ? wrapperMap[item.value.type] : null)
 
 // 💡 잃어버렸던 탭 구성 로직 복구
@@ -41,7 +40,7 @@ const handleSave = async () => {
   if (!formData) return
 
   // 💡 1. success(true/false) 대신 updatedData(서버의 최신 객체)를 받습니다!
-  const updatedData = await enrichment.saveEnrichmentData(item.value, formData)
+  const updatedData = await metadataEdit.saveMetadata(item.value, formData)
   
   if (updatedData) {
     // 💡 2. 전체 새로고침 대신, 핀셋으로 해당 객체만 싹 갈아끼웁니다 (Local Mutation)
@@ -54,7 +53,7 @@ const handleSave = async () => {
     }
     
     // 💡 3. 갈아끼우기가 끝났으니 모달 창을 닫습니다.
-    enrichment.shiftQueue()
+    metadataEdit.shiftQueue()
   }
 }
 </script>
@@ -65,7 +64,7 @@ const handleSave = async () => {
       
       <header class="flex items-center justify-between px-8 py-5 border-b bg-muted/20">
         <h2 class="text-2xl font-black">메타데이터 편집</h2>
-        <Button variant="ghost" size="icon" @click="enrichment.shiftQueue()"><X /></Button>
+        <Button variant="ghost" size="icon" @click="metadataEdit.shiftQueue()"><X /></Button>
       </header>
 
       <nav class="flex items-center border-b px-8 gap-8 bg-muted/5 shrink-0 overflow-x-auto no-scrollbar">

@@ -19,7 +19,7 @@ const playlistStore = usePlaylistStore()
 const activeTab = ref('basic')
 const isSubmitting = ref(false)
 
-// 💡 EnrichmentAlbum 스타일의 통합 데이터 구조
+// 💡 AlbumMetadataPanel / 메타데이터 편집과 유사한 통합 데이터 구조
 const localData = ref({
   name: '',
   description: '',

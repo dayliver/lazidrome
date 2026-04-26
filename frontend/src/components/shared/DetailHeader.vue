@@ -1,0 +1,70 @@
+<script setup>
+import { ref, watch } from 'vue'
+import { ChevronLeft, User, Disc } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { Button } from '@/components/ui/button'
+
+const props = defineProps({
+  title: String,
+  subtitle: String,
+  imageUrl: String,
+  stats: Array,
+  isRoundImage: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const router = useRouter()
+const hasError = ref(false)
+
+watch(() => props.imageUrl, () => {
+  hasError.value = false
+})
+</script>
+
+<template>
+  <div class="relative space-y-8 pt-10">
+    <Button variant="ghost" size="icon" class="absolute top-0 left-0 rounded-full hover:bg-muted" @click="router.back()">
+      <ChevronLeft class="w-8 h-8" />
+    </Button>
+
+    <div class="absolute top-0 right-0">
+      <slot name="actions" />
+    </div>
+
+    <div class="flex flex-col md:flex-row items-center md:items-end gap-6 px-2 md:px-4">
+      <div :class="[
+        'w-48 h-48 md:w-64 md:h-64 shrink-0 bg-muted shadow-xl border border-background/10 overflow-hidden relative',
+        isRoundImage ? 'rounded-full' : 'rounded-xl'
+      ]">
+        <img
+          v-if="imageUrl && !hasError"
+          :src="imageUrl"
+          @error="hasError = true"
+          class="absolute inset-0 w-full h-full object-cover z-10"
+        />
+        <div class="absolute inset-0 flex items-center justify-center bg-secondary z-0">
+          <User v-if="isRoundImage" class="w-24 h-24 text-muted-foreground/40" />
+          <Disc v-else class="w-24 h-24 text-muted-foreground/40" />
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center md:items-start text-center md:text-left gap-3 flex-1 min-w-0">
+        <div class="space-y-1">
+          <span class="text-xs font-black tracking-[0.3em] text-muted-foreground uppercase">{{ subtitle }}</span>
+          <h1 class="text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter leading-tight break-keep">
+            {{ title || 'Loading...' }}
+          </h1>
+        </div>
+
+        <div v-if="stats && stats.length" class="flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-6 mt-2">
+          <div v-for="(stat, idx) in stats" :key="idx" class="flex flex-col">
+            <span class="text-xl font-black tabular-nums">{{ stat.value }}</span>
+            <span class="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{{ stat.label }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

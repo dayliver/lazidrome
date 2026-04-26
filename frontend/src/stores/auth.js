@@ -76,23 +76,12 @@ export const useAuthStore = defineStore('auth', () => {
     return response
   }
 
-  /**
-   * 커버 아트 URL 생성
-   * (Lazidrome 백엔드의 스트림 혹은 커버 엔드포인트로 연결)
-   */
-  const getCoverUrl = (trackId) => {
-    if (!trackId) return '/default-album.png'
-    // 스트리밍 주소와 동일하게 가거나, 별도 커버 API가 있다면 수정
-    return `${serverUrl.value}/api/stream/${trackId}` 
-  }
-
   return { 
     serverUrl, 
     token, 
     isAuthenticated, 
     login, 
     logout, 
-    fetchWithAuth, 
-    getCoverUrl 
+    fetchWithAuth
   }
 })

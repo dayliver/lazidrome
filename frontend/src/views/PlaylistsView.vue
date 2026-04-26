@@ -1,13 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { usePlaylistStore } from '@/stores/playlist'
-import PlaylistListTable from '@/components/shared/PlaylistListTable.vue'
+import PlaylistListTable from '@/components/playlist/PlaylistListTable.vue'
 
 // 💡 1. 구형 PlaylistFormModal 대신 신형 PlaylistDialog로 교체!
 import PlaylistDialog from '@/components/playlist/PlaylistDialog.vue' 
 
-import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-vue-next'
+import ViewHeader from '@/components/shared/ViewHeader.vue'
 
 const playlistStore = usePlaylistStore()
 const isLoading = ref(true)
@@ -40,17 +39,12 @@ onMounted(async () => {
 
 <template>
   <div class="w-full space-y-6 animate-in fade-in duration-500">
-    <div class="flex items-end justify-between border-b pb-4">
-      <div>
-        <h1 class="text-3xl font-black tracking-tight">Playlists</h1>
-        <p class="text-sm font-medium text-muted-foreground mt-1">
-          내 플레이리스트 및 스마트 믹스 ({{ playlistStore.playlists.length }}개)
-        </p>
-      </div>
-      <Button @click="openCreateModal" class="font-black rounded-full shadow-md w-10 h-10 p-0">
-        <Plus class="w-5 h-5" />
-      </Button>
-    </div>
+    <ViewHeader
+      title="Playlists"
+      :description="`내 플레이리스트 및 스마트 믹스 (${playlistStore.playlists.length}개)`"
+      @action="openCreateModal"
+    >
+    </ViewHeader>
 
     <div v-if="!isLoading" class="bg-card overflow-hidden pb-4">
       <PlaylistListTable 

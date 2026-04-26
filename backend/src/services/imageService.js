@@ -60,6 +60,18 @@ export function resolvePlaylistImage(id) {
   return null;
 }
 
+/** 태그 커버: storage/images/tags/{name}.jpg (이름에 /, \\, .. 불가) */
+export function resolveTagImage(tagName) {
+  const decoded = decodeURIComponent(String(tagName || '').trim());
+  if (!decoded || decoded.includes('..') || /[/\\]/.test(decoded)) return null;
+  const fileName = `${decoded}.jpg`;
+  const absBase = path.resolve(IMAGES_PATH, 'tags');
+  const absFile = path.resolve(IMAGES_PATH, 'tags', fileName);
+  if (!absFile.startsWith(absBase)) return null;
+  if (fs.existsSync(absFile)) return path.join('tags', fileName).replace(/\\/g, '/');
+  return null;
+}
+
 // 💡 에러 방어용 기본 이미지 반환
 export function getDefaultImage() {
   if (fs.existsSync(path.join(IMAGES_PATH, 'default.png'))) {

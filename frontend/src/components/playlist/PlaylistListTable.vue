@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { ListMusic, Zap, MoreVertical, Play, Trash2, Edit } from 'lucide-vue-next'
-import SafeImage from '@/components/ui/SafeImage.vue' // 💡 안전한 썸네일 렌더러
+import SafeImage from '@/components/shared/SafeImage.vue' // 💡 안전한 썸네일 렌더러
 
 const props = defineProps({
   playlists: {

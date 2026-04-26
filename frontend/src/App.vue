@@ -6,8 +6,8 @@ import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth' // 💉 추가됨
 import PlayerWrapper from '@/components/player/PlayerWrapper.vue'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List } from 'lucide-vue-next'
-import EnrichmentDialog from '@/components/enrichment/EnrichmentDialog.vue'
+import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, Layers } from 'lucide-vue-next'
+import MetadataEditDialog from '@/components/metadata/MetadataEditDialog.vue'
 
 import 'vue-sonner/style.css'
 import { Toaster } from '@/components/ui/sonner'
@@ -24,6 +24,7 @@ const navItems = [
   { name: 'Artists', path: '/artists', icon: Users },
   { name: 'Albums', path: '/albums', icon: Disc },
   { name: 'Tracks', path: '/tracks', icon: Music },
+  { name: 'Genres', path: '/genres', icon: Layers },
   { name: 'Tags', path: '/tags', icon: Hash },
   { name: 'Playlists', path: '/playlists', icon: List },
   { name: 'Settings', path: '/settings', icon: Settings }
@@ -111,7 +112,7 @@ onMounted(async () => {
 
     <PlayerWrapper :is-sidebar-expanded="isSidebarExpanded" />
 
-    <EnrichmentDialog />
+    <MetadataEditDialog />
 
     <Toaster />
 

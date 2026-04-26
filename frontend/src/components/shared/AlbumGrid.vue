@@ -3,8 +3,7 @@ import { useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
-// 💉 1. Enrichment 스토어 임포트
-import { useEnrichmentStore } from '@/stores/enrichment'
+import { useMetadataEditStore } from '@/stores/metadataEdit'
 
 import { formatDuration } from '@/lib/audio'
 import { getCoverUrl } from '@/lib/image'
@@ -27,20 +26,22 @@ const library = useLibraryStore()
 const auth = useAuthStore()
 const player = usePlayerStore()
 // 💉 3. 스토어 인스턴스화
-const enrichment = useEnrichmentStore()
+const metadataEdit = useMetadataEditStore()
 
 const getAlbumImageUrl = (id) => {
   return getCoverUrl(auth.serverUrl, 'album', id, auth.token)
 }
 
-const playAlbumSequential = async (albumName) => {
-  const tracks = await library.getTracksByAlbum(albumName)
-  if (tracks.length > 0) player.playAlbum(tracks)
+const playAlbumSequential = async (albumId) => {
+  const album = await library.getAlbumById(albumId)
+  const tracks = album?.tracks
+  if (tracks?.length > 0) player.playNewQueue(tracks, 0)
 }
 
-const playAlbumShuffle = async (albumName) => {
-  const tracks = await library.getTracksByAlbum(albumName)
-  if (tracks.length > 0) player.playAlbum(tracks, null, true)
+const playAlbumShuffle = async (albumId) => {
+  const album = await library.getAlbumById(albumId)
+  const tracks = album?.tracks
+  if (tracks?.length > 0) player.playAlbum(tracks, null, true)
 }
 
 const goToAlbumDetail = (albumId) => {
@@ -50,7 +51,7 @@ const goToAlbumDetail = (albumId) => {
 // 💉 4. 앨범 메타데이터 모달 호출 함수
 const fetchMetadata = (albumId) => {
   if (!albumId) return
-  enrichment.fetchPreview('album', albumId)
+  metadataEdit.fetchPreview('album', albumId)
 }
 </script>
 
@@ -80,7 +81,7 @@ const fetchMetadata = (albumId) => {
 
         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-20">
           <button class="w-14 h-14 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-transform focus:outline-none"
-                  @click.stop="playAlbumSequential(item.name)">
+                  @click.stop="playAlbumSequential(item.id)">
             <Play class="w-6 h-6 fill-current ml-1" />
           </button>
         </div>
@@ -104,7 +105,7 @@ const fetchMetadata = (albumId) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="w-48">
-              <DropdownMenuItem @click.stop="playAlbumShuffle(item.name)">
+              <DropdownMenuItem @click.stop="playAlbumShuffle(item.id)">
                 <Shuffle class="mr-2 h-4 w-4" /> 셔플 재생
               </DropdownMenuItem>
               <DropdownMenuItem @click.stop="goToAlbumDetail(item.id)">

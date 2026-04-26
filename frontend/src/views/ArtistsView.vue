@@ -1,9 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useLibraryStore } from '@/stores/library'
-
-// 💉 새로 만든 공유 컴포넌트 임포트
 import ArtistListTable from '@/components/shared/ArtistListTable.vue'
+import ViewHeader from '@/components/shared/ViewHeader.vue'
 
 const library = useLibraryStore()
 
@@ -20,14 +19,19 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
+
+const handleCreateArtist = () => {
+  console.log('새 아티스트 생성')
+}
 </script>
 
 <template>
   <div class="w-full space-y-6">
-    <div class="flex items-end justify-between border-b pb-4">
-      <h1 class="text-3xl font-black tracking-tight">Artists</h1>
-      <p class="text-sm font-medium text-muted-foreground">총 {{ artistsData.length }}명의 아티스트</p>
-    </div>
+    <ViewHeader
+      title="Artists"
+      :description="`총 ${artistsData.length}명의 아티스트`"
+      @action="handleCreateArtist"
+    />
 
     <div class="bg-card rounded-lg overflow-hidden">
       <div v-if="isLoading" class="p-16 flex flex-col items-center gap-4 text-muted-foreground">

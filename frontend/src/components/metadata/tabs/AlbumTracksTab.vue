@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth' // 💡 추가
 import { getCoverUrl } from '@/lib/image'    // 💡 추가
-import SafeImage from '@/components/ui/SafeImage.vue' // 💡 추가
+import SafeImage from '@/components/shared/SafeImage.vue' // 💡 추가
 
 const props = defineProps({
   modelValue: { type: Object, required: true },

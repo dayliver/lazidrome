@@ -9,5 +9,8 @@
  */
 export function getCoverUrl(baseUrl, type, id, token) {
   if (!id) return '';
-  return `${baseUrl}/api/images/${type}/${id}?token=${token}`;
+  if (type === 'tag') {
+    return `${baseUrl}/api/images/tag?name=${encodeURIComponent(id)}&token=${encodeURIComponent(token || '')}`;
+  }
+  return `${baseUrl}/api/images/${type}/${id}?token=${encodeURIComponent(token || '')}`;
 }
