@@ -15,6 +15,7 @@ const emit = defineEmits(['update:activeTab'])
 const localData = ref({
   title: '',
   year: '',
+  description: '',
   tags: [], // <-- 추가됨!
   albumArtists: [],
   albumTracks: [],
@@ -29,6 +30,7 @@ watch(() => props.item, (newItem) => {
     localData.value = {
       title: newItem.local.name || '',
       year: newItem.local.year || '',
+      description: newItem.local.description || '',
       tags: newItem.local.tags || [], // <-- 추가됨!
       albumArtists: newItem.local.albumArtists || [],
       albumTracks: newItem.local.tracks || [],

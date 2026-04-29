@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { 
   ArrowLeft
 } from 'lucide-vue-next'
@@ -20,11 +20,6 @@ const auth = useAuthStore()
 const library = useLibraryStore()
 
 const showMenu = ref(false)
-const windowWidth = ref(window.innerWidth)
-
-const handleResize = () => { windowWidth.value = window.innerWidth }
-onMounted(() => window.addEventListener('resize', handleResize))
-onUnmounted(() => window.removeEventListener('resize', handleResize))
 
 const currentTrack = computed(() => player.currentTrack)
 
@@ -77,9 +72,8 @@ const changeRating = async (rate) => {
         @toggle-menu="showMenu = !showMenu"
       />
 
-      <main class="flex-1 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 px-6 md:px-12 max-w-7xl mx-auto w-full overflow-hidden pb-12">
-        <div class="flex flex-col w-full max-w-[400px] md:max-w-[500px] h-full justify-center min-h-0">
-          
+      <main class="flex-1 flex flex-col items-stretch justify-center px-4 sm:px-6 md:px-12 max-w-6xl lg:max-w-7xl mx-auto w-full min-h-0 overflow-y-auto overflow-x-hidden pb-8 md:pb-12">
+        <div class="w-full flex-1 flex flex-col justify-center min-h-0 py-2 md:py-4">
           <Transition name="slide-fade" mode="out-in">
             <FullPlayerNowPlaying
               v-if="!player.isQueueView"
@@ -88,7 +82,8 @@ const changeRating = async (rate) => {
               :current-track="currentTrack"
               :display-artist="displayArtist"
               :format-track-time="formatTrackTime"
-              :window-width="windowWidth"
+              :toggle-favorite="toggleFavorite"
+              :change-rating="changeRating"
             />
 
             <div v-else class="flex flex-col h-full max-h-[500px] md:max-h-[600px] w-full relative min-h-0">
@@ -113,7 +108,7 @@ const changeRating = async (rate) => {
 
 <style scoped>
 /* 기존 스타일 유지 */
-:deep(.relative.h-1.5) { height: 8px; }
+:deep(.relative.h-1\.5) { height: 8px; }
 :deep([role="slider"]) { width: 18px; height: 18px; border: 4px solid white; }
 
 h2 {

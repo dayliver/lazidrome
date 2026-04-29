@@ -29,7 +29,7 @@ startScanner(TRACKS_PATH);
 
 const fastify = Fastify({ 
   logger: true,
-  bodyLimit: 10485760 
+  bodyLimit: 10485760*2 
 });
 const PORT = process.env.PORT || 5294;
 

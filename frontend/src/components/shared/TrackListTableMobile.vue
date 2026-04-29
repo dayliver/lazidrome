@@ -30,8 +30,28 @@ const props = defineProps({
   updateRating: { type: Function, required: true },
   removeTrackFromPlaylist: { type: Function, required: true },
   openPlaylistModal: { type: Function, required: true },
-  fetchMetadata: { type: Function, required: true }
+  fetchMetadata: { type: Function, required: true },
+  nowPlayingTrackId: { type: String, default: null },
+  playerIsPlaying: { type: Boolean, default: false }
 })
+
+function activeNow(trackId) {
+  return props.nowPlayingTrackId != null && String(props.nowPlayingTrackId) === String(trackId)
+}
+
+function splitTrackTitle(title) {
+  const raw = String(title ?? '')
+  const m = raw.match(/^(.*?)(\s*(\([^)]*\)\s*)+)$/)
+  if (!m) return { main: raw, suffix: '' }
+  const suffix = (m[2] || '')
+    .replace(/[()]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return {
+    main: m[1].trimEnd() || raw,
+    suffix,
+  }
+}
 
 const emit = defineEmits(['update:localTracks'])
 
@@ -56,7 +76,12 @@ const draggableTracks = computed({
       :animation="150"
       @end="onDragEnd"
     >
-      <div v-for="(item, index) in draggableTracks" :key="`mob-${item.id}`" class="flex items-center gap-3 p-3 border-b border-border/50 hover:bg-muted/30 active:bg-muted/50 transition-colors bg-background" :class="{'bg-primary/5': selectedTrackIds.includes(item.id)}" @click="playTrack(index)">
+      <div v-for="(item, index) in draggableTracks" :key="`mob-${item.id}`" class="flex items-center gap-3 border-b border-border/50 bg-background p-3 transition-colors hover:bg-muted/30 active:bg-muted/50" :class="{
+          'border-l-[3px] border-l-primary': activeNow(item.id),
+          'bg-primary/[0.07]': activeNow(item.id),
+          'bg-primary/5': selectedTrackIds.includes(item.id) && !activeNow(item.id),
+        }" @click="playTrack(index)"
+      >
         <div v-if="playlistId" class="shrink-0 flex items-center pr-1" @click.stop>
           <GripVertical class="w-5 h-5 text-muted-foreground/30 hover:text-foreground cursor-grab active:cursor-grabbing drag-handle transition-colors" />
         </div>
@@ -73,7 +98,24 @@ const draggableTracks = computed({
 
         <div class="flex flex-col min-w-0 flex-1 gap-0.5">
           <div class="flex items-start justify-between gap-2">
-            <span class="font-bold text-sm truncate">{{ item.title }}</span>
+            <div class="flex min-w-0 flex-1 items-center gap-1.5">
+              <span class="truncate text-[12px] font-semibold" :class="activeNow(item.id) ? 'text-primary' : ''">
+                {{ splitTrackTitle(item.title).main }}
+                <span v-if="splitTrackTitle(item.title).suffix" class="ml-1 text-[10px] text-muted-foreground/75">
+                  {{ ' ' + splitTrackTitle(item.title).suffix }}
+                </span>
+              </span>
+              <div
+                v-if="activeNow(item.id)"
+                class="playing-badge-mobile"
+                :class="playerIsPlaying ? 'playing-badge-mobile--on' : 'playing-badge-mobile--paused'"
+                aria-hidden="true"
+              >
+                <span class="playing-badge-mobile-bar" />
+                <span class="playing-badge-mobile-bar playing-badge-mobile-bar-d1" />
+                <span class="playing-badge-mobile-bar playing-badge-mobile-bar-d2" />
+              </div>
+            </div>
             <div class="flex items-center gap-1 shrink-0 -mr-1">
               <button @click.stop="toggleStar(item)" class="p-1 focus:outline-none"><Heart class="w-4 h-4" :class="item.starred ? 'text-red-500 fill-current' : 'text-muted-foreground'" /></button>
               <DropdownMenu>
@@ -128,3 +170,42 @@ const draggableTracks = computed({
     </VueDraggable>
   </div>
 </template>
+
+<style scoped>
+.playing-badge-mobile {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  width: 16px;
+  height: 16px;
+  padding: 2px;
+  border-radius: 4px;
+  background: oklch(var(--primary) / 0.18);
+  box-shadow: inset 0 0 0 1px oklch(var(--primary) / 0.35);
+}
+.playing-badge-mobile-bar {
+  display: inline-block;
+  width: 2px;
+  height: 5px;
+  border-radius: 2px;
+  background: oklch(var(--primary));
+  align-self: flex-end;
+}
+.playing-badge-mobile--on .playing-badge-mobile-bar {
+  animation: eq-mobile 1s ease-in-out infinite;
+}
+.playing-badge-mobile-bar-d1 { animation-delay: 0.2s; }
+.playing-badge-mobile-bar-d2 { animation-delay: 0.4s; }
+.playing-badge-mobile--paused .playing-badge-mobile-bar {
+  animation: none;
+}
+.playing-badge-mobile--paused .playing-badge-mobile-bar:nth-child(1) { height: 4px; }
+.playing-badge-mobile--paused .playing-badge-mobile-bar:nth-child(2) { height: 8px; }
+.playing-badge-mobile--paused .playing-badge-mobile-bar:nth-child(3) { height: 5px; }
+
+@keyframes eq-mobile {
+  0%, 100% { height: 3px; }
+  50% { height: 9px; }
+}
+</style>

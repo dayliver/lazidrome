@@ -3,9 +3,10 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import { useAsyncResource } from '@/composables/useAsyncResource'
-import { useCoverUrl } from '@/composables/useCoverUrl'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
+import { useAuthStore } from '@/stores/auth'
+import { getCoverUrl } from '@/lib/image'
 
 import { formatDuration } from '@/lib/audio'
 
@@ -21,6 +22,7 @@ const route = useRoute()
 const router = useRouter()
 const library = useLibraryStore()
 const player = usePlayerStore()
+const auth = useAuthStore()
 
 const { data, isLoading } = useAsyncResource(
   () => route.params.id,
@@ -35,7 +37,15 @@ const allArtists = computed(() => data.value?.allArtists ?? [])
 
 useSyncTrackListWithLibrary(() => album.value?.tracks)
 
-const imageUrl = useCoverUrl('album', () => album.value?.id)
+/** AlbumGrid와 동일: `cover_type`이 있을 때만 이미지 URL 부여 (불필요한 404·@error 방지) */
+const getAlbumImageUrl = (id) => getCoverUrl(auth.serverUrl, 'album', id, auth.token)
+
+const albumCoverUrl = computed(() => {
+  const a = data.value?.album
+  // serverUrl이 ''이면 상대 경로 `/api/images/...` (AlbumGrid·getCoverUrl와 동일). !serverUrl 로 막지 않음.
+  if (!a?.id || !a.cover_type) return ''
+  return getAlbumImageUrl(a.id)
+})
 
 const albumArtists = computed(() => {
   if (!album.value?.tracks || !allArtists.value.length) return []
@@ -79,7 +89,7 @@ const handleEdit = () => {
     :title="album.name"
     :subtitle="album.displayArtist || 'Unknown Artist'"
     :is-round-image="false"
-    :image-url="imageUrl"
+    :image-url="albumCoverUrl"
     :stats="[
       { label: '수록곡', value: album.tracks?.length || 0 },
       { label: '발매 연도', value: album.year || '-' },

@@ -47,6 +47,54 @@ export function findTrackForEnrich(id) {
   `).get(id);
 }
 
+const PLAY_COUNT_THRESHOLD = 0.5;
+
+/**
+ * DB에 있는 파일 길이(초) 기준으로 절반 이상 재생(position_peak_sec)일 때만
+ * play_history 삽입 + play_count 증가 + last_played 갱신.
+ * @returns {{ notFound: true } | { skipped: true, play_count: number } | { recorded: true, play_count: number }}
+ */
+export function recordTrackPlayWithHistory(trackId, positionPeakSec) {
+  const row = db
+    .prepare(
+      `SELECT t.id, t.play_count, f.duration as file_duration_sec
+       FROM track_metadata t
+       JOIN track_filedata f ON t.file_id = f.id
+       WHERE t.id = ?`
+    )
+    .get(trackId);
+
+  if (!row) {
+    return { notFound: true };
+  }
+
+  const durationSec = Number(row.file_duration_sec);
+  const peak = Math.max(0, Number(positionPeakSec) || 0);
+  const playCount = Number(row.play_count) || 0;
+
+  if (!Number.isFinite(durationSec) || durationSec <= 0) {
+    return { skipped: true, play_count: playCount };
+  }
+
+  if (peak < durationSec * PLAY_COUNT_THRESHOLD) {
+    return { skipped: true, play_count: playCount };
+  }
+
+  const tx = db.transaction(() => {
+    db.prepare('INSERT INTO play_history (track_id) VALUES (?)').run(trackId);
+    db.prepare(
+      `UPDATE track_metadata
+       SET play_count = COALESCE(play_count, 0) + 1,
+           last_played = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    ).run(trackId);
+  });
+  tx();
+
+  const after = db.prepare('SELECT play_count FROM track_metadata WHERE id = ?').get(trackId);
+  return { recorded: true, play_count: after?.play_count ?? playCount + 1 };
+}
+
 export function updateTrackRating(id, { rating, tags, starred }) {
   const result = db.prepare(`
     UPDATE track_metadata 

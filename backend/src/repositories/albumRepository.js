@@ -38,7 +38,7 @@ export function findOrCreateArtist(artist) {
 export function findAllAlbums() {
   return db.prepare(`
     SELECT 
-      a.id, a.name, a.year, a.cover_type, a.tags,
+      a.id, a.name, a.description, a.year, a.cover_type, a.tags,
       (SELECT GROUP_CONCAT(ar.name, ', ') FROM album_artists aa JOIN artists ar ON aa.artist_id = ar.id WHERE aa.album_id = a.id) as displayArtist,
       COUNT(DISTINCT t.id) as trackCount,
       SUM(f.duration) as totalDuration
@@ -54,7 +54,7 @@ export function findAllAlbums() {
 export function findAlbumDetailWithTracks(id) {
   const album = db.prepare(`
     SELECT 
-      a.id, a.name, a.year, a.cover_type, a.tags,
+      a.id, a.name, a.description, a.year, a.cover_type, a.tags,
       (SELECT GROUP_CONCAT(ar.name, ', ') FROM album_artists aa JOIN artists ar ON aa.artist_id = ar.id WHERE aa.album_id = a.id) as displayArtist,
       (SELECT SUM(f.duration) FROM album_tracks at JOIN track_metadata t ON at.track_id = t.id JOIN track_filedata f ON t.file_id = f.id WHERE at.album_id = a.id) as totalDuration
     FROM albums a WHERE a.id = ?
@@ -64,7 +64,7 @@ export function findAlbumDetailWithTracks(id) {
 
   const tracks = db.prepare(`
     SELECT 
-      t.id, t.title, t.rating, t.play_count, f.duration, at.track_number, at.disc_number,
+      t.id, t.title, t.rating, t.starred, t.play_count, f.duration, at.track_number, at.disc_number,
       GROUP_CONCAT(ar.name, ', ') as artist
     FROM track_metadata t
     JOIN album_tracks at ON t.id = at.track_id
@@ -81,7 +81,7 @@ export function findAlbumDetailWithTracks(id) {
 
 export function findAlbumForEnrich(id) {
   const album = db.prepare(`
-    SELECT a.id, a.name, a.year, a.mbid, a.cover_type, a.tags,
+    SELECT a.id, a.name, a.description, a.year, a.mbid, a.cover_type, a.tags,
       (SELECT GROUP_CONCAT(ar.name, ', ') FROM album_artists aa JOIN artists ar ON aa.artist_id = ar.id WHERE aa.album_id = a.id) as artistName
     FROM albums a WHERE a.id = ?
   `).get(id);
@@ -104,9 +104,18 @@ export function findAlbumForEnrich(id) {
   return { ...album, tracks, albumArtists };
 }
 
-export function updateAlbumMeta(id, { title, year, mbid, tags }) {
-  db.prepare(`UPDATE albums SET name = COALESCE(?, name), year = ?, mbid = ?, tags = ? WHERE id = ?`)
-    .run(title, year || null, mbid || null, tags ? JSON.stringify(tags) : null, id);
+export function updateAlbumMeta(id, { title, year, mbid, tags, description }) {
+  const cur = db.prepare('SELECT name, year, mbid, tags, description FROM albums WHERE id = ?').get(id);
+  if (!cur) return;
+  const name = title !== undefined ? title : cur.name;
+  const y = year !== undefined ? year : cur.year;
+  const m = mbid !== undefined ? mbid : cur.mbid;
+  const tagsStr =
+    tags !== undefined ? (Array.isArray(tags) ? JSON.stringify(tags) : null) : cur.tags;
+  const desc = description !== undefined ? description : cur.description;
+  db.prepare(
+    `UPDATE albums SET name = ?, year = ?, mbid = ?, tags = ?, description = ? WHERE id = ?`
+  ).run(name, y ?? null, m ?? null, tagsStr, desc ?? null, id);
 }
 
 export function replaceAlbumArtists(albumId, artists) {
@@ -129,5 +138,5 @@ export function replaceAlbumTracks(albumId, tracks) {
 }
 
 export function findBasicAlbumById(id) {
-  return db.prepare('SELECT id, name, year, cover_type, mbid, tags FROM albums WHERE id = ?').get(id);
+  return db.prepare('SELECT id, name, year, cover_type, mbid, tags, description FROM albums WHERE id = ?').get(id);
 }

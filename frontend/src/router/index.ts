@@ -8,7 +8,8 @@ const router = createRouter({
     { path: '/artists', name: 'artists', component: () => import('@/views/ArtistsView.vue') },
     { path: '/albums', name: 'albums', component: () => import('@/views/AlbumsView.vue') },
     { path: '/tracks', name: 'tracks', component: () => import('@/views/TracksView.vue') },
-    { path: '/genres', name: 'genres', component: () => import('@/views/GenresView.vue') },
+    // 일시 비활성: 장르 뷰 재도입 시 아래 한 줄 + App.vue 사이드바 항목 복구
+    // { path: '/genres', name: 'genres', component: () => import('@/views/GenresView.vue') },
     { path: '/tags', name: 'tags', component: () => import('@/views/TagsView.vue') },
     {
       path: '/tags/:name',

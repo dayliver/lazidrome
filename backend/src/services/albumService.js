@@ -9,11 +9,11 @@ import {
 const db = getDB();
 
 export function editAlbum(id, data) {
-  const { title, year, mbid, tags, albumArtists, albumTracks } = data;
+  const { title, year, mbid, tags, description, albumArtists, albumTracks } = data;
 
   // DB 수정은 모두 하나의 트랜잭션 안에서 안전하게 처리합니다.
   db.transaction(() => {
-    updateAlbumMeta(id, { title, year, mbid, tags });
+    updateAlbumMeta(id, { title, year, mbid, tags, description });
 
     if (Array.isArray(albumArtists)) {
       const resolvedArtists = albumArtists.map(a => ({

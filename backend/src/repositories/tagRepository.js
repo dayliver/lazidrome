@@ -51,7 +51,7 @@ export function findAlbumsWithTag(tagName) {
   const db = getDB();
   return db.prepare(`
     SELECT
-      a.id, a.name, a.year, a.cover_type, a.tags,
+      a.id, a.name, a.description, a.year, a.cover_type, a.tags,
       (SELECT GROUP_CONCAT(ar.name, ', ') FROM album_artists aa JOIN artists ar ON aa.artist_id = ar.id WHERE aa.album_id = a.id) as displayArtist,
       COUNT(DISTINCT t.id) as trackCount,
       SUM(f.duration) as totalDuration

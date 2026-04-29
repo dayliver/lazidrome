@@ -4,9 +4,10 @@ import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-import { Heart, Play, MoreVertical, Disc, Users, ListPlus, ListMusic, Sparkles, Trash2, GripVertical } from 'lucide-vue-next'
+import { Heart, MoreVertical, Disc, Users, ListPlus, ListMusic, Sparkles, Trash2, GripVertical } from 'lucide-vue-next'
 import { VueDraggable } from 'vue-draggable-plus'
 import SafeImage from '@/components/shared/SafeImage.vue'
+import TrackPlayingMarker from '@/components/shared/TrackPlayingMarker.vue'
 
 const props = defineProps({
   localTracks: { type: Array, required: true },
@@ -32,8 +33,30 @@ const props = defineProps({
   updateRating: { type: Function, required: true },
   removeTrackFromPlaylist: { type: Function, required: true },
   openPlaylistModal: { type: Function, required: true },
-  fetchMetadata: { type: Function, required: true }
+  fetchMetadata: { type: Function, required: true },
+  /** 플레이어 now playing 과 동일 표시용 (null 이면 미표시) */
+  nowPlayingTrackId: { type: String, default: null },
+  playerIsPlaying: { type: Boolean, default: false },
+  togglePlay: { type: Function, required: true }
 })
+
+function activeNow(trackId) {
+  return props.nowPlayingTrackId != null && String(props.nowPlayingTrackId) === String(trackId)
+}
+
+function splitTrackTitle(title) {
+  const raw = String(title ?? '')
+  const m = raw.match(/^(.*?)(\s*(\([^)]*\)\s*)+)$/)
+  if (!m) return { main: raw, suffix: '' }
+  const suffix = (m[2] || '')
+    .replace(/[()]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return {
+    main: m[1].trimEnd() || raw,
+    suffix,
+  }
+}
 
 const emit = defineEmits(['update:localTracks'])
 
@@ -76,7 +99,10 @@ const draggableTracks = computed({
           v-for="(item, index) in draggableTracks"
           :key="item.id"
           class="hover:bg-muted/50 transition-colors group cursor-pointer"
-          :class="{ 'bg-primary/5': selectedTrackIds.includes(item.id) }"
+          :class="{
+            'bg-primary/5': selectedTrackIds.includes(item.id),
+            'bg-primary/[0.08]': activeNow(item.id),
+          }"
           @click="playTrack(index)"
         >
           <TableCell v-if="playlistId" class="w-8 p-0 text-center align-middle" @click.stop>
@@ -87,11 +113,14 @@ const draggableTracks = computed({
             <input type="checkbox" :checked="selectedTrackIds.includes(item.id)" @change="toggleSelect(item.id)" class="w-4 h-4 rounded border-muted-foreground/30 accent-primary cursor-pointer focus:ring-primary focus:ring-offset-2 transition-all"/>
           </TableCell>
 
-          <TableCell class="text-center text-muted-foreground font-mono text-xs">
-            <div class="w-5 h-5 mx-auto flex items-center justify-center">
-              <span class="group-hover:hidden">{{ index + 1 }}</span>
-              <Play class="hidden group-hover:block w-4 h-4 text-primary fill-current" />
-            </div>
+          <TableCell class="align-middle font-mono text-xs text-muted-foreground">
+            <TrackPlayingMarker
+              :list-index="index"
+              :track-id="item.id"
+              :now-playing-track-id="nowPlayingTrackId"
+              :player-is-playing="playerIsPlaying"
+              :toggle-play="togglePlay"
+            />
           </TableCell>
 
           <TableCell v-if="showCover" class="p-2">
@@ -104,7 +133,12 @@ const draggableTracks = computed({
           <TableCell>
             <div class="flex flex-col min-w-0">
               <div class="flex items-center gap-2">
-                <span class="font-bold text-base truncate">{{ item.title }}</span>
+                <span class="truncate text-[14px] font-semibold" :class="activeNow(item.id) ? 'text-primary' : ''">
+                  {{ splitTrackTitle(item.title).main }}
+                  <span v-if="splitTrackTitle(item.title).suffix" class="ml-1 text-[12px] text-muted-foreground/75">
+                    {{ ' ' + splitTrackTitle(item.title).suffix }}
+                  </span>
+                </span>
                 <button @click.stop="toggleStar(item)" class="hover:scale-110 transition-transform focus:outline-none">
                   <Heart class="w-4 h-4" :class="item.starred ? 'text-red-500 fill-current' : 'text-muted-foreground'" />
                 </button>

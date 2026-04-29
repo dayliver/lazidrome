@@ -6,7 +6,7 @@ import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth' // 💉 추가됨
 import PlayerWrapper from '@/components/player/PlayerWrapper.vue'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, Layers } from 'lucide-vue-next'
+import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List } from 'lucide-vue-next'
 import MetadataEditDialog from '@/components/metadata/MetadataEditDialog.vue'
 
 import 'vue-sonner/style.css'
@@ -24,7 +24,7 @@ const navItems = [
   { name: 'Artists', path: '/artists', icon: Users },
   { name: 'Albums', path: '/albums', icon: Disc },
   { name: 'Tracks', path: '/tracks', icon: Music },
-  { name: 'Genres', path: '/genres', icon: Layers },
+  // { name: 'Genres', path: '/genres', icon: Layers }, // 일시 비활성 — 복구 시 lucide `Layers` import + router `/genres` 함께
   { name: 'Tags', path: '/tags', icon: Hash },
   { name: 'Playlists', path: '/playlists', icon: List },
   { name: 'Settings', path: '/settings', icon: Settings }

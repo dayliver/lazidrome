@@ -9,6 +9,8 @@ import {
 
 // 💡 공통 헬퍼: 경로가 있으면 쏴주고, 없으면 디폴트, 디폴트도 없으면 404
 function sendImageResponse(reply, imagePath) {
+  reply.header('Access-Control-Allow-Origin', '*');
+  reply.header('Cross-Origin-Resource-Policy', 'cross-origin');
   if (imagePath) {
     return reply.sendFile(imagePath);
   }

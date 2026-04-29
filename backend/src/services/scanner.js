@@ -6,6 +6,8 @@ import crypto from 'node:crypto';
 import * as mm from 'music-metadata';
 import db from '../db.js';
 import sharp from 'sharp';
+import { ROLES } from '../constants/roles.js';
+import { splitArtistNames } from '../lib/artistTags.js';
 
 function getFileHash(filePath) {
   const fileBuffer = fs.readFileSync(filePath);
@@ -38,14 +40,28 @@ export function startScanner(watchPath) {
       const albumName = metadata.common.album;
       const trackNo = metadata.common.track?.no || null;
       const discNo = metadata.common.disk?.no || null;
-      
-      // 💡 1. 트랙 아티스트와 앨범 아티스트 분리 추출
-      const trackArtistRaw = metadata.common.artist || 'Unknown Artist';
-      const trackArtistNames = trackArtistRaw.split(/[,/;]|\s&\s/).map(s => s.trim()).filter(Boolean);
-      
-      // 컴필레이션/합작 앨범을 위해 albumartist 태그를 우선 확인
-      const albumArtistRaw = metadata.common.albumartist || trackArtistRaw;
-      const albumArtistNames = albumArtistRaw.split(/[,/;]|\s&\s/).map(s => s.trim()).filter(Boolean);
+
+      const trackArtistNames = splitArtistNames(metadata.common.artist);
+      const albumArtistTagNames = splitArtistNames(metadata.common.albumartist);
+      const composerNames = splitArtistNames(metadata.common.composer);
+      const albumNamesForAlbum = splitArtistNames(
+        metadata.common.albumartist || metadata.common.artist
+      );
+
+      const maskByName = new Map();
+      const addRoleBits = (name, bits) => {
+        const k = name.trim();
+        if (!k) return;
+        maskByName.set(k, (maskByName.get(k) ?? 0) | bits);
+      };
+      for (let i = 0; i < trackArtistNames.length; i++) {
+        addRoleBits(
+          trackArtistNames[i],
+          i === 0 ? ROLES.PERFORMER : ROLES.FEATURING
+        );
+      }
+      for (const n of albumArtistTagNames) addRoleBits(n, ROLES.PERFORMER);
+      for (const n of composerNames) addRoleBits(n, ROLES.COMPOSER);
 
       let albumId = null;
 
@@ -73,8 +89,7 @@ export function startScanner(watchPath) {
           });
         };
 
-        const trackArtistIds = getOrCreateArtistIds(trackArtistNames);
-        const albumArtistIds = getOrCreateArtistIds(albumArtistNames);
+        const albumArtistIds = getOrCreateArtistIds(albumNamesForAlbum);
 
         // 💡 2. 앨범 찾기 (다대다 구조 반영)
         const safeAlbumName = albumName || `Unknown Album (${title})`;
@@ -135,10 +150,14 @@ export function startScanner(watchPath) {
         }
 
         if (currentTrackId) {
-          trackArtistIds.forEach((id, index) => {
-            const role = index === 0 ? 1 : 16;
-            db.prepare('INSERT OR IGNORE INTO track_artists (track_id, artist_id, role_mask) VALUES (?, ?, ?)').run(currentTrackId, id, role);
-          });
+          const insertTrackArtist = db.prepare(
+            'INSERT INTO track_artists (track_id, artist_id, role_mask) VALUES (?, ?, ?)'
+          );
+          for (const [name, mask] of maskByName) {
+            if (!mask) continue;
+            const artistId = getOrCreateArtistIds([name])[0];
+            insertTrackArtist.run(currentTrackId, artistId, mask);
+          }
 
           const existingLink = db.prepare('SELECT id FROM album_tracks WHERE album_id = ? AND track_id = ?').get(albumId, currentTrackId);
           if (!existingLink) {

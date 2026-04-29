@@ -1,10 +1,11 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import { 
-  findAlbumCoverType, 
-  findTrackCoverInfo, 
-  findArtistCoverType, 
-  findPlaylistCoverType 
+import {
+  findAlbumCoverType,
+  findTrackCoverInfo,
+  findArtistCoverType,
+  findPlaylistCoverType,
+  findRepresentativeTrackIdForAlbum
 } from '../repositories/imageRepository.js';
 
 const IMAGES_PATH = process.env.IMAGES_PATH || './storage/images';
@@ -18,11 +19,26 @@ function fileExists(subDir, fileName) {
 // 도메인별 이미지 경로 해석기 (Resolvers)
 // ==========================================
 
+/**
+ * 앨범 전용 이미지 URL.
+ * DB의 cover_type만 보던 기존 로직은, 트랙 API가 커스텀/앨범 연쇄로 찾는 경우와 불일치할 수 있어
+ * (프로덕션에서 AlbumDetail만 비는 현상) 파일·대표 트랙 순으로 폴백합니다.
+ */
 export function resolveAlbumImage(id) {
   const album = findAlbumCoverType(id);
   if (album?.cover_type) {
     const fileName = `${id}${album.cover_type}`;
     if (fileExists('albums', fileName)) return `albums/${fileName}`;
+  }
+  const exts = ['.jpg', '.jpeg', '.png', '.webp'];
+  for (const ext of exts) {
+    const fileName = `${id}${ext}`;
+    if (fileExists('albums', fileName)) return `albums/${fileName}`;
+  }
+  const row = findRepresentativeTrackIdForAlbum(id);
+  if (row?.id) {
+    const viaTrack = resolveTrackImage(row.id);
+    if (viaTrack) return viaTrack;
   }
   return null;
 }

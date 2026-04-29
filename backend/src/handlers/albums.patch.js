@@ -12,7 +12,7 @@ export async function patchAlbumHandler(request, reply) {
   try {
     if (isMultipart) {
       // 💡 철통 보안 화이트리스트
-      const ALLOWED_FIELDS = new Set(['title', 'year', 'mbid', 'tags', 'albumArtists', 'albumTracks', 'newCoverUrl']);
+      const ALLOWED_FIELDS = new Set(['title', 'year', 'mbid', 'tags', 'description', 'albumArtists', 'albumTracks', 'newCoverUrl']);
       const parts = request.parts();
       
       for await (const part of parts) {

@@ -1,10 +1,9 @@
 <script setup>
-import { ref, watch } from 'vue'
 import { ChevronLeft, User, Disc } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 
-const props = defineProps({
+defineProps({
   title: String,
   subtitle: String,
   imageUrl: String,
@@ -16,11 +15,6 @@ const props = defineProps({
 })
 
 const router = useRouter()
-const hasError = ref(false)
-
-watch(() => props.imageUrl, () => {
-  hasError.value = false
-})
 </script>
 
 <template>
@@ -38,10 +32,14 @@ watch(() => props.imageUrl, () => {
         'w-48 h-48 md:w-64 md:h-64 shrink-0 bg-muted shadow-xl border border-background/10 overflow-hidden relative',
         isRoundImage ? 'rounded-full' : 'rounded-xl'
       ]">
+        <!-- AlbumGrid와 동일: crossorigin + lazy, 실패 시 opacity만 조정 -->
         <img
-          v-if="imageUrl && !hasError"
+          v-if="imageUrl"
+          :key="imageUrl"
           :src="imageUrl"
-          @error="hasError = true"
+          crossorigin="anonymous"
+          loading="lazy"
+          @error="(e) => { e.target.style.opacity = '0' }"
           class="absolute inset-0 w-full h-full object-cover z-10"
         />
         <div class="absolute inset-0 flex items-center justify-center bg-secondary z-0">

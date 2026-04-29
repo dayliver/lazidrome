@@ -78,8 +78,8 @@ export const useLibraryStore = defineStore('library', () => {
 
   const updateTrackRating = async (trackId, rating) => {
     try {
-      // 💡 주소 끝에 /rating을 명시적으로 붙여줍니다!
-      const res = await auth.fetchWithAuth(`/api/tracks/${trackId}/rating`, {
+      // 백엔드: PATCH /api/tracks/:id/rate
+      const res = await auth.fetchWithAuth(`/api/tracks/${trackId}/rate`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating })
@@ -88,6 +88,7 @@ export const useLibraryStore = defineStore('library', () => {
       if (res.ok) {
         const track = tracks.value.find(t => t.id === trackId)
         if (track) track.rating = rating
+        emitTrackExternalSync({ id: trackId, rating })
       }
     } catch (err) {
       console.error('별점 서버 전송 실패:', err)
@@ -97,7 +98,7 @@ export const useLibraryStore = defineStore('library', () => {
   const toggleTrackStar = async (trackId, starred) => {
     try {
       // 💡 별점과 하트 모두 퀵 업데이트이므로 같은 라우트를 재사용합니다.
-      const res = await auth.fetchWithAuth(`/api/tracks/${trackId}/rating`, {
+      const res = await auth.fetchWithAuth(`/api/tracks/${trackId}/rate`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ starred: starred ? 1 : 0 }) // SQLite를 위해 1/0으로 변환
@@ -106,6 +107,7 @@ export const useLibraryStore = defineStore('library', () => {
       if (res.ok) {
         const track = tracks.value.find(t => t.id === trackId)
         if (track) track.starred = starred
+        emitTrackExternalSync({ id: trackId, starred: starred ? 1 : 0 })
       }
     } catch (err) {
       console.error('좋아요 서버 전송 실패:', err)
@@ -191,6 +193,43 @@ export const useLibraryStore = defineStore('library', () => {
     }
   }
 
+  /**
+   * 재생 절반 이상 시 서버에 반영(play_history + play_count). 스트림과 동일하게 쿼리 token도 붙여 인증.
+   * @param {string|number} trackId
+   * @param {number} positionPeakSec timeupdate 기준 최대 currentTime(초)
+   */
+  const recordTrackPlay = async (trackId, positionPeakSec) => {
+    if (!auth.token) return null
+
+    const encId = encodeURIComponent(String(trackId))
+    const tokenQ = `?token=${encodeURIComponent(auth.token)}`
+    const path = `/api/tracks/${encId}/play${tokenQ}`
+
+    try {
+      const res = await auth.fetchWithAuth(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ position_peak_sec: positionPeakSec }),
+      })
+      const raw = await res.text()
+      if (!res.ok) return null
+      let body
+      try {
+        body = raw ? JSON.parse(raw) : null
+      } catch {
+        return null
+      }
+      if (!body) return null
+      if (body?.success && body.data?.play_count != null && !body.skipped) {
+        updateLocalTrack({ id: trackId, play_count: body.data.play_count })
+        return body.data.play_count
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
+
   const updateLocalTrack = (newData) => {
     const processedData = normalizeTrackServerPayload(newData)
     if (!processedData) return
@@ -221,6 +260,7 @@ export const useLibraryStore = defineStore('library', () => {
     updateLocalArtist,
     updateLocalAlbum,
     updateLocalTrack,
+    recordTrackPlay,
     subscribeTrackExternalSync
   }
 })

@@ -4,7 +4,7 @@ import { ref, computed, watch } from 'vue'
 export const useAuthStore = defineStore('auth', () => {
   // --- 1. 상태 (State) ---
   // 서버 주소와 인증 토큰만 기억하면 됩니다.
-  const serverUrl = ref(localStorage.getItem('lz_server_url') || 'http://localhost:5294')
+  const serverUrl = ref(localStorage.getItem('lz_server_url') || '')
   const token = ref(localStorage.getItem('lz_token') || '')
 
   // --- 2. 반응형 설정 (Watch) ---
@@ -56,7 +56,7 @@ export const useAuthStore = defineStore('auth', () => {
    */
   const fetchWithAuth = async (endpoint, options = {}) => {
     const url = endpoint.startsWith('http') ? endpoint : `${serverUrl.value}${endpoint}`
-    
+
     const defaultOptions = {
       ...options,
       headers: {
@@ -66,7 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     const response = await fetch(url, defaultOptions)
-    
+
     // 만약 토큰이 만료(401)되었다면 자동 로그아웃 처리
     if (response.status === 401) {
       logout()

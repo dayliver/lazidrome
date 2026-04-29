@@ -145,10 +145,12 @@ export const useMetadataEditStore = defineStore('metadataEdit', () => {
       payload.append('tags', JSON.stringify(safeTags))
       payload.append('albumArtists', JSON.stringify(formData.albumArtists || []))
       payload.append('albumTracks', JSON.stringify(formData.albumTracks || []))
+      payload.append('description', formData.description ?? '')
     } else {
       payload.tags = safeTags
       payload.albumArtists = formData.albumArtists || []
       payload.albumTracks = formData.albumTracks || []
+      payload.description = formData.description ?? ''
     }
   }
 

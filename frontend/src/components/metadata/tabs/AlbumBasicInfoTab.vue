@@ -2,6 +2,7 @@
 import { Image as ImageIcon } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { useAuthStore } from '@/stores/auth'
 import { getCoverUrl } from '@/lib/image'
 
@@ -61,6 +62,16 @@ const updateField = (field, value) => {
         </TagsInputItem>
         <TagsInputInput placeholder="태그 입력..." class="text-sm" />
       </TagsInput>
+    </div>
+
+    <div class="space-y-2">
+      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">설명</Label>
+      <Textarea
+        :model-value="modelValue.description"
+        placeholder="출처, 공식 여부, 유튜브 전용 음반 등 메모 (선택)"
+        class="min-h-[120px] border-2 leading-relaxed resize-y"
+        @input="(e) => updateField('description', e.target.value)"
+      />
     </div>
 
     <div class="pt-6">

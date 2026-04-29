@@ -48,6 +48,19 @@ export function initDB() {
   } else {
     console.log('✔ 데이터베이스가 이미 준비되어 있습니다.');
   }
+  ensureAlbumDescriptionColumn();
+}
+
+/** 기존 DB에 albums.description 컬럼이 없으면 추가 (스키마 v2.1+) */
+function ensureAlbumDescriptionColumn() {
+  const cols = db.prepare('PRAGMA table_info(albums)').all();
+  if (cols.some((c) => c.name === 'description')) return;
+  try {
+    db.exec('ALTER TABLE albums ADD COLUMN description TEXT');
+    console.log('📌 albums.description 컬럼 추가됨 (마이그레이션)');
+  } catch (err) {
+    console.error('❌ albums.description 마이그레이션 실패:', err.message);
+  }
 }
 
 export default db;

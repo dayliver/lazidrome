@@ -34,6 +34,7 @@ CREATE TABLE artists (
 CREATE TABLE albums (
     id TEXT PRIMARY KEY,             -- ULID
     name TEXT NOT NULL,
+    description TEXT,                -- 출처·비공식 음반 등 메모 (playlists.description 과 동일 용도)
     cover_type TEXT,                 -- NULL이면 이미지 없음, 값이 있으면 확장자 (예: '.jpg', '.png')
     tags TEXT,                       -- JSON: ["신남", "드라이브"]
     year INTEGER,

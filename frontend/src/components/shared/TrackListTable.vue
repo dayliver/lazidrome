@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from 'vue'
+import { usePlayerStore } from '@/stores/player'
 import { formatTrackTime } from '@/lib/audio'
 import { X, Trash2, ListMusic } from 'lucide-vue-next'
 import PlaylistSelectModal from '@/components/playlist/PlaylistSelectModal.vue'
@@ -39,6 +41,11 @@ const {
   removeSelectedFromPlaylist,
   onDragEnd
 } = useTrackListTable(props)
+
+const player = usePlayerStore()
+const nowPlayingTrackId = computed(() => player.currentTrack?.id ?? null)
+const playerIsPlaying = computed(() => player.isPlaying)
+const togglePlayerPlay = () => player.togglePlay()
 </script>
 
 <template>
@@ -68,6 +75,9 @@ const {
       :remove-track-from-playlist="removeTrackFromPlaylist"
       :open-playlist-modal="openPlaylistModal"
       :fetch-metadata="fetchMetadata"
+      :now-playing-track-id="nowPlayingTrackId"
+      :player-is-playing="playerIsPlaying"
+      :toggle-play="togglePlayerPlay"
     />
 
     <TrackListTableMobile
@@ -95,6 +105,8 @@ const {
       :remove-track-from-playlist="removeTrackFromPlaylist"
       :open-playlist-modal="openPlaylistModal"
       :fetch-metadata="fetchMetadata"
+      :now-playing-track-id="nowPlayingTrackId"
+      :player-is-playing="playerIsPlaying"
     />
 
     <Transition name="slide-up">

@@ -39,7 +39,7 @@ export function findArtistDetail(id) {
 
 export function findArtistTracks(id) {
   return db.prepare(`
-    SELECT t.id, t.title, t.rating, t.play_count, ta.role_mask, f.duration, 
+    SELECT t.id, t.title, t.rating, t.starred, t.play_count, ta.role_mask, f.duration, 
       alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType 
     FROM track_metadata t
     JOIN track_artists ta ON t.id = ta.track_id

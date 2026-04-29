@@ -1,11 +1,12 @@
 {
   "name": "lazidrome-backend",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "serve": "pm2 start ./src/index.js --name \"lazidrome-backend\""
   },
   "keywords": [],
   "author": "",
