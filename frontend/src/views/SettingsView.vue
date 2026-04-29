@@ -2,14 +2,16 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
+import { useThemeStore } from '@/stores/theme'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
-import { Sparkles, Server, Save, RefreshCw, LogIn, LogOut } from 'lucide-vue-next'
+import { Sparkles, Server, Save, RefreshCw, LogIn, LogOut, Moon, Sun } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const library = useLibraryStore()
+const theme = useThemeStore()
 
 // 💉 수술 1: 로그인용 임시 비밀번호 상태
 const adminPassword = ref('')
@@ -64,6 +66,44 @@ const handleEnrich = async () => {
       <h1 class="text-3xl font-black tracking-tight">Settings</h1>
       <p class="text-muted-foreground">서버 연결 및 개인 설정을 관리합니다.</p>
     </div>
+
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2">
+          <component :is="theme.isDark ? Moon : Sun" class="w-5 h-5 text-primary" />
+          화면 테마
+        </CardTitle>
+        <CardDescription>라이트/다크 모드를 전환합니다.</CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-3">
+        <div class="flex items-center gap-2">
+          <Button
+            :variant="theme.mode === 'light' ? 'default' : 'outline'"
+            size="sm"
+            :class="theme.mode === 'light' ? 'font-bold shadow-sm' : ''"
+            @click="theme.setMode('light')"
+          >
+            라이트
+          </Button>
+          <Button
+            :variant="theme.mode === 'dark' ? 'default' : 'outline'"
+            size="sm"
+            :class="theme.mode === 'dark' ? 'font-bold shadow-sm' : ''"
+            @click="theme.setMode('dark')"
+          >
+            다크
+          </Button>
+          <Button
+            :variant="theme.mode === 'system' ? 'default' : 'outline'"
+            size="sm"
+            :class="theme.mode === 'system' ? 'font-bold shadow-sm' : ''"
+            @click="theme.setMode('system')"
+          >
+            시스템
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
 
     <Card>
       <CardHeader>
