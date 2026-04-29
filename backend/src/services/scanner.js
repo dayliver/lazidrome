@@ -18,7 +18,12 @@ export function startScanner(watchPath) {
   const watcher = chokidar.watch(watchPath, {
     ignored: /(^|[\/\\])\../,
     persistent: true,
-    ignoreInitial: false
+    ignoreInitial: false,
+    // 대용량 파일 복사 중간(add/change) 이벤트를 줄여 부분 파일 파싱을 방지
+    awaitWriteFinish: {
+      stabilityThreshold: 2000,
+      pollInterval: 100,
+    }
   });
 
   const IMAGES_PATH = process.env.IMAGES_PATH || './storage/images';
@@ -130,14 +135,24 @@ export function startScanner(watchPath) {
           currentTrackId = metaRecord?.id;
           
           if (currentTrackId) {
-            db.prepare('DELETE FROM track_filedata WHERE id = ?').run(existingByPath.hash);
             db.prepare(`
               INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source)
               VALUES (?, ?, ?, ?, ?, ?, 'scan')
             `).run(newHash, filePath, stats.size, duration, Math.round(metadata.format.bitrate / 1000), metadata.format.container);
 
             db.prepare('UPDATE track_metadata SET file_id = ?, title = ?, year = ?, genre = ? WHERE id = ?').run(newHash, title, year, genre, currentTrackId);
+            // ⚠️ FK ON DELETE CASCADE 안전성: track_metadata file_id 교체 후 이전 filedata 삭제
+            db.prepare('DELETE FROM track_filedata WHERE id = ?').run(existingByPath.hash);
             db.prepare('DELETE FROM track_artists WHERE track_id = ?').run(currentTrackId);
+          } else {
+            // filedata(path)는 있는데 metadata 연결이 끊긴 고아 상태 복구
+            db.prepare('DELETE FROM track_filedata WHERE id = ?').run(existingByPath.hash);
+            currentTrackId = ulid();
+            db.prepare(`
+              INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source)
+              VALUES (?, ?, ?, ?, ?, ?, 'scan')
+            `).run(newHash, filePath, stats.size, duration, Math.round(metadata.format.bitrate / 1000), metadata.format.container);
+            db.prepare('INSERT INTO track_metadata (id, file_id, title, year, genre) VALUES (?, ?, ?, ?, ?)').run(currentTrackId, newHash, title, year, genre);
           }
         } else {
           currentTrackId = ulid();
@@ -197,9 +212,60 @@ export function startScanner(watchPath) {
       if (err.code !== 'EBUSY' && err.code !== 'ENOENT') {
         console.error(`❌ 스캔 오류 (${filePath}):`, err.message);
       }
+      throw err;
     }
   };
 
-  watcher.on('add', handleFile);
-  watcher.on('change', handleFile);
+  // 이벤트 폭주(add/change 연속) 시 DB/파싱 경쟁을 피하려고 파일 단위 디바운스 + 전역 직렬 처리
+  let queue = Promise.resolve();
+  const scheduled = new Map();
+  const debounceMs = 350;
+
+  const processWithRetry = async (filePath, retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        await handleFile(filePath);
+        return;
+      } catch (err) {
+        const retryable = err?.code === 'EBUSY' || err?.code === 'ENOENT';
+        if (!retryable || i === retries - 1) {
+          if (!retryable) {
+            console.error(`❌ 스캔 실패 (재시도 불가) ${filePath}:`, err.message);
+          } else {
+            console.error(`❌ 스캔 실패 (재시도 소진) ${filePath}:`, err.message);
+          }
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+      }
+    }
+  };
+
+  const enqueueFile = (filePath) => {
+    const prev = scheduled.get(filePath);
+    if (prev) clearTimeout(prev);
+    const timer = setTimeout(() => {
+      scheduled.delete(filePath);
+      queue = queue
+        .then(() => processWithRetry(filePath))
+        .catch((e) => {
+          console.error('❌ 스캔 큐 처리 중 오류:', e?.message || e);
+        });
+    }, debounceMs);
+    scheduled.set(filePath, timer);
+  };
+
+  const handleUnlink = (filePath) => {
+    queue = queue.then(() => {
+      const row = db.prepare('SELECT id FROM track_filedata WHERE path = ?').get(filePath);
+      if (!row) return;
+      db.prepare('DELETE FROM track_filedata WHERE id = ?').run(row.id);
+    }).catch((e) => {
+      console.error(`❌ 삭제 동기화 오류 (${filePath}):`, e?.message || e);
+    });
+  };
+
+  watcher.on('add', enqueueFile);
+  watcher.on('change', enqueueFile);
+  watcher.on('unlink', handleUnlink);
 }

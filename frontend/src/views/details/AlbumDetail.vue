@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useLibraryStore } from '@/stores/library'
+import { useMetadataEditStore } from '@/stores/metadataEdit'
 import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
 import { getCoverUrl } from '@/lib/image'
@@ -21,6 +22,7 @@ import SectionHeader from '@/components/shared/SectionHeader.vue'
 const route = useRoute()
 const router = useRouter()
 const library = useLibraryStore()
+const metadataEdit = useMetadataEditStore()
 const player = usePlayerStore()
 const auth = useAuthStore()
 
@@ -73,8 +75,10 @@ const playShuffle = () => {
   }
 }
 
-const handleEdit = () => {
-  console.log('편집')
+const handleEdit = async () => {
+  if (!album.value?.id) return
+  metadataEdit.clearQueue()
+  await metadataEdit.fetchPreview('album', album.value.id)
 }
 </script>
 

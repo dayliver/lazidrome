@@ -6,6 +6,7 @@ import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useCoverUrl } from '@/composables/useCoverUrl'
 import { usePlaylistStore } from '@/stores/playlist'
 import { usePlayerStore } from '@/stores/player'
+import { toast } from 'vue-sonner'
 
 import { formatDuration } from '@/lib/audio'
 
@@ -72,7 +73,7 @@ const refreshMix = async () => {
 }
 
 const handleEdit = () => {
-  console.log('편집')
+  toast.info('플레이리스트 편집 다이얼로그는 곧 지원됩니다.')
 }
 </script>
 

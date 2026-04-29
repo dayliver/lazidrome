@@ -5,6 +5,7 @@ import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithL
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useCoverUrl } from '@/composables/useCoverUrl'
 import { useLibraryStore } from '@/stores/library'
+import { useMetadataEditStore } from '@/stores/metadataEdit'
 
 import { Users, Edit } from 'lucide-vue-next'
 
@@ -19,6 +20,7 @@ import SectionHeader from '@/components/shared/SectionHeader.vue'
 
 const route = useRoute()
 const library = useLibraryStore()
+const metadataEdit = useMetadataEditStore()
 
 const { data: artist, isLoading } = useAsyncResource(
   () => route.params.id,
@@ -71,8 +73,10 @@ const chartData = computed(() => {
   return Object.entries(counts).map(([star, count]) => ({ star: `${star}점`, count }))
 })
 
-const handleEdit = () => {
-  console.log('편집')
+const handleEdit = async () => {
+  if (!artist.value?.id) return
+  metadataEdit.clearQueue()
+  await metadataEdit.fetchPreview('artist', artist.value.id)
 }
 </script>
 
