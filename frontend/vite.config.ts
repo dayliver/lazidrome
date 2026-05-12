@@ -2,25 +2,46 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
+import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   plugins: [
-    vue(), 
+    vue(),
     tailwindcss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['icons.svg', 'pwa-192.png', 'pwa-512.png'],
+      manifest: {
+        name: 'Lazidrome',
+        short_name: 'Lazidrome',
+        description: 'Self-hosted music library',
+        theme_color: '#863bff',
+        background_color: '#0a0a0a',
+        display: 'standalone',
+        start_url: '/',
+        icons: [
+          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
+        navigateFallbackDenylist: [/^\/api/],
+      },
+    }),
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
   },
-  // 💡 프록시 설정 추가: 이제 fetch('/api/tracks')만 해도 백엔드로 연결됩니다.
   server: {
     port: 3000,
     proxy: {
       '/api': {
         target: 'http://localhost:5294',
         changeOrigin: true,
-      }
-    }
-  }
+      },
+    },
+  },
 })

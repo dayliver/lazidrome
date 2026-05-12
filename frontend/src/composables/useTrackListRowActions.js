@@ -4,6 +4,7 @@ import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
 import { getCoverUrl } from '@/lib/image'
+import { recordVisit } from '@/lib/visitHistory'
 
 export function useTrackListRowActions(localTracks) {
   const router = useRouter()
@@ -15,6 +16,8 @@ export function useTrackListRowActions(localTracks) {
   const getTrackImageUrl = (id) => getCoverUrl(auth.serverUrl, 'track', id, auth.token)
 
   const playTrack = (index) => {
+    const tr = localTracks.value?.[index]
+    if (tr?.id) recordVisit({ type: 'track', id: String(tr.id), name: String(tr.title || '').trim() || '' })
     if (player.playList) player.playList(localTracks.value, index)
     else player.playNewQueue(localTracks.value, index)
   }

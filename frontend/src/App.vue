@@ -1,12 +1,12 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { RouterView, RouterLink } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth' // 💉 추가됨
 import PlayerWrapper from '@/components/player/PlayerWrapper.vue'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List } from 'lucide-vue-next'
+import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, BarChart2 } from 'lucide-vue-next'
 import MetadataEditDialog from '@/components/metadata/MetadataEditDialog.vue'
 
 import 'vue-sonner/style.css'
@@ -27,16 +27,29 @@ const navItems = [
   // { name: 'Genres', path: '/genres', icon: Layers }, // 일시 비활성 — 복구 시 lucide `Layers` import + router `/genres` 함께
   { name: 'Tags', path: '/tags', icon: Hash },
   { name: 'Playlists', path: '/playlists', icon: List },
+  { name: 'Stats', path: '/stats', icon: BarChart2 },
   { name: 'Settings', path: '/settings', icon: Settings }
 ]
 
 onMounted(async () => {
-  // 인증된 상태라면 서버에서 라이브러리 데이터를 가져옵니다.
   if (auth.isAuthenticated) {
     await library.fetchLibrary()
+    await player.restoreQueueFromStorage()
   }
   player.initAudio()
+  player.beginPersistingQueue()
 })
+
+watch(
+  () => auth.token,
+  async (t, prev) => {
+    if (t && !prev) {
+      await library.fetchLibrary()
+      await player.restoreQueueFromStorage()
+      player.beginPersistingQueue()
+    }
+  }
+)
 </script>
 
 <template>

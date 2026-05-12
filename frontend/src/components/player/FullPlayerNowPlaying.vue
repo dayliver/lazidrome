@@ -1,23 +1,11 @@
 <script setup>
+import { computed } from 'vue'
 import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ListMusic, Heart, Star } from 'lucide-vue-next'
 import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
+import { splitTrailingParentheticals } from '@/lib/titleParts'
 
-function splitTrackTitle(title) {
-  const raw = String(title ?? '')
-  const m = raw.match(/^(.*?)(\s*(\([^)]*\)\s*)+)$/)
-  if (!m) return { main: raw, suffix: '' }
-  const suffix = (m[2] || '')
-    .replace(/[()]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return {
-    main: m[1].trimEnd() || raw,
-    suffix,
-  }
-}
-
-defineProps({
+const props = defineProps({
   player: { type: Object, required: true },
   coverUrl: { type: String, default: '' },
   currentTrack: { type: Object, default: null },
@@ -26,6 +14,8 @@ defineProps({
   toggleFavorite: { type: Function, required: true },
   changeRating: { type: Function, required: true }
 })
+
+const trackTitleParts = computed(() => splitTrailingParentheticals(props.currentTrack?.title))
 </script>
 
 <template>
@@ -61,12 +51,11 @@ defineProps({
       <div class="text-center md:text-left space-y-2">
         <h2 class="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight leading-tight">
           <template v-if="currentTrack?.title">
-            {{ splitTrackTitle(currentTrack.title).main }}
+            {{ trackTitleParts.main }}
             <span
-              v-if="splitTrackTitle(currentTrack.title).suffix"
-              class="ml-2 font-medium text-md sm:text-lg md:text-xl lg:text-2xl text-muted-foreground/95"
-            >{{ ' ' + splitTrackTitle(currentTrack.title).suffix }}
-            </span>
+              v-if="trackTitleParts.suffix"
+              class="ms-2 sm:ms-2.5 md:ms-3 font-medium text-md sm:text-lg md:text-xl lg:text-2xl text-muted-foreground/95"
+            >{{ trackTitleParts.suffix }}</span>
           </template>
           <template v-else>재생할 곡을 선택하세요</template>
         </h2>

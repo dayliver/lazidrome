@@ -6,7 +6,8 @@ defineProps({
   subtitle: String,
   imageUrl: String,
   stats: Array,
-  isRoundImage: { type: Boolean, default: false }
+  isRoundImage: { type: Boolean, default: false },
+  splitParentheticalTitle: { type: Boolean, default: false }
 })
 </script>
 
@@ -19,6 +20,7 @@ defineProps({
       :image-url="imageUrl"
       :stats="stats"
       :is-round-image="isRoundImage"
+      :split-parenthetical-title="splitParentheticalTitle"
     >
       <template #actions>
         <slot name="actions" />

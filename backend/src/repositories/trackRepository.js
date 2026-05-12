@@ -52,7 +52,7 @@ const PLAY_COUNT_THRESHOLD = 0.5;
 /**
  * DB에 있는 파일 길이(초) 기준으로 절반 이상 재생(position_peak_sec)일 때만
  * play_history 삽입 + play_count 증가 + last_played 갱신.
- * @returns {{ notFound: true } | { skipped: true, play_count: number } | { recorded: true, play_count: number }}
+ * @returns {{ notFound: true } | { skipped: true, play_count: number } | { recorded: true, play_count: number, playHistoryId: number | null }}
  */
 export function recordTrackPlayWithHistory(trackId, positionPeakSec) {
   const row = db
@@ -91,8 +91,42 @@ export function recordTrackPlayWithHistory(trackId, positionPeakSec) {
   });
   tx();
 
+  const hid = db.prepare('SELECT last_insert_rowid() AS id').get();
+  const playHistoryId = hid?.id != null ? Number(hid.id) : null;
+
   const after = db.prepare('SELECT play_count FROM track_metadata WHERE id = ?').get(trackId);
-  return { recorded: true, play_count: after?.play_count ?? playCount + 1 };
+  return { recorded: true, play_count: after?.play_count ?? playCount + 1, playHistoryId };
+}
+
+/**
+ * Last.fm 스크롭 성공 등으로 play_history.scrobbled 갱신
+ */
+export function markPlayHistoryScrobbled(playHistoryId, value = 1) {
+  if (playHistoryId == null || !Number.isFinite(Number(playHistoryId))) return 0;
+  return db.prepare('UPDATE play_history SET scrobbled = ? WHERE id = ?').run(value, playHistoryId).changes;
+}
+
+/** Last.fm용: 첫 주연 아티스트, 앨범명, 길이(초) */
+export function getTrackScrobbleMeta(trackId) {
+  return db
+    .prepare(
+      `
+    SELECT t.title,
+      (SELECT a.name FROM track_artists ta
+       JOIN artists a ON a.id = ta.artist_id
+       WHERE ta.track_id = t.id
+       ORDER BY ta.role_mask
+       LIMIT 1) AS artist,
+      alb.name AS album,
+      CAST(ROUND(f.duration)) AS duration_sec
+    FROM track_metadata t
+    JOIN track_filedata f ON f.id = t.file_id
+    LEFT JOIN album_tracks at ON at.track_id = t.id AND at.is_primary = 1
+    LEFT JOIN albums alb ON alb.id = at.album_id
+    WHERE t.id = ?
+  `
+    )
+    .get(trackId);
 }
 
 export function updateTrackRating(id, { rating, tags, starred }) {

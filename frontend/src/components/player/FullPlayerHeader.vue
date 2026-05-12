@@ -1,14 +1,18 @@
 <script setup>
+import { computed } from 'vue'
 import { ChevronDown, MoreVertical, Heart, Star } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { splitTrailingParentheticals } from '@/lib/titleParts'
 
-defineProps({
+const props = defineProps({
   player: { type: Object, required: true },
   currentTrack: { type: Object, default: null },
   showMenu: { type: Boolean, required: true },
   toggleFavorite: { type: Function, required: true },
   changeRating: { type: Function, required: true }
 })
+
+const albumTitleParts = computed(() => splitTrailingParentheticals(props.currentTrack?.albumName))
 
 defineEmits(['close', 'toggle-menu'])
 </script>
@@ -22,7 +26,12 @@ defineEmits(['close', 'toggle-menu'])
       <span class="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-1">
         {{ player.isQueueView ? 'Up Next' : 'Now Playing' }}
       </span>
-      <span class="text-sm font-bold truncate max-w-[250px]">{{ currentTrack?.albumName || 'Lazidrome' }}</span>
+      <span class="text-sm font-bold truncate max-w-[250px]">
+        <template v-if="albumTitleParts.suffix">
+          {{ albumTitleParts.main }}<span class="ms-1.5 font-semibold text-muted-foreground/90">{{ albumTitleParts.suffix }}</span>
+        </template>
+        <template v-else>{{ currentTrack?.albumName || 'Lazidrome' }}</template>
+      </span>
     </div>
 
     <div class="relative">

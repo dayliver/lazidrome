@@ -91,6 +91,7 @@ const handleEdit = async () => {
   <DetailLayout
     v-else-if="album"
     :title="album.name"
+    split-parenthetical-title
     :subtitle="album.displayArtist || 'Unknown Artist'"
     :is-round-image="false"
     :image-url="albumCoverUrl"

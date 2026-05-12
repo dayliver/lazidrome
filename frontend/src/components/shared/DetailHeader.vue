@@ -1,9 +1,11 @@
 <script setup>
+import { computed } from 'vue'
 import { ChevronLeft, User, Disc } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
+import { splitTrailingParentheticals } from '@/lib/titleParts'
 
-defineProps({
+const props = defineProps({
   title: String,
   subtitle: String,
   imageUrl: String,
@@ -11,10 +13,17 @@ defineProps({
   isRoundImage: {
     type: Boolean,
     default: false
+  },
+  /** 앨범/히어로 제목: 끝의 괄호 구간은 제거하고 덜 강조된 텍스트로 표시 (Full Player 트랙 제목과 동일 규칙) */
+  splitParentheticalTitle: {
+    type: Boolean,
+    default: false
   }
 })
 
 const router = useRouter()
+
+const titleParts = computed(() => splitTrailingParentheticals(props.title))
 </script>
 
 <template>
@@ -52,7 +61,12 @@ const router = useRouter()
         <div class="space-y-1">
           <span class="text-xs font-black tracking-[0.3em] text-muted-foreground uppercase">{{ subtitle }}</span>
           <h1 class="text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter leading-tight break-keep">
-            {{ title || 'Loading...' }}
+            <template v-if="splitParentheticalTitle && titleParts.suffix">
+              {{ titleParts.main }}<span class="ms-2 md:ms-3 lg:ms-4 font-medium text-muted-foreground/90">{{ titleParts.suffix }}</span>
+            </template>
+            <template v-else>
+              {{ title || 'Loading...' }}
+            </template>
           </h1>
         </div>
 

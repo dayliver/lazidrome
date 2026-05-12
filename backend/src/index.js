@@ -17,6 +17,8 @@ import tagsRoutes from './routes/tags.js';
 import searchRoutes from './routes/search.js';
 import imagesRoutes from './routes/images.js';
 import playlistsRoutes from './routes/playlists.js';
+import homeRoutes from './routes/home.js';
+import statsRoutes from './routes/stats.js';
 
 // 1. 환경 변수 로드
 dotenv.config();
@@ -103,6 +105,8 @@ fastify.register(tagsRoutes);
 fastify.register(searchRoutes);
 fastify.register(imagesRoutes);
 fastify.register(playlistsRoutes);
+fastify.register(homeRoutes);
+fastify.register(statsRoutes);
 
 // ==========================================
 // 🚀 서버 실행

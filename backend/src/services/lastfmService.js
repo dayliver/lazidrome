@@ -1,6 +1,75 @@
 // backend/src/services/lastfmService.js
 
+import crypto from 'node:crypto';
+
 const BASE_URL = 'http://ws.audioscrobbler.com/2.0/';
+
+/**
+ * Last.fm 서명(api_sig): 키 알파벳 순으로 `key+value` 이어붙인 뒤 secret을 붙여 MD5
+ * @param {Record<string, string>} params
+ * @param {string} secret
+ */
+function signLastfmParams(params, secret) {
+  const keys = Object.keys(params).filter((k) => k !== 'api_sig').sort();
+  const s = keys.map((k) => k + params[k]).join('');
+  return crypto.createHash('md5').update(s + secret, 'utf8').digest('hex');
+}
+
+/**
+ * `track.scrobble` — `LASTFM_API_KEY`, `LASTFM_API_SECRET`, `LASTFM_SESSION_KEY`가 모두 있을 때만 시도
+ * @returns {Promise<{ ok: boolean, error?: number, message?: string }>}
+ */
+async function scrobbleTrackWrite({
+  artist,
+  track,
+  album = null,
+  durationSec = null,
+  timestampSec = null,
+}) {
+  const api_key = process.env.LASTFM_API_KEY;
+  const api_secret = process.env.LASTFM_API_SECRET;
+  const sk = process.env.LASTFM_SESSION_KEY;
+  if (!api_key || !api_secret || !sk || !artist || !track) {
+    return { ok: false, message: 'missing_env_or_meta' };
+  }
+
+  const ts = String(timestampSec ?? Math.floor(Date.now() / 1000));
+  /** @type {Record<string, string>} */
+  const params = {
+    method: 'track.scrobble',
+    api_key,
+    sk,
+    timestamp: ts,
+    artist: String(artist).slice(0, 300),
+    track: String(track).slice(0, 300),
+    format: 'json',
+  };
+  if (album) params.album = String(album).slice(0, 300);
+  if (durationSec != null && Number.isFinite(Number(durationSec)) && Number(durationSec) > 0) {
+    params.duration = String(Math.round(Number(durationSec)));
+  }
+  params.api_sig = signLastfmParams(params, api_secret);
+
+  try {
+    const body = new URLSearchParams(params);
+    const res = await fetch(BASE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    const data = await res.json();
+    if (!res.ok || data?.error) {
+      const message = typeof data?.message === 'string' ? data.message : res.statusText;
+      const code = typeof data?.error === 'number' ? data.error : undefined;
+      return { ok: false, message, error: code };
+    }
+    if (data?.scrobbles) return { ok: true };
+    return { ok: false, message: 'no_scrobbles_in_response' };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return { ok: false, message: `fetch_error:${message}` };
+  }
+}
 
 /**
  * Last.fm API 요청 URL을 생성하는 헬퍼 함수
@@ -39,7 +108,11 @@ const getBestImage = (imageArray) => {
 };
 
 export const lastfmService = {
-  
+  /**
+   * 재생 확정(서버에서 play_history 기록 직후 등) 시 Last.fm에 스크롭 전송
+   */
+  scrobble: scrobbleTrackWrite,
+
   /**
    * 1. 아티스트 정보 가져오기
    * - 바이오그래피, 상위 태그, 비슷한 아티스트를 정규화하여 반환합니다.

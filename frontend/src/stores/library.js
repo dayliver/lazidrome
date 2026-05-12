@@ -241,6 +241,71 @@ export const useLibraryStore = defineStore('library', () => {
     emitTrackExternalSync(processedData)
   }
 
+  const homeShelves = ref(null)
+  const homeShelvesLoading = ref(false)
+  const homeShelvesError = ref(null)
+
+  /**
+   * 홈 선반 데이터 (GET /api/home/shelves)
+   * @param {'24h'|'48h'|'7d'} [windowKey='7d']
+   */
+  const fetchHomeShelves = async (windowKey = '7d') => {
+    if (!auth.token) {
+      homeShelves.value = null
+      return null
+    }
+    homeShelvesLoading.value = true
+    homeShelvesError.value = null
+    try {
+      const q = new URLSearchParams({ window: windowKey })
+      const res = await auth.fetchWithAuth(`/api/home/shelves?${q}`)
+      if (!res.ok) {
+        const t = await res.text()
+        throw new Error(t || res.statusText)
+      }
+      const data = await res.json()
+      homeShelves.value = data
+      return data
+    } catch (e) {
+      console.error('홈 선반 로드 실패:', e)
+      homeShelvesError.value = e
+      homeShelves.value = null
+      return null
+    } finally {
+      homeShelvesLoading.value = false
+    }
+  }
+
+  /**
+   * 재생 이벤트 집계 차트 (GET /api/stats/plays)
+   * @param {'24h'|'48h'|'7d'|'30d'|'all'} range
+   */
+  const fetchStatsPlays = async (range = '7d') => {
+    const q = new URLSearchParams({ range })
+    const res = await auth.fetchWithAuth(`/api/stats/plays?${q}`)
+    if (!res.ok) {
+      const t = await res.text()
+      throw new Error(t || res.statusText)
+    }
+    const body = await res.json()
+    return body?.data ?? null
+  }
+
+  /**
+   * 기간 내 play_history 이벤트 수 기준 상위 트랙·앨범 (GET /api/stats/top)
+   * @param {'24h'|'48h'|'7d'|'30d'|'all'} range
+   */
+  const fetchStatsTop = async (range = '7d', limit = 12) => {
+    const q = new URLSearchParams({ range, limit: String(limit) })
+    const res = await auth.fetchWithAuth(`/api/stats/top?${q}`)
+    if (!res.ok) {
+      const t = await res.text()
+      throw new Error(t || res.statusText)
+    }
+    const body = await res.json()
+    return body?.data ?? null
+  }
+
   return {
     tracks,
     artists,
@@ -261,6 +326,12 @@ export const useLibraryStore = defineStore('library', () => {
     updateLocalAlbum,
     updateLocalTrack,
     recordTrackPlay,
-    subscribeTrackExternalSync
+    subscribeTrackExternalSync,
+    homeShelves,
+    homeShelvesLoading,
+    homeShelvesError,
+    fetchHomeShelves,
+    fetchStatsPlays,
+    fetchStatsTop,
   }
 })
