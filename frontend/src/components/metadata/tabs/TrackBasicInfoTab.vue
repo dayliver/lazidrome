@@ -103,7 +103,7 @@ const updateField = (field, value) => {
           >
             <img 
               v-if="modelValue.albumId || item.local.currentAlbumId"
-              :src="getCoverUrl(auth.serverUrl, 'album', modelValue.albumId || item.local.currentAlbumId, auth.token)" 
+              :src="auth.coverSrc('album', modelValue.albumId || item.local.currentAlbumId)"
               crossorigin="anonymous"
               class="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-110" 
             />

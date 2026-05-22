@@ -7,24 +7,11 @@ import {
   clampByteRangeForPreview,
   DEFAULT_STREAM_PREVIEW_SECONDS,
 } from '../services/streamService.js';
+import { hasMediaOrJwtAccess } from '../lib/mediaAuth.js';
 
 function isStreamFullAccess(request) {
-  const jwtApi = request.server?.jwt;
-  if (!jwtApi?.verify) return false;
-  try {
-    const q = request.query?.token;
-    if (q) {
-      jwtApi.verify(q);
-      return true;
-    }
-    const auth = request.headers.authorization;
-    if (auth?.startsWith('Bearer ')) {
-      jwtApi.verify(auth.slice(7));
-      return true;
-    }
-  } catch {
-    return false;
-  }
+  const secret = request.server?.mediaSigningSecret;
+  if (secret && hasMediaOrJwtAccess(request, secret)) return true;
   return false;
 }
 

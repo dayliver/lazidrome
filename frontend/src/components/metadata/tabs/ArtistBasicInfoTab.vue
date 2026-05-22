@@ -75,7 +75,7 @@ const updateField = (field, value) => {
         >
           <img 
             v-if="item?.local?.id"
-            :src="getCoverUrl(auth.serverUrl, 'artist', item.local.id, auth.token)" 
+            :src="auth.coverSrc('artist', item.local.id)"
             crossorigin="anonymous"
             class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
           />

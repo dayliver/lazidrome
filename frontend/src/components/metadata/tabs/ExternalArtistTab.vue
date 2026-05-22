@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
+import { useExternalMetadataSearch } from '@/composables/useExternalMetadataSearch'
+import { notify } from '@/lib/notify'
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -17,23 +19,23 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const metadataEdit = useMetadataEditStore()
+const { searchMethod, fetchExternal, notifyMergeAll } = useExternalMetadataSearch()
 
 // 💡 아티스트 전용 검색 필드
-const searchMethod = ref('text')
 const searchArtist = ref(props.modelValue.title || '')
 const searchMbid = ref(props.modelValue.mbid || '')
 
-const handleFetch = async () => {
-  if (searchMethod.value === 'text') {
-    if (!searchArtist.value) return alert('아티스트 이름을 입력하세요.')
-    // 💡 아티스트 검색은 title 파라미터 자리에 아티스트 이름을 넣습니다.
-    await metadataEdit.reFetchPreview(searchArtist.value, '')
-  } else {
-    if (!searchMbid.value) return alert('MBID를 입력하세요.')
-    // 💡 mbid 검색 대응
-    await metadataEdit.reFetchPreview(null, null, searchMbid.value)
-  }
-}
+const handleFetch = () =>
+  fetchExternal({
+    textValid: () => {
+      if (searchArtist.value) return true
+      notify.warning('아티스트 이름을 입력하세요.')
+      return false
+    },
+    onText: () => metadataEdit.reFetchPreview(searchArtist.value, ''),
+    mbidValue: searchMbid.value,
+    mbidMissingMessage: 'MBID를 입력하세요.',
+  })
 
 const updateField = (field, value) => {
   emit('update:modelValue', { ...props.modelValue, [field]: value })
@@ -60,7 +62,7 @@ const applyTags = () => {
   const newTags = extTags.filter(t => !currentTags.includes(t))
   
   if (newTags.length === 0) {
-    alert('새로 추가할 태그가 없습니다 (이미 모두 포함됨).')
+    notify.warning('새로 추가할 태그가 없습니다 (이미 모두 포함됨).')
     return
   }
   updateField('tags', [...currentTags, ...newTags])
@@ -82,8 +84,7 @@ const applyAll = () => {
   applyTags()
   applyCover()
   if (props.item.external?.mbid) updateField('mbid', props.item.external.mbid)
-  
-  alert('모든 외부 데이터가 로컬 폼으로 병합되었습니다. "변경사항 저장"을 눌러 확정하세요.')
+  notifyMergeAll()
 }
 </script>
 

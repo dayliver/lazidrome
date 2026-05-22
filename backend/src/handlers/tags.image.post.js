@@ -1,3 +1,4 @@
+import { isClientSafeErrorMessage } from '../lib/httpErrors.js';
 import { saveTagCoverFromBuffer, saveTagCoverFromUrl } from '../services/tagCoverService.js';
 import { clearTagCache } from '../services/tagService.js';
 
@@ -33,8 +34,10 @@ export async function postTagImageHandler(request, reply) {
     return { success: true };
   } catch (err) {
     request.log.error(err);
-    const msg = err.message || '태그 이미지 저장 실패';
-    const code = msg.includes('/') || msg.includes('\\') || msg.includes('..') || msg.includes('비어') ? 400 : 500;
-    return reply.code(code).send({ error: msg });
+    const msg = err instanceof Error ? err.message : '';
+    if (isClientSafeErrorMessage(msg)) {
+      return reply.code(400).send({ error: msg });
+    }
+    return reply.code(500).send({ error: '태그 이미지 저장 중 오류가 발생했습니다.' });
   }
 }

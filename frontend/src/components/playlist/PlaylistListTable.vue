@@ -25,7 +25,7 @@ const playlistStore = usePlaylistStore()
 const authStore = useAuthStore()
 
 // 💡 헬퍼 함수: 플레이리스트 커버 이미지 URL 생성
-const getPlaylistImageUrl = (id) => getCoverUrl(authStore.serverUrl, 'playlist', id, authStore.token)
+const getPlaylistImageUrl = (id) => authStore.coverSrc('playlist', id)
 
 const goToDetail = (id) => {
   router.push({ name: 'playlist-detail', params: { id } })

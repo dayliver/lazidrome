@@ -22,6 +22,7 @@ const props = defineProps({
   toggleSelectAll: { type: Function, required: true },
   toggleSelect: { type: Function, required: true },
   playTrack: { type: Function, required: true },
+  prefetchTrackStream: { type: Function, default: null },
   onDragEnd: { type: Function, required: true },
   getTrackImageUrl: { type: Function, required: true },
   toggleStar: { type: Function, required: true },
@@ -104,6 +105,7 @@ const draggableTracks = computed({
             'bg-primary/[0.08]': activeNow(item.id),
           }"
           @click="playTrack(index)"
+          @mouseenter="prefetchTrackStream?.(item)"
         >
           <TableCell v-if="playlistId" class="w-8 p-0 text-center align-middle" @click.stop>
             <GripVertical class="w-4 h-4 mx-auto text-muted-foreground/30 hover:text-foreground cursor-grab active:cursor-grabbing drag-handle transition-colors" />

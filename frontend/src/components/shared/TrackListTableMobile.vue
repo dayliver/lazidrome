@@ -19,6 +19,7 @@ const props = defineProps({
   toggleSelectAll: { type: Function, required: true },
   toggleSelect: { type: Function, required: true },
   playTrack: { type: Function, required: true },
+  prefetchTrackStream: { type: Function, default: null },
   onDragEnd: { type: Function, required: true },
   getTrackImageUrl: { type: Function, required: true },
   toggleStar: { type: Function, required: true },
@@ -80,7 +81,7 @@ const draggableTracks = computed({
           'border-l-[3px] border-l-primary': activeNow(item.id),
           'bg-primary/[0.07]': activeNow(item.id),
           'bg-primary/5': selectedTrackIds.includes(item.id) && !activeNow(item.id),
-        }" @click="playTrack(index)"
+        }" @click="playTrack(index)" @mouseenter="prefetchTrackStream?.(item)"
       >
         <div v-if="playlistId" class="shrink-0 flex items-center pr-1" @click.stop>
           <GripVertical class="w-5 h-5 text-muted-foreground/30 hover:text-foreground cursor-grab active:cursor-grabbing drag-handle transition-colors" />

@@ -2,6 +2,12 @@ import { ref } from 'vue'
 
 const DRAG_THRESHOLD_PX = 6
 
+/** 스트립 안의 버튼·링크 등 — 드래그·포인터 캡처 제외 */
+export function isHorizontalDragInteractiveTarget(e) {
+  const el = e.target
+  return el instanceof Element && !!el.closest('button, a, input, textarea, select, [role="button"]')
+}
+
 /**
  * 가로 overflow 영역을 마우스/포인터로 드래그해 스크롤합니다 (데스크톱 등).
  * 드래그로 움직였다면 직후 click은 무시하도록 `consumeClickIfSuppressed` 사용.
@@ -26,6 +32,7 @@ export function useHorizontalDragScroll() {
   }
 
   function onPointerDown(e) {
+    if (isHorizontalDragInteractiveTarget(e)) return
     const el = elRef.value
     if (!el || e.button !== 0) return
     pointerDown = true

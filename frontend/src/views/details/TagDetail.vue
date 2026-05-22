@@ -61,7 +61,7 @@ const imageBust = ref(0)
 
 const imageUrl = computed(() => {
   if (!tagName.value || !auth.serverUrl) return ''
-  const base = getCoverUrl(auth.serverUrl, 'tag', tagName.value, auth.token)
+  const base = auth.coverSrc('tag', tagName.value)
   if (!base) return ''
   return `${base}&_cb=${imageBust.value}`
 })

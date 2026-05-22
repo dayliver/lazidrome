@@ -4,6 +4,7 @@ import { UserPlus, Trash2, User, Search, Users } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useLibraryStore } from '@/stores/library'
+import { notify } from '@/lib/notify'
 
 const props = defineProps({
   modelValue: {
@@ -54,7 +55,7 @@ const addArtist = (artistOrName) => {
 
   // 중복 검사
   if (props.modelValue.some(a => a.name.toLowerCase() === name.toLowerCase())) {
-    alert('이미 추가된 앨범 아티스트입니다.')
+    notify.warning('이미 추가된 앨범 아티스트입니다.')
     searchQuery.value = ''
     searchResults.value = []
     return

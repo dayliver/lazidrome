@@ -2,22 +2,71 @@ import { getDB } from '../db.js';
 
 const db = getDB();
 
-export function findAllTracks() {
-  return db.prepare(`
-    SELECT 
-      t.id, t.title, t.rating, t.starred, t.year, t.tags, t.play_count, t.last_played,
-      t.custom_cover_type, f.duration, f.format, f.bitrate,
-      alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType, 
-      GROUP_CONCAT(a.name, ', ') as artist
+const TRACK_LIST_FROM = `
     FROM track_metadata t
     JOIN track_filedata f ON t.file_id = f.id
     LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
     LEFT JOIN albums alb ON at.album_id = alb.id
     LEFT JOIN track_artists ta ON t.id = ta.track_id
-    LEFT JOIN artists a ON ta.artist_id = a.id
-    GROUP BY t.id
-    ORDER BY f.scanned_at DESC
-  `).all();
+    LEFT JOIN artists a ON ta.artist_id = a.id`;
+
+const TRACK_LIST_SELECT = `
+    SELECT 
+      t.id, t.title, t.rating, t.starred, t.year, t.tags, t.play_count, t.last_played,
+      t.custom_cover_type, f.duration, f.format, f.bitrate,
+      alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType, 
+      GROUP_CONCAT(a.name, ', ') as artist
+    ${TRACK_LIST_FROM}`;
+
+const TRACK_LIST_GROUP_ORDER = `GROUP BY t.id ORDER BY f.scanned_at DESC`;
+
+export function countTracks() {
+  return db.prepare(`SELECT COUNT(*) AS total FROM track_metadata`).get().total;
+}
+
+export function findAllTracks() {
+  return db.prepare(`${TRACK_LIST_SELECT} ${TRACK_LIST_GROUP_ORDER}`).all();
+}
+
+export function findTracksPage(offset, limit) {
+  return db
+    .prepare(`${TRACK_LIST_SELECT} ${TRACK_LIST_GROUP_ORDER} LIMIT ? OFFSET ?`)
+    .all(limit, offset);
+}
+
+export function findTracksByIds(ids) {
+  const numericIds = [...new Set(ids.map((id) => Number(id)).filter((n) => Number.isFinite(n) && n > 0))];
+  if (numericIds.length === 0) return [];
+
+  const placeholders = numericIds.map(() => '?').join(',');
+  const rows = db
+    .prepare(`${TRACK_LIST_SELECT} WHERE t.id IN (${placeholders}) ${TRACK_LIST_GROUP_ORDER}`)
+    .all(...numericIds);
+
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return numericIds.map((id) => byId.get(id)).filter(Boolean);
+}
+
+export function searchTracks(query, limit = 10) {
+  const trimmed = String(query ?? '').trim();
+  if (!trimmed) return [];
+
+  const pattern = `%${trimmed}%`;
+  const lim = Math.min(50, Math.max(1, Number(limit) || 10));
+
+  return db
+    .prepare(`
+    ${TRACK_LIST_SELECT}
+    WHERE t.title LIKE ? COLLATE NOCASE
+       OR EXISTS (
+         SELECT 1 FROM track_artists ta2
+         JOIN artists a2 ON a2.id = ta2.artist_id
+         WHERE ta2.track_id = t.id AND a2.name LIKE ? COLLATE NOCASE
+       )
+    ${TRACK_LIST_GROUP_ORDER}
+    LIMIT ?
+  `)
+    .all(pattern, pattern, lim);
 }
 
 export function findTrackById(id) {
@@ -77,6 +126,19 @@ export function recordTrackPlayWithHistory(trackId, positionPeakSec) {
   }
 
   if (peak < durationSec * PLAY_COUNT_THRESHOLD) {
+    return { skipped: true, play_count: playCount };
+  }
+
+  // 모바일 등에서 동일 곡 flush·ended가 연달아 오는 경우 중복 집계 방지
+  const recentDup = db
+    .prepare(
+      `SELECT id FROM play_history
+       WHERE track_id = ?
+         AND played_at >= datetime('now', '-4 seconds')
+       LIMIT 1`
+    )
+    .get(trackId);
+  if (recentDup) {
     return { skipped: true, play_count: playCount };
   }
 

@@ -147,7 +147,18 @@ const removeCondition = (idx) => {
         </div>
         <div class="space-y-2">
           <Label class="text-[10px] font-black text-muted-foreground uppercase">최대 곡 수</Label>
-          <Input type="number" :model-value="modelValue.rules.limit" @input="e => modelValue.rules.limit = parseInt(e.target.value)" class="bg-muted/50 border-2 font-mono font-bold" />
+          <Input
+            type="number"
+            min="1"
+            max="200"
+            :model-value="modelValue.rules.limit"
+            @input="e => {
+              const n = parseInt(e.target.value, 10)
+              modelValue.rules.limit = Number.isFinite(n) ? Math.min(200, Math.max(1, n)) : 50
+            }"
+            class="bg-muted/50 border-2 font-mono font-bold"
+          />
+          <p class="text-[10px] text-muted-foreground">최대 200곡까지 조회됩니다.</p>
         </div>
       </div>
     </div>

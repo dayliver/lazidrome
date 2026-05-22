@@ -1,6 +1,15 @@
 import { getDB } from '../db.js';
 import { ulid } from 'ulid';
 
+export const DEFAULT_MIX_LIMIT = 50;
+export const MAX_MIX_LIMIT = 200;
+
+export function clampMixLimit(raw) {
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) return DEFAULT_MIX_LIMIT;
+  return Math.min(MAX_MIX_LIMIT, n);
+}
+
 // 🧠 [핵심 엔진] 스마트 믹스 동적 쿼리 생성기
 export function buildMixQuery(rulesString) {
   let rules;
@@ -43,7 +52,7 @@ export function buildMixQuery(rulesString) {
   else if (rules.sortBy === 'most_played') orderSql = 'ORDER BY t.play_count DESC';
   else if (rules.sortBy === 'highest_rated') orderSql = 'ORDER BY t.rating DESC';
 
-  const limit = parseInt(rules.limit, 10) || 50;
+  const limit = clampMixLimit(rules.limit);
 
   const finalSql = `
     SELECT 
@@ -55,19 +64,25 @@ export function buildMixQuery(rulesString) {
     JOIN track_filedata f ON t.file_id = f.id
     LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
     LEFT JOIN albums alb ON at.album_id = alb.id
-    ${whereSql} ${orderSql} LIMIT ${limit}
+    ${whereSql} ${orderSql} LIMIT ?
   `;
 
-  return { sql: finalSql, params };
+  return { sql: finalSql, params: [...params, limit] };
 }
 
 // 💡 생성 로직 (Transaction)
+function rulesForStorage(type, rules) {
+  if (type !== 'mix' || !rules) return null;
+  return JSON.stringify({ ...rules, limit: clampMixLimit(rules.limit) });
+}
+
 export function createPlaylistTransaction(id, data, coverType) {
   const db = getDB();
+  const type = data.type || 'list';
   db.transaction(() => {
     db.prepare(`INSERT INTO playlists (id, name, description, type, rules, cover_type) VALUES (?, ?, ?, ?, ?, ?)`).run(
-      id, data.name, data.description || null, data.type || 'list', 
-      data.type === 'mix' && data.rules ? JSON.stringify(data.rules) : null, coverType
+      id, data.name, data.description || null, type,
+      rulesForStorage(type, data.rules), coverType
     );
 
     if (data.type === 'list' && Array.isArray(data.playlistTracks) && data.playlistTracks.length > 0) {
@@ -84,7 +99,7 @@ export function updatePlaylistTransaction(id, data, finalCoverType, playlistType
   const db = getDB();
   db.transaction(() => {
     db.prepare(`UPDATE playlists SET name = ?, description = ?, rules = ?, cover_type = ? WHERE id = ?`).run(
-      data.name, data.description || null, data.rules ? JSON.stringify(data.rules) : null, finalCoverType, id
+      data.name, data.description || null, rulesForStorage(playlistType, data.rules), finalCoverType, id
     );
 
     if (playlistType === 'list' && Array.isArray(data.playlistTracks)) {

@@ -31,9 +31,7 @@ const goToArtistDetail = (artistId) => router.push({ name: 'artist-detail', para
 
 const playTopTrack = async (trackId) => {
   try {
-    const allTracks = await library.getTracks()
-    const fullTrack = allTracks.find(t => t.id === trackId)
-    
+    const [fullTrack] = await library.fetchTracksByIds([trackId])
     if (fullTrack) {
       player.playNewQueue([fullTrack], 0)
     } else {
@@ -44,16 +42,21 @@ const playTopTrack = async (trackId) => {
   }
 }
 
-const playArtistRandom = async (artistName) => {
-  const tracks = await library.getTracksByArtist(artistName)
-  if (tracks.length > 0) {
-    player.isShuffle = true
-    player.playNewQueue(tracks, Math.floor(Math.random() * tracks.length))
+const playArtistRandom = async (artist) => {
+  try {
+    const detail = await library.getArtistById(artist.id)
+    const tracks = detail?.tracks ?? []
+    if (tracks.length > 0) {
+      player.isShuffle = true
+      player.playNewQueue(tracks, Math.floor(Math.random() * tracks.length))
+    }
+  } catch (error) {
+    console.error('아티스트 셔플 재생 중 오류:', error)
   }
 }
 
 const getArtistImageUrl = (id) => {
-  return getCoverUrl(auth.serverUrl, 'artist', id, auth.token)
+  return auth.coverSrc('artist', id)
 }
 
 const renderStars = (rating) => {
@@ -86,7 +89,7 @@ const fetchMetadata = (artistId) => {
         <TableCell>
           <div class="flex items-center gap-4">
             <div class="relative w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden bg-muted group-hover:shadow-md shrink-0 border"
-                 @click.stop="playArtistRandom(artist.name)">
+                 @click.stop="playArtistRandom(artist)">
               <SafeImage
                 v-if="artist.cover_type"
                 :src="getArtistImageUrl(artist.id)"
@@ -147,7 +150,7 @@ const fetchMetadata = (artistId) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="w-48">
-              <DropdownMenuItem @click.stop="playArtistRandom(artist.name)">
+              <DropdownMenuItem @click.stop="playArtistRandom(artist)">
                 <Play class="mr-2 h-4 w-4" /> 전체 셔플 재생
               </DropdownMenuItem>
               <DropdownMenuItem @click.stop="goToArtistDetail(artist.id)">

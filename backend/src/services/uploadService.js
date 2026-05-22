@@ -1,12 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import crypto from 'node:crypto';
+import { sha256FileStream } from '../lib/fileHash.js';
 import * as mm from 'music-metadata';
 import { ulid } from 'ulid';
 import { insertUploadedTrackTransaction } from '../repositories/uploadRepository.js';
 
 const TRACKS_PATH = process.env.TRACKS_PATH || './storage/tracks';
+
+const ALLOWED_UPLOAD_EXT = new Set([
+  '.mp3', '.flac', '.m4a', '.aac', '.ogg', '.opus', '.wav', '.wma', '.ape', '.alac',
+]);
 
 export async function processAudioUpload(fileData) {
   // 1. 디렉토리 준비
@@ -15,7 +19,10 @@ export async function processAudioUpload(fileData) {
   }
 
   const tempId = ulid();
-  const ext = path.extname(fileData.filename);
+  const ext = path.extname(fileData.filename || '').toLowerCase();
+  if (!ALLOWED_UPLOAD_EXT.has(ext)) {
+    throw new Error(`허용되지 않는 확장자입니다: ${ext || '(없음)'}`);
+  }
   const fileName = `${tempId}${ext}`;
   const filePath = path.join(TRACKS_PATH, fileName);
 
@@ -25,8 +32,8 @@ export async function processAudioUpload(fileData) {
 
     // 3. 메타데이터 및 해시 추출
     const metadata = await mm.parseFile(filePath);
-    const fileBuffer = fs.readFileSync(filePath);
-    const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    const { size: fileSize } = await fs.promises.stat(filePath);
+    const fileHash = await sha256FileStream(filePath);
 
     // 4. DB 저장용 데이터 정제
     const title = metadata.common.title || fileData.filename.replace(ext, '');
@@ -37,7 +44,7 @@ export async function processAudioUpload(fileData) {
 
     // 5. DB 트랜잭션 실행
     insertUploadedTrackTransaction({
-      fileHash, filePath, fileSize: fileBuffer.length,
+      fileHash, filePath, fileSize,
       duration, bitrate, format, trackId, title
     });
 

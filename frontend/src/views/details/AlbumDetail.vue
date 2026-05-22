@@ -7,7 +7,6 @@ import { useLibraryStore } from '@/stores/library'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
 import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
-import { getCoverUrl } from '@/lib/image'
 
 import { formatDuration } from '@/lib/audio'
 
@@ -40,7 +39,7 @@ const allArtists = computed(() => data.value?.allArtists ?? [])
 useSyncTrackListWithLibrary(() => album.value?.tracks)
 
 /** AlbumGrid와 동일: `cover_type`이 있을 때만 이미지 URL 부여 (불필요한 404·@error 방지) */
-const getAlbumImageUrl = (id) => getCoverUrl(auth.serverUrl, 'album', id, auth.token)
+const getAlbumImageUrl = (id) => auth.coverSrc('album', id)
 
 const albumCoverUrl = computed(() => {
   const a = data.value?.album

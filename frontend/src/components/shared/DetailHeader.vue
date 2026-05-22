@@ -65,7 +65,7 @@ const titleParts = computed(() => splitTrailingParentheticals(props.title))
               {{ titleParts.main }}<span class="ms-2 md:ms-3 lg:ms-4 font-medium text-muted-foreground/90">{{ titleParts.suffix }}</span>
             </template>
             <template v-else>
-              {{ title || 'Loading...' }}
+              {{ title || '불러오는 중…' }}
             </template>
           </h1>
         </div>

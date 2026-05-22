@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth' // 💡 추가: 이미지 인증용
 import { getCoverUrl } from '@/lib/image'    // 💡 추가: 커버 URL 생성기
@@ -20,36 +20,36 @@ const auth = useAuthStore() // 💡 추가
 
 const searchQuery = ref('')
 const searchResults = ref([])
-const allTracks = ref([])
 const isFocused = ref(false)
+const isSearching = ref(false)
 
 const localTracks = ref([...props.modelValue])
 
-// 💡 헬퍼 함수: 트랙 커버 이미지 URL 생성기
-const getTrackImageUrl = (id) => getCoverUrl(auth.serverUrl, 'track', id, auth.token)
+const getTrackImageUrl = (id) => auth.coverSrc('track', id)
 
 watch(() => props.modelValue, (newVal) => {
   localTracks.value = [...newVal]
 }, { deep: true })
 
-onMounted(async () => {
-  const tracks = await library.getTracks()
-  allTracks.value = Array.isArray(tracks) ? tracks : []
-})
-
 const updateParent = () => {
   emit('update:modelValue', [...localTracks.value])
 }
 
-const handleSearch = () => {
-  const query = searchQuery.value.trim().toLowerCase()
+const handleSearch = async () => {
+  const query = searchQuery.value.trim()
   if (!query) {
     searchResults.value = []
     return
   }
-  searchResults.value = allTracks.value
-    .filter(t => t.title.toLowerCase().includes(query) || (t.artist && t.artist.toLowerCase().includes(query)))
-    .slice(0, 8)
+  isSearching.value = true
+  try {
+    searchResults.value = await library.searchTracks(query, 8)
+  } catch (e) {
+    console.error('트랙 검색 실패:', e)
+    searchResults.value = []
+  } finally {
+    isSearching.value = false
+  }
 }
 
 const handleBlur = () => {

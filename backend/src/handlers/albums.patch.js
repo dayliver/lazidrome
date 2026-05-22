@@ -1,3 +1,4 @@
+import { replyHttpError } from '../lib/httpErrors.js';
 import { editAlbum, formatAlbumTags } from '../services/albumService.js';
 import { saveCoverFromUrl, saveCoverFromBuffer } from '../services/coverService.js';
 import { findBasicAlbumById } from '../repositories/albumRepository.js';
@@ -46,7 +47,6 @@ export async function patchAlbumHandler(request, reply) {
     return { success: true, data: formatAlbumTags(raw) };
 
   } catch (err) {
-    request.log.error(err);
-    return reply.code(500).send({ error: err.message });
+    return replyHttpError(request, reply, err, { fallback: '앨범 수정 중 오류가 발생했습니다.' });
   }
 }

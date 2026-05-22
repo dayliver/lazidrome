@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
+import { useExternalMetadataSearch } from '@/composables/useExternalMetadataSearch'
+import { notify } from '@/lib/notify'
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -17,23 +19,24 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const metadataEdit = useMetadataEditStore()
+const { searchMethod, fetchExternal, notifyMergeAll } = useExternalMetadataSearch()
 
 // 💡 앨범 전용 검색 필드 초기화 (albumArtists 배열에서 첫 번째 이름을 가져옴)
-const searchMethod = ref('text')
 const searchAlbum = ref(props.modelValue.title || '')
 const searchArtist = ref(props.modelValue.albumArtists?.[0]?.name || '')
 const searchMbid = ref(props.modelValue.mbid || '')
 
-const handleFetch = async () => {
-  if (searchMethod.value === 'text') {
-    if (!searchAlbum.value || !searchArtist.value) return alert('앨범명과 아티스트를 모두 입력하세요.')
-    // Store의 reFetchPreview(title, artist)를 호출. 앨범이므로 title 자리에 앨범명이 들어갑니다.
-    await metadataEdit.reFetchPreview(searchAlbum.value, searchArtist.value)
-  } else {
-    if (!searchMbid.value) return alert('MBID를 입력하세요.')
-    await metadataEdit.reFetchPreview(null, null, searchMbid.value)
-  }
-}
+const handleFetch = () =>
+  fetchExternal({
+    textValid: () => {
+      if (searchAlbum.value && searchArtist.value) return true
+      notify.warning('앨범명과 아티스트를 모두 입력하세요.')
+      return false
+    },
+    onText: () => metadataEdit.reFetchPreview(searchAlbum.value, searchArtist.value),
+    mbidValue: searchMbid.value,
+    mbidMissingMessage: 'MBID를 입력하세요.',
+  })
 
 const updateField = (field, value) => {
   emit('update:modelValue', { ...props.modelValue, [field]: value })
@@ -58,7 +61,7 @@ const applyArtist = () => {
   const isExisting = currentArtists.some(a => a.name.toLowerCase() === extName.toLowerCase())
   
   if (isExisting) {
-    alert('이미 동일한 이름의 앨범 아티스트가 목록에 있습니다.')
+    notify.warning('이미 동일한 이름의 앨범 아티스트가 목록에 있습니다.')
     return
   }
 
@@ -84,8 +87,7 @@ const applyAll = () => {
   applyArtist()
   applyCover()
   if (props.item.external?.mbid) updateField('mbid', props.item.external.mbid)
-  
-  alert('모든 외부 데이터가 로컬 폼으로 병합되었습니다. "변경사항 저장"을 눌러 확정하세요.')
+  notifyMergeAll()
 }
 </script>
 

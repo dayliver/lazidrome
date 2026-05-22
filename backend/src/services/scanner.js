@@ -2,17 +2,12 @@ import chokidar from 'chokidar';
 import path from 'node:path';
 import fs from 'node:fs';
 import { ulid } from 'ulid';
-import crypto from 'node:crypto';
 import * as mm from 'music-metadata';
 import db from '../db.js';
 import sharp from 'sharp';
 import { ROLES } from '../constants/roles.js';
 import { splitArtistNames } from '../lib/artistTags.js';
-
-function getFileHash(filePath) {
-  const fileBuffer = fs.readFileSync(filePath);
-  return crypto.createHash('sha256').update(fileBuffer).digest('hex');
-}
+import { sha256FileStream } from '../lib/fileHash.js';
 
 export function startScanner(watchPath) {
   const watcher = chokidar.watch(watchPath, {
@@ -34,7 +29,7 @@ export function startScanner(watchPath) {
     if (!['.mp3', '.flac', '.wav', '.m4a', '.ogg', '.aac'].includes(ext)) return;
 
     try {
-      const newHash = getFileHash(filePath);
+      const newHash = await sha256FileStream(filePath);
       const stats = fs.statSync(filePath);
       const metadata = await mm.parseFile(filePath);
       

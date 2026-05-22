@@ -1,6 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import sharp from 'sharp';
+import { assertSafeExternalUrl } from '../lib/safeUrl.js';
 
 const IMAGES_PATH = process.env.IMAGES_PATH || './storage/images';
 
@@ -29,6 +30,7 @@ export async function saveTagCoverFromUrl(tagName, url) {
   if (!/^https?:\/\//i.test(u)) {
     throw new Error('http(s) URL만 허용됩니다.');
   }
+  await assertSafeExternalUrl(u);
   const res = await fetch(u);
   if (!res.ok) {
     throw new Error(`이미지 URL을 불러오지 못했습니다. (${res.status})`);

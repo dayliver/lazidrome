@@ -1,3 +1,4 @@
+import { isClientSafeErrorMessage } from '../lib/httpErrors.js';
 import { renameTagEverywhere } from '../repositories/tagRepository.js';
 import { clearTagCache } from '../services/tagService.js';
 import { renameTagCoverFile } from '../services/tagCoverService.js';
@@ -34,8 +35,10 @@ export async function patchTagRenameHandler(request, reply) {
     return { success: true, data: { ...stats, newName: newTrim } };
   } catch (err) {
     request.log.error(err);
-    const msg = err.message || '태그 이름 변경 실패';
-    const code = msg.includes('비어') || msg.includes('사용할 수 없') || msg.includes('이하여야') ? 400 : 500;
-    return reply.code(code).send({ error: msg });
+    const msg = err instanceof Error ? err.message : '';
+    if (isClientSafeErrorMessage(msg)) {
+      return reply.code(400).send({ error: msg });
+    }
+    return reply.code(500).send({ error: '태그 이름 변경 중 오류가 발생했습니다.' });
   }
 }

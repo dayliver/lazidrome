@@ -1,11 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useLibraryStore } from '@/stores/library'
+import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import { Button } from '@/components/ui/button'
 import TrackListTable from '@/components/shared/TrackListTable.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
+import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 
 const library = useLibraryStore()
+const { showAuthEmpty } = useRequiresAuth()
 
 const tracksData = ref([])
 const isLoading = ref(true)
@@ -16,39 +19,56 @@ const limit = 50
 const hasMore = ref(true)
 
 const loadTracks = async (isAppend = false) => {
+  if (showAuthEmpty.value) {
+    tracksData.value = []
+    isLoading.value = false
+    hasMore.value = false
+    return
+  }
   if (!isAppend) isLoading.value = true
   else isLoadMore.value = true
 
   try {
-    const allTracks = await library.getTracks()
-    
-    if (!Array.isArray(allTracks)) {
-      console.error("서버에서 올바른 트랙 배열을 받지 못했습니다.")
-      hasMore.value = false
-      return
-    }
-    
-    const newTracks = allTracks.slice(offset.value, offset.value + limit)
-    
-    if (newTracks.length < limit) hasMore.value = false
-    
+    const page = await library.fetchTracksPage({
+      offset: offset.value,
+      limit,
+    })
+
+    if (page.items.length < limit) hasMore.value = false
+    else hasMore.value = page.hasMore
+
     if (isAppend) {
-      tracksData.value.push(...newTracks)
+      tracksData.value.push(...page.items)
     } else {
-      tracksData.value = newTracks
+      tracksData.value = page.items
     }
   } catch (error) {
-    console.error("트랙 데이터를 불러오는 중 에러 발생:", error)
+    console.error('트랙 데이터를 불러오는 중 에러 발생:', error)
+    hasMore.value = false
   } finally {
     isLoading.value = false
     isLoadMore.value = false
   }
 }
 
-onMounted(() => {
+const initTracks = async () => {
+  if (showAuthEmpty.value) {
+    tracksData.value = []
+    isLoading.value = false
+    return
+  }
+  if (!library.trackCount && !library.isSyncing) {
+    await library.fetchLibrary()
+  }
   offset.value = 0
   hasMore.value = true
-  loadTracks()
+  await loadTracks()
+}
+
+onMounted(initTracks)
+
+watch(showAuthEmpty, () => {
+  void initTracks()
 })
 
 const handleLoadMore = () => {
@@ -63,20 +83,22 @@ const handleCreateTrack = () => {
 
 <template>
   <div class="w-full space-y-6">
-    
+
     <ViewHeader
-      title="Tracks"
-      :description="`조회된 전체 트랙 (${tracksData.length}곡 로드됨)`"
+      title="곡"
+      :description="`전체 ${library.trackCount}곡 · ${tracksData.length}곡 표시 중`"
       @action="handleCreateTrack"
     />
 
-    <div v-if="isLoading && tracksData.length === 0" class="p-16 text-center text-muted-foreground flex flex-col items-center gap-4">
+    <AuthEmptyState v-if="showAuthEmpty" />
+
+    <div v-else-if="isLoading && tracksData.length === 0" class="p-16 text-center text-muted-foreground flex flex-col items-center gap-4">
       <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
       <p>Lazidrome에서 곡 목록을 가져오고 있습니다...</p>
     </div>
 
     <div v-else class="bg-card overflow-hidden pb-4">
-      
+
       <TrackListTable :tracks="tracksData" />
 
       <div v-if="hasMore" class="p-6 flex justify-center border-t mt-4">

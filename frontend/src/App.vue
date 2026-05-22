@@ -21,14 +21,14 @@ const isSidebarExpanded = ref(true)
 const isMobileMenuOpen = ref(false)
 
 const navItems = [
-  { name: 'Artists', path: '/artists', icon: Users },
-  { name: 'Albums', path: '/albums', icon: Disc },
-  { name: 'Tracks', path: '/tracks', icon: Music },
-  // { name: 'Genres', path: '/genres', icon: Layers }, // 일시 비활성 — 복구 시 lucide `Layers` import + router `/genres` 함께
-  { name: 'Tags', path: '/tags', icon: Hash },
-  { name: 'Playlists', path: '/playlists', icon: List },
-  { name: 'Stats', path: '/stats', icon: BarChart2 },
-  { name: 'Settings', path: '/settings', icon: Settings }
+  { name: '홈', path: '/', icon: Compass },
+  { name: '아티스트', path: '/artists', icon: Users },
+  { name: '앨범', path: '/albums', icon: Disc },
+  { name: '곡', path: '/tracks', icon: Music },
+  { name: '태그', path: '/tags', icon: Hash },
+  { name: '플레이리스트', path: '/playlists', icon: List },
+  { name: '통계', path: '/stats', icon: BarChart2 },
+  { name: '설정', path: '/settings', icon: Settings },
 ]
 
 onMounted(async () => {
@@ -89,7 +89,12 @@ watch(
         <Compass class="w-5 h-5 mr-2" />
         LAZIDROME
       </RouterLink>
-      <Button variant="ghost" size="icon" @click="isMobileMenuOpen = !isMobileMenuOpen">
+      <Button
+        variant="ghost"
+        size="icon"
+        :aria-label="isMobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'"
+        @click="isMobileMenuOpen = !isMobileMenuOpen"
+      >
         <component :is="isMobileMenuOpen ? X : Menu" class="w-6 h-6 transition-transform" />
       </Button>
     </header>

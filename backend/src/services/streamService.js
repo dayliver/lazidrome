@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { findTrackFileInfo } from '../repositories/streamRepository.js';
+import { resolveTrackFilePath } from '../lib/trackPath.js';
 
 /** 비인증 스트림 미리보기 길이(초). fluent-ffmpeg 없이 파일 비율로 바이트 상한 계산 */
 export const DEFAULT_STREAM_PREVIEW_SECONDS = 10;
@@ -7,10 +8,13 @@ export const DEFAULT_STREAM_PREVIEW_SECONDS = 10;
 // 1. 파일 정보 및 물리 파일 존재 여부 확인
 export function getTrackPhysicalFile(id) {
   const fileInfo = findTrackFileInfo(id);
-  if (!fileInfo || !fs.existsSync(fileInfo.path)) {
-    return null; // DB에 없거나 실제 파일이 지워진 경우
+  if (!fileInfo) return null;
+
+  const resolvedPath = resolveTrackFilePath(fileInfo.path);
+  if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+    return null;
   }
-  return fileInfo;
+  return { ...fileInfo, path: resolvedPath };
 }
 
 /**

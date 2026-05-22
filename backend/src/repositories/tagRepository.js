@@ -99,58 +99,75 @@ function replaceTagInJsonArray(json, oldName, newName) {
   return JSON.stringify(next);
 }
 
+function renameTagInTable(db, table, oldName, newName) {
+  const rows = db
+    .prepare(
+      `SELECT id, tags FROM ${table} t
+       WHERE t.tags IS NOT NULL AND t.tags != '[]'
+         AND EXISTS (SELECT 1 FROM json_each(t.tags) j WHERE j.value = ?)`
+    )
+    .all(oldName);
+  if (rows.length === 0) return 0;
+
+  const upd = db.prepare(`UPDATE ${table} SET tags = ? WHERE id = ?`);
+  let n = 0;
+  for (const row of rows) {
+    const next = replaceTagInJsonArray(row.tags, oldName, newName);
+    if (next) {
+      upd.run(next, row.id);
+      n++;
+    }
+  }
+  return n;
+}
+
+function renameTagInMixPlaylists(db, oldName, newName) {
+  const likeNeedle = `%${oldName.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
+  const playlists = db
+    .prepare(
+      `SELECT id, rules FROM playlists
+       WHERE type = 'mix' AND rules IS NOT NULL AND rules LIKE ? ESCAPE '\\'`
+    )
+    .all(likeNeedle);
+  if (playlists.length === 0) return 0;
+
+  const updPl = db.prepare('UPDATE playlists SET rules = ? WHERE id = ?');
+  let n = 0;
+  for (const row of playlists) {
+    try {
+      const rules = JSON.parse(row.rules);
+      let changed = false;
+      for (const cond of rules.conditions || []) {
+        if (cond.field === 'tags' && String(cond.value) === oldName) {
+          cond.value = newName;
+          changed = true;
+        }
+      }
+      if (changed) {
+        updPl.run(JSON.stringify(rules), row.id);
+        n++;
+      }
+    } catch {
+      /* skip invalid rules */
+    }
+  }
+  return n;
+}
+
 /**
  * 모든 엔티티의 tags JSON 배열에서 oldName을 newName으로 치환합니다.
+ * json_each EXISTS로 대상 행만 조회합니다.
  */
 export function renameTagEverywhere(oldName, newName) {
   const db = getDB();
   const stats = { artists: 0, albums: 0, tracks: 0, playlists: 0 };
 
-  const run = () => {
-    const bumpTable = (table, col) => {
-      const rows = db
-        .prepare(`SELECT id, ${col} FROM ${table} WHERE ${col} IS NOT NULL AND ${col} != '[]'`)
-        .all();
-      const upd = db.prepare(`UPDATE ${table} SET ${col} = ? WHERE id = ?`);
-      let n = 0;
-      for (const row of rows) {
-        const next = replaceTagInJsonArray(row[col], oldName, newName);
-        if (next) {
-          upd.run(next, row.id);
-          n++;
-        }
-      }
-      return n;
-    };
+  db.transaction(() => {
+    stats.artists = renameTagInTable(db, 'artists', oldName, newName);
+    stats.albums = renameTagInTable(db, 'albums', oldName, newName);
+    stats.tracks = renameTagInTable(db, 'track_metadata', oldName, newName);
+    stats.playlists = renameTagInMixPlaylists(db, oldName, newName);
+  })();
 
-    stats.artists = bumpTable('artists', 'tags');
-    stats.albums = bumpTable('albums', 'tags');
-    stats.tracks = bumpTable('track_metadata', 'tags');
-
-    const playlists = db
-      .prepare(`SELECT id, rules FROM playlists WHERE type = 'mix' AND rules IS NOT NULL`)
-      .all();
-    const updPl = db.prepare('UPDATE playlists SET rules = ? WHERE id = ?');
-    for (const row of playlists) {
-      try {
-        const rules = JSON.parse(row.rules);
-        let changed = false;
-        for (const cond of rules.conditions || []) {
-          if (cond.field === 'tags' && String(cond.value) === oldName) {
-            cond.value = newName;
-            changed = true;
-          }
-        }
-        if (changed) {
-          updPl.run(JSON.stringify(rules), row.id);
-          stats.playlists++;
-        }
-      } catch {
-        /* skip invalid rules */
-      }
-    }
-  };
-
-  db.transaction(run)();
   return stats;
 }

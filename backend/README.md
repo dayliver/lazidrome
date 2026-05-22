@@ -1,8 +1,10 @@
 # Lazidrome 백엔드
 
-SQLite 기반 음원 라이브러리 API와 스트리밍을 제공하는 **Fastify** 서버입니다. 로컬(또는 마운트) 경로의 오디오 파일을 감시해 DB에 반영하고, JWT로 API·스트림 접근을 제어합니다.
+SQLite 기반 음원 라이브러리 API와 스트리밍을 제공하는 **Fastify** 서버입니다. 로컬(또는 마운트) 경로의 오디오 파일을 감시해 DB에 반영하고, JWT·미디어 서명으로 API·스트림 접근을 제어합니다.
 
-프론트엔드 개발·배포는 [../frontend/README.md](../frontend/README.md)를 참고하세요.
+- 프론트엔드: [../frontend/README.md](../frontend/README.md) (PWA·UI 포함)
+- 배포: [../docs/DEPLOY.md](../docs/DEPLOY.md)
+- Phase 1 스모크: [../docs/PHASE1_SMOKE.md](../docs/PHASE1_SMOKE.md)
 
 ---
 
@@ -13,8 +15,8 @@ SQLite 기반 음원 라이브러리 API와 스트리밍을 제공하는 **Fasti
 | 런타임 | Node.js (ESM, `"type": "module"`) |
 | 웹 프레임워크 | Fastify 5 |
 | DB | better-sqlite3, `database/schema.sql` |
-| 인증 | `@fastify/jwt` (Bearer + 스트림용 `?token=` 쿼리) |
-| 기타 | `@fastify/cors`, `@fastify/static`, `@fastify/multipart`, chokidar, music-metadata, sharp, ulid |
+| 인증 | `@fastify/jwt` (Bearer), 미디어 URL용 HMAC `exp`/`sig` |
+| 기타 | `@fastify/cors`, `@fastify/rate-limit`, `@fastify/static`, `@fastify/multipart`, chokidar, music-metadata, sharp, ulid |
 
 ---
 
@@ -24,21 +26,22 @@ SQLite 기반 음원 라이브러리 API와 스트리밍을 제공하는 **Fasti
 backend/
 ├── database/
 │   ├── schema.sql          # 테이블 정의
-│   └── lazidrome.db        # (실행 시 생성) SQLite DB, WAL 모드 사용
+│   └── lazidrome.db        # (실행 시 생성) SQLite, WAL
+├── build-info.json         # 배포 빌드 시각 (루트 npm run build:info)
 ├── src/
-│   ├── index.js            # Fastify 앱, 플러그인·라우트 등록, listen
-│   ├── db.js               # DB 연결, initDB(), getDB(), 경량 마이그레이션
-│   ├── constants/          # 예: roles.js (아티스트 역할 비트마스크)
-│   ├── routes/             # URL prefix별 라우트만 얇게 연결
-│   ├── handlers/           # 요청/응답 처리 (HTTP 계층)
-│   ├── services/         # 비즈니스 로직 (스트림, 스캔, Last.fm, 이미지 등)
-│   ├── repositories/     # SQL 위주 (tracks, home, stream 등)
-│   └── lib/                # 순수 유틸 (해시, 파서, 다운로더 등)
-├── .env                    # (로컬) ADMIN_PASSWORD, JWT_SECRET, 경로 등
+│   ├── index.js            # 앱 진입, 전역 JWT 훅, rate limit, listen
+│   ├── db.js               # initDB(), getDB(), 경량 마이그레이션
+│   ├── constants/
+│   ├── routes/             # URL prefix 연결
+│   ├── handlers/           # HTTP 계층
+│   ├── services/           # 스캔, 스트림, Last.fm, 플레이리스트 …
+│   ├── repositories/       # SQL
+│   └── lib/                # apiAuthPolicy, mediaSign, fileHash, httpErrors, safeUrl …
+├── .env.example
 └── package.json
 ```
 
-HTTP 흐름은 대략 **`routes/*` → `handlers/*` → `services/*` / `repositories/*`** 입니다.
+흐름: **`routes/*` → `handlers/*` → `services/*` / `repositories/*`**
 
 ---
 
@@ -46,109 +49,146 @@ HTTP 흐름은 대략 **`routes/*` → `handlers/*` → `services/*` / `reposito
 
 ```bash
 cd backend
+cp .env.example .env   # 값 채우기
 npm install
 npm run dev
 ```
 
-- 기본 포트: **`5294`** (`PORT` 환경 변수로 변경).
-- 개발 시 [nodemon](https://nodemon.io/)으로 `src/index.js`를 감시합니다.
-- PM2로 상시 실행하려면: `npm run serve` (스크립트는 `pm2 start ./src/index.js --name "lazidrome-backend"`).
+| 항목 | 값 |
+|------|-----|
+| 기본 포트 | **5294** (`PORT`로 변경) |
+| 개발 | nodemon으로 `src/index.js` 감시 |
+| 상시 실행 | `npm run serve` (PM2 예시 스크립트) |
+
+모노레포 루트:
+
+```bash
+npm run dev          # 백엔드 + 프론트 동시
+npm run deploy       # 빌드·rsync·원격 재기동 — DEPLOY.md
+npm run smoke:phase1:prod
+```
 
 ---
 
-## 환경 변수 (주요)
+## 환경 변수
+
+`.env`는 **커밋하지 마세요.** 템플릿: [`.env.example`](.env.example)
 
 | 변수 | 설명 |
 |------|------|
-| `ADMIN_PASSWORD` | `POST /api/auth/login` 시 비밀번호와 비교 |
-| `JWT_SECRET` | JWT 서명 키 (미설정 시 코드 내 fallback 사용 — 운영에서는 반드시 설정) |
-| `TRACKS_PATH` | 스캐너가 감시할 음원 루트 (기본 `./storage/tracks`) |
-| `IMAGES_PATH` | 커버 등 이미지 저장·`@fastify/static` 루트 (기본 `./storage/images`) |
-| `LASTFM_API_KEY` | Last.fm 메타 보강·외부 앨범 검색 등 (`lastfmService`) — 없으면 해당 기능만 실패 |
-| `LASTFM_API_SECRET` | (선택) `track.scrobble` 서명용. `LASTFM_SESSION_KEY`와 함께 설정 시 재생 기록 확정 시 스크롭 시도 |
-| `LASTFM_SESSION_KEY` | (선택) Last.fm `auth.getSession` 등으로 발급받은 세션 키. API Secret과 쌍으로 스크롭에 사용 |
-| `STREAM_PREVIEW_SECONDS` | 비인증 시 스트림 미리듣기 길이 제한 등에 사용 (핸들러에서 참조) |
+| `ADMIN_PASSWORD` | `POST /api/auth/login` 비밀번호 (필수) |
+| `JWT_SECRET` | JWT 서명 (**16자 이상**, `NODE_ENV=production`에서 미설정 시 기동 실패) |
+| `CORS_ORIGINS` | 허용 origin (쉼표 구분). 예: `https://lazidrome.hwaryong.com` |
+| `PORT` | listen 포트 (기본 5294) |
+| `TRACKS_PATH` | 스캐너 음원 루트 (기본 `./storage/tracks`) |
+| `IMAGES_PATH` | 커버·정적 이미지 (기본 `./storage/images`) |
+| `LASTFM_API_KEY` | Last.fm 메타·검색 (없으면 해당 기능만 실패) |
+| `LASTFM_API_SECRET` | 스크롭 서명용 (선택) |
+| `LASTFM_SESSION_KEY` | 스크롭 세션 (선택, Secret과 쌍) |
+| `STREAM_PREVIEW_SECONDS` | 비인증 스트림 미리듣기 길이 (기본 30초 등) |
+| `MEDIA_TOKEN_TTL_SEC` | 스트림·이미지 HMAC TTL(초), 기본 7200 |
 
-`.env`는 저장소에 커밋하지 말고, 서버 환경에만 두는 것을 권장합니다.
+`GET /api/settings`(JWT)와 `GET /api`(공개)에서 Last.fm·`build` 요약을 노출합니다. 비밀 값은 내려가지 않습니다.
 
 ---
 
 ## 데이터베이스 (`src/db.js`)
 
-- **`initDB()`**: `track_filedata` 테이블 존재 여부로 초기 설치 여부를 판단하고, 없으면 `schema.sql`을 실행합니다. WAL·외래키 등 PRAGMA를 설정합니다.
-- **`getDB()`** / default export: 다른 모듈에서 `better-sqlite3` 인스턴스에 접근할 때 사용합니다.
-- 기존 DB에 컬럼이 없을 때를 위한 소규모 마이그레이션(예: `albums.description`)이 코드에 포함될 수 있습니다.
+- **`initDB()`**: `track_filedata` 존재 여부로 초기 설치 판단 → 없으면 `schema.sql` 실행. WAL·외래키 PRAGMA.
+- **`getDB()`**: better-sqlite3 싱글톤.
+- 기존 DB용 소규모 마이그레이션(예: `albums.description`)이 코드에 포함될 수 있습니다.
 
 ---
 
 ## 스캐너 (`src/services/scanner.js`)
 
-- **`startScanner(watchPath)`**: [chokidar](https://github.com/paulmillr/chokidar)로 디렉터리를 감시합니다.
-- 지원 확장자 예: `.mp3`, `.flac`, `.wav`, `.m4a`, `.ogg`, `.aac`.
-- 파일 추가·변경 시 SHA-256 해시·`music-metadata` 파싱 후 `track_filedata` 및 트랙/앨범/아티스트 관계를 트랜잭션으로 갱신합니다. `awaitWriteFinish`로 복사 중간 상태 파싱을 줄입니다.
-- 해시는 스캐너 내부 구현을 쓰며, 스트리밍 해시가 필요하면 `src/lib/hasher.js`의 `getFileHash`를 참고할 수 있습니다.
+- **`startScanner(watchPath)`**: chokidar로 `TRACKS_PATH` 감시.
+- 확장자: `.mp3`, `.flac`, `.wav`, `.m4a`, `.ogg`, `.aac` 등.
+- 추가·변경 시 **`src/lib/fileHash.js`** 스트리밍 SHA-256, `music-metadata` 파싱 후 트랙·앨범·아티스트 관계 갱신.
+- `awaitWriteFinish`로 복사 중간 상태 파싱 완화.
 
 ---
 
-## 인증
+## 인증·보안
 
-- 로그인: **`POST /api/auth/login`** — body `{ "password": "..." }` 가 `ADMIN_PASSWORD`와 일치하면 JWT 발급(기본 만료 30일).
-- 보호 API: 대부분 `Authorization: Bearer <token>` .
-- **오디오 스트림**: 브라우저 `<audio>`는 커스텀 헤더를 붙이기 어려워 **`GET /api/stream/:id?token=<jwt>`** 형태를 지원합니다 (`authenticate` 데코레이터에서 쿼리 우선 검증).
+### 로그인
+
+- **`POST /api/auth/login`** — `{ "password": "..." }` 가 `ADMIN_PASSWORD`와 일치하면 JWT(기본 30일).
+- 로그인 경로: **15분당 10회** rate limit.
+
+### 전역 API 보호 (`src/lib/apiAuthPolicy.js`)
+
+대부분 `/api/*`는 **`Authorization: Bearer`** 필수. 예외(공개):
+
+| 경로 | 비고 |
+|------|------|
+| `GET /api` | 헬스 + `build` |
+| `POST /api/auth/login` | 로그인 |
+| `GET /api/stream/:id` | 핸들러에서 서명/JWT 유무로 전체/프리뷰 분기 |
+| `GET /api/images/*` | 핸들러에서 `exp`/`sig` 또는 JWT |
+
+`OPTIONS` preflight는 JWT 검사에서 제외됩니다.
+
+### 미디어 서명 (스트림·커버)
+
+- **`POST /api/auth/media-sign`** (JWT, 120/분): 트랙 ID별 **`exp` + `sig`** 발급.
+- 프론트는 `<audio>`/`<img>` URL에 쿼리로 붙입니다 (`MEDIA_TOKEN_TTL_SEC`, 기본 2시간).
+- 레거시 `?token=` JWT는 이미지 등 일부에서 호환 가능; 재생 기록 `POST …/play`는 **Bearer만**.
+
+### 기타
+
+- CORS: `CORS_ORIGINS` 화이트리스트.
+- 외부 이미지 URL: `lib/safeUrl.js` SSRF 차단.
+- 업로드: 확장자 allowlist + 인증.
+- API 오류: `lib/httpErrors.js` — 내부 `err.message` 노출 최소화.
+
+### Rate limit (대표)
+
+| 대상 | 한도 |
+|------|------|
+| 전역 | 기본 fastify-rate-limit |
+| enrich (트랙·앨범·아티스트) | 30/분 |
+| upload | 15/시간 |
+| external search | 40/분 |
+| media-sign | 120/분 |
 
 ---
 
-## API 개요 (`src/routes/*`)
+## API 개요
 
-아래는 대표 경로이며, 세부 쿼리·body는 각 `handlers`·서비스를 참고하면 됩니다.
+세부 body·쿼리는 각 `handlers`를 참고하세요.
 
 | 영역 | 예시 |
 |------|------|
-| 인증 | `POST /api/auth/login` |
-| 트랙 | `GET /api/tracks`, `PATCH /api/tracks/:id`, `PATCH /api/tracks/:id/rate`, `POST /api/tracks/:id/play`, `POST /api/tracks/:id/enrich`, `POST /api/tracks/upload` |
-| 스트림 | `GET /api/stream/:id` |
-| 아티스트 | `GET /api/artists`, `GET /api/artists/:id`, `PATCH /api/artists/:id`, `POST /api/artists/:id/enrich` |
-| 앨범 | `GET /api/albums`, `GET /api/albums/:id`, `PATCH /api/albums/:id`, `POST /api/albums/:id/enrich` |
-| 이미지 | `GET /api/images/{album\|track\|artist\|playlist}/:id`, `GET /api/images/tag?...` |
-| 태그 | `GET /api/tags`, `GET /api/tags/detail`, `PATCH /api/tags/rename`, `POST /api/tags/image`, `POST /api/tags/clear-cache` |
-| 검색 | `GET /api/search/external/album` (Last.fm 등 외부) |
-| 플레이리스트 | `GET/POST /api/playlists`, `GET/PUT/DELETE /api/playlists/:id`, 트랙 추가·정렬·삭제 등 |
-| 홈 선반 | `GET /api/home/shelves` — `mostPlayed`, `recentPlays`, `rediscover`, `starred` (각 최대 20곡). 쿼리 `window`(24h, 48h, 7d), `limit`(응답 메타). JWT 필요 |
-| 통계 | `GET /api/stats/plays?range=` — `24h` \| `48h` \| `7d` \| `30d` \| `all`. 시계열(`series`)·시간대 4버킷(`timeOfDay`)·`timezonePolicy` 포함. JWT 필요 |
-| 통계 | `GET /api/stats/top?range=&limit=` — 기간 내 `play_history` 이벤트 수 기준 상위 트랙·앨범. JWT 필요 |
+| 인증 | `POST /api/auth/login`, `POST /api/auth/media-sign` |
+| 설정 | `GET /api/settings` — Last.fm 상태, `build`, `library.trackCount` |
+| 트랙 | `GET /api/tracks?limit=&offset=` 페이지 `{ items, total, hasMore }`; `?q=` 검색; `?ids=` 일괄. `PATCH`, `POST …/play`, enrich, rate |
+| 스트림 | `GET /api/stream/:id` — Range, 인증 시 전체 / 미인증 프리뷰 |
+| 아티스트·앨범 | 목록·상세·`PATCH`·`POST …/enrich` |
+| 이미지 | `GET /api/images/{album\|track\|artist\|playlist\|tag}/…` |
+| 태그 | `GET /api/tags`, `detail`, `PATCH /rename`, `POST /image` |
+| 검색 | `GET /api/search/external/album` |
+| 플레이리스트 | CRUD, 트랙 추가·정렬; 스마트 믹스 `LIMIT` **최대 200** (`playlistService.clampMixLimit`) |
+| 홈 선반 | `GET /api/home/shelves` — (API 유지, 프론트 홈은 주로 stats·방문 기록 사용) |
+| 통계 | `GET /api/stats/plays?range=`, `GET /api/stats/top?range=&limit=` |
 
-헬스 체크: **`GET /api`** → `{ message, db }` 형태 응답.
+헬스: **`GET /api`** → `{ message, db, build }`.
 
 ---
 
 ## Last.fm (`src/services/lastfmService.js`)
 
-- **메타데이터 보강**(트랙/앨범/아티스트 enrich), **외부 앨범 검색** 등 읽기 API 호출에 `LASTFM_API_KEY`를 사용합니다.
-- **스크롭(쓰기, UI 없음)**: Lazidrome에는 Last.fm 통계 화면이 없습니다. 설정만 맞추면 서버가 Last.fm으로만 `track.scrobble`을 보내고, **[Last.fm 프로필](https://www.last.fm/)**에서 들은 기록을 확인하면 됩니다.
-- **발동 조건**: `LASTFM_API_KEY`, **`LASTFM_API_SECRET`**, **`LASTFM_SESSION_KEY`**가 **모두** 있을 때만 호출합니다. `POST /api/tracks/:id/play`로 **절반 이상 재생**이 `play_history`에 확정된 직후, 응답을 막지 않는 **비동기** 호출입니다. 성공 시에만 `play_history.scrobbled = 1`입니다. 실패·스킵은 서버 로그(`Last.fm scrobble …`)와 DB의 `scrobbled`(0 유지)로 확인합니다.
+- **읽기**: enrich, 외부 앨범 검색 — `LASTFM_API_KEY`.
+- **스크롭(쓰기)**: `LASTFM_API_KEY` + `LASTFM_API_SECRET` + `LASTFM_SESSION_KEY` **모두** 있을 때만. `POST /api/tracks/:id/play`로 절반 이상 재생 확정 후 비동기 `track.scrobble`. UI는 Last.fm 사이트에서 확인.
 
-### `LASTFM_SESSION_KEY` 수동 발급 (웹 브라우저 + 한 번 호출)
+### `LASTFM_SESSION_KEY` 발급 (요약)
 
-1. [API 계정](https://www.last.fm/api/account/create)에서 **API Key**, **Shared Secret**을 발급합니다 (이미 있으면 재사용).
-2. 브라우저에서 아래 URL을 엽니다. `YOUR_API_KEY`와 콜백 URL을 바꿉니다. (콜백은 임의의 **로컬 HTTP** 주소면 됩니다. 예: `http://127.0.0.1:9999/cb` — 미리 `python -m http.server 9999` 등으로 열어두면 주소창에 붙는 `token`을 보기 쉽습니다.)
-   - `https://www.last.fm/api/auth?api_key=YOUR_API_KEY&cb=http://127.0.0.1:9999/cb`
-3. Last.fm에 로그인·승인 후, 콜백 URL로 리다이렉트되며 쿼리에 **`token`** 이 붙습니다. 그 값을 복사합니다.
-4. **auth.getSession** 호출로 세션 키를 받습니다. 파라미터 `api_key`, `method`(문자열 `auth.getSession`), `token`으로 [api_sig](https://www.last.fm/api/authspec) 규칙에 따라 MD5 서명한 뒤 GET 합니다.
+1. [API 계정](https://www.last.fm/api/account/create)에서 Key·Secret 발급.
+2. 브라우저: `https://www.last.fm/api/auth?api_key=KEY&cb=http://127.0.0.1:9999/cb` → 승인 후 `token` 복사.
+3. `auth.getSession` + api_sig로 `session.key` 수신 → `.env`의 `LASTFM_SESSION_KEY`.
+4. Secret·Session은 커밋 금지.
 
-   예시 (서명은 Secret으로 직접 계산해야 합니다):
-
-   `http://ws.audioscrobbler.com/2.0/?method=auth.getSession&api_key=YOUR_KEY&token=TOKEN_FROM_STEP_3&api_sig=SIG&format=json`
-
-   응답 JSON의 `session.key`가 **`LASTFM_SESSION_KEY`** 입니다. `.env`에 넣고 백엔드를 재시작합니다.
-
-5. Secret·Session은 **저장소에 커밋하지 말고** 서버 환경에만 둡니다. 세션이 무효화되면 4번부터 다시 받습니다.
-
-### 운영 스모크 (배포·로컬 공통 체크리스트)
-
-1. `.env`에 `LASTFM_API_KEY`, `LASTFM_API_SECRET`, `LASTFM_SESSION_KEY` 설정 후 서버 기동.
-2. 클라이언트에서 곡 재생 후 **파일 길이의 약 절반 이상** 들어 확정 재생 이벤트가 쌓이게 합니다 (`POST …/play` 호출 확인).
-3. 서버 로그에 `Last.fm scrobble failed`가 없거나, 성공 후 DB에서 해당 `play_history` 행의 `scrobbled = 1` 확인.
-4. Last.fm 프로필의 최근 트랙 반영까지 **몇 분 지연**될 수 있습니다.
+자세한 스모크: 위 **운영 스모크**는 [../docs/PHASE1_SMOKE.md](../docs/PHASE1_SMOKE.md) 및 Settings Last.fm 안내와 동일 흐름입니다.
 
 ---
 
@@ -156,16 +196,40 @@ npm run dev
 
 | 파일 | 역할 |
 |------|------|
-| `hasher.js` | 스트리밍 친화적 SHA-256 (`getFileHash`) |
-| `artistTags.js` | 아티스트 문자열 분리·역할 마스크에 사용 |
-| `metadata.js` | music-metadata 기반 유틸 (프로젝트 내 사용처는 변경될 수 있음) |
-| `playlistParser.js` | 플레이리스트 형식 파싱 등 |
-| `downloader.js` | 원격 이미지 등 다운로드 보조 |
+| `apiAuthPolicy.js` | 공개 `/api` 경로 판별 |
+| `mediaSign.js` / `mediaAuth.js` | 스트림·이미지 HMAC 서명·검증 |
+| `envConfig.js` | `JWT_SECRET` 등 운영 검증 |
+| `fileHash.js` | 스트리밍 SHA-256 (스캐너·업로드) |
+| `httpErrors.js` | 클라이언트 안전 오류 응답 |
+| `safeUrl.js` | 외부 URL SSRF 차단 |
+| `buildInfo.js` | `build-info.json` 읽기 |
+| `downloader.js` | 원격 이미지 다운로드 |
+
+---
+
+## 배포·버전 표시
+
+루트 `npm run build:info`가 **`backend/build-info.json`** 을 생성합니다. rsync 시 `.env`·`node_modules`·`storage/`는 제외([`.rsync-ignore`](../.rsync-ignore)). 배포 후 프론트 Settings에서 프론트·백엔드 `builtAt` 일치 여부를 확인합니다.
 
 ---
 
 ## 문제 해결
 
-- **DB 잠금 / 손상**: WAL 사용 중이면 `-shm` / `-wal` 파일이 함께 생길 수 있습니다. 백업 후 재시작·권한을 확인하세요.
-- **스캔이 안 됨**: `TRACKS_PATH`가 실제 음원 폴더를 가리키는지, 프로세스 읽기 권한이 있는지 확인하세요.
-- **401 on stream**: JWT 만료, `token` 쿼리 누락, 또는 프리뷰 모드에서 Range/길이 제한 로직을 점검하세요.
+| 증상 | 조치 |
+|------|------|
+| DB 잠금 | WAL `-shm`/`-wal` 확인, 백업 후 재시작·권한 |
+| 스캔 안 됨 | `TRACKS_PATH`·읽기 권한 |
+| 401 on API | JWT 만료, `JWT_SECRET`·`CORS_ORIGINS` |
+| 스트림 짧게만 됨 | 미인증 프리뷰 — 로그인·`media-sign` 확인 |
+| 502 (nginx) | 5294에서 프로세스 미기동 — `npm run deploy` 또는 `deploy:restart` |
+| production 기동 실패 | `JWT_SECRET` 16자+ 설정 |
+
+---
+
+## 스크립트 요약
+
+| 명령 | 설명 |
+|------|------|
+| `npm run dev` | nodemon 개발 |
+| `npm run serve` | PM2 예시 기동 |
+| `npm start` | `node src/index.js` |

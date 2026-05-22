@@ -26,14 +26,14 @@ const currentTrack = computed(() => player.currentTrack)
 // 트랙 id만 있으면 URL 생성 — 이미지 API가 DB에서 앨범/커스텀 커버를 해석함
 const coverUrl = computed(() => {
   if (!currentTrack.value?.id) return ''
-  return getCoverUrl(auth.serverUrl, 'track', currentTrack.value.id, auth.token)
+  return auth.coverSrc('track', currentTrack.value.id)
 })
 
 // 💉 3. 로컬 formatTime 제거 -> lib/audio의 formatTrackTime 사용
 
 // 💉 4. 아티스트 표시 로직 수정 (artist 필드 활용)
 const displayArtist = computed(() => {
-  return currentTrack.value?.artist || 'Unknown Artist'
+  return currentTrack.value?.artist || '아티스트 없음'
 })
 
 const toggleFavorite = async () => { 

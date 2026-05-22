@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 
 import { Search, Plus, Trash2, Disc, Star } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -21,29 +21,30 @@ const auth = useAuthStore() // 💡 추가
 
 const searchQuery = ref('')
 const searchResults = ref([])
-const allTracks = ref([])
 const isFocused = ref(false)
+const isSearching = ref(false)
 
-// 💡 헬퍼 함수 추가
-const getTrackImageUrl = (id) => getCoverUrl(auth.serverUrl, 'track', id, auth.token)
-
-onMounted(async () => {
-  allTracks.value = await library.getTracks()
-})
+const getTrackImageUrl = (id) => auth.coverSrc('track', id)
 
 const updateTracks = (newTracks) => {
   emit('update:modelValue', { ...props.modelValue, albumTracks: newTracks })
 }
 
-const handleSearch = () => {
-  const query = searchQuery.value.trim().toLowerCase()
+const handleSearch = async () => {
+  const query = searchQuery.value.trim()
   if (!query) {
     searchResults.value = []
     return
   }
-  searchResults.value = allTracks.value
-    .filter(t => t.title.toLowerCase().includes(query) || (t.artist && t.artist.toLowerCase().includes(query)))
-    .slice(0, 5)
+  isSearching.value = true
+  try {
+    searchResults.value = await library.searchTracks(query, 5)
+  } catch (e) {
+    console.error('트랙 검색 실패:', e)
+    searchResults.value = []
+  } finally {
+    isSearching.value = false
+  }
 }
 
 const handleBlur = () => {

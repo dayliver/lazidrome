@@ -29,6 +29,7 @@ const {
   openPlaylistModal,
   onPlaylistAddSuccess,
   getTrackImageUrl,
+  prefetchTrackStream,
   playTrack,
   goToArtist,
   goToAlbum,
@@ -63,6 +64,7 @@ const togglePlayerPlay = () => player.togglePlay()
       :toggle-select-all="toggleSelectAll"
       :toggle-select="toggleSelect"
       :play-track="playTrack"
+      :prefetch-track-stream="prefetchTrackStream"
       :on-drag-end="onDragEnd"
       :get-track-image-url="getTrackImageUrl"
       :toggle-star="toggleStar"
@@ -93,6 +95,7 @@ const togglePlayerPlay = () => player.togglePlay()
       :toggle-select-all="toggleSelectAll"
       :toggle-select="toggleSelect"
       :play-track="playTrack"
+      :prefetch-track-stream="prefetchTrackStream"
       :on-drag-end="onDragEnd"
       :get-track-image-url="getTrackImageUrl"
       :toggle-star="toggleStar"

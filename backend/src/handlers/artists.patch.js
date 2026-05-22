@@ -1,3 +1,4 @@
+import { replyHttpError } from '../lib/httpErrors.js';
 import { editArtist, formatArtistTags } from '../services/artistService.js';
 import { saveArtistCoverFromUrl, saveArtistCoverFromBuffer } from '../services/artistCoverService.js';
 import { findBasicArtistById } from '../repositories/artistRepository.js';
@@ -40,7 +41,6 @@ export async function patchArtistHandler(request, reply) {
     const raw = findBasicArtistById(id);
     return { success: true, data: formatArtistTags(raw) };
   } catch (err) {
-    request.log.error(err);
-    return reply.code(500).send({ error: err.message });
+    return replyHttpError(request, reply, err, { fallback: '아티스트 수정 중 오류가 발생했습니다.' });
   }
 }

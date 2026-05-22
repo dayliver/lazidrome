@@ -6,7 +6,7 @@ import { usePlayerStore } from '@/stores/player'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
 
 import { formatDuration } from '@/lib/audio'
-import { getCoverUrl } from '@/lib/image'
+import SafeImage from '@/components/shared/SafeImage.vue'
 
 // 💉 2. Sparkles 아이콘 임포트 추가
 import { Play, MoreVertical, Shuffle, Info, Disc, Sparkles } from 'lucide-vue-next'
@@ -29,7 +29,7 @@ const player = usePlayerStore()
 const metadataEdit = useMetadataEditStore()
 
 const getAlbumImageUrl = (id) => {
-  return getCoverUrl(auth.serverUrl, 'album', id, auth.token)
+  return auth.coverSrc('album', id)
 }
 
 const playAlbumSequential = async (albumId) => {
@@ -66,17 +66,12 @@ const fetchMetadata = (albumId) => {
       <div class="relative aspect-square w-full rounded-xl overflow-hidden bg-muted shadow-sm ring-1 ring-border cursor-pointer transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1" 
            @click="goToAlbumDetail(item.id)">
         
-        <div class="absolute inset-0 flex items-center justify-center font-bold text-muted-foreground bg-secondary z-0">
-          <Disc class="w-1/3 h-1/3 opacity-30" />
-        </div>
-        
-        <img 
-          v-if="item.cover_type" 
-          :src="getAlbumImageUrl(item.id)" 
-          @error="(e) => e.target.style.opacity='0'"
-          crossorigin="anonymous" loading="lazy" 
-          class="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105 z-10" 
-          alt="Cover" 
+        <SafeImage
+          v-if="item.cover_type"
+          :src="getAlbumImageUrl(item.id)"
+          type="album"
+          :alt="`${item.name} 앨범 커버`"
+          class="absolute inset-0 w-full h-full transition-all duration-500 group-hover:scale-105 z-10"
         />
 
         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-20">

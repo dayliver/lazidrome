@@ -10,11 +10,15 @@
   "scripts": {
     "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
     "install-all": "npm install",
-    "build": "npm run build -w frontend",
-    "sync:frontend": "rsync -uav --delete ./frontend/dist/ hwaryong.com:/projects/lazidrome/frontend/dist",
-    "sync:backend": "rsync -uav --delete --exclude-from='.rsync-ignore' ./backend/ hwaryong.com:/projects/lazidrome/backend",
+    "build:info": "node scripts/write-build-info.js",
+    "build": "npm run build:info && npm run build -w frontend",
+    "sync:frontend": "rsync -uav --delete ./frontend/dist/ home:/projects/lazidrome/frontend/dist",
+    "sync:backend": "rsync -uav --delete --exclude-from='.rsync-ignore' ./backend/ home:/projects/lazidrome/backend",
     "sync": "npm run sync:frontend && npm run sync:backend",
-    "deploy": "npm run build && npm run sync:frontend && npm run sync:backend"
+    "deploy": "bash scripts/deploy.sh",
+    "deploy:restart": "bash scripts/restart-backend-remote.sh",
+    "smoke:phase1": "node scripts/smoke-phase1.mjs",
+    "smoke:phase1:prod": "LAZI_BASE_URL=https://lazidrome.hwaryong.com LAZI_ORIGIN=https://lazidrome.hwaryong.com LAZI_ENV_FILE=backend/.env node scripts/smoke-phase1.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

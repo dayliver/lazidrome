@@ -4,8 +4,6 @@ import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
 import { getCoverUrl } from '@/lib/image'
-import { recordVisit } from '@/lib/visitHistory'
-
 export function useTrackListRowActions(localTracks) {
   const router = useRouter()
   const library = useLibraryStore()
@@ -13,11 +11,15 @@ export function useTrackListRowActions(localTracks) {
   const auth = useAuthStore()
   const metadataEdit = useMetadataEditStore()
 
-  const getTrackImageUrl = (id) => getCoverUrl(auth.serverUrl, 'track', id, auth.token)
+  const getTrackImageUrl = (id) => auth.coverSrc('track', id)
+
+  const prefetchTrackStream = (track) => {
+    if (track?.id && auth.token) {
+      void auth.prefetchStreamSignatures([String(track.id)])
+    }
+  }
 
   const playTrack = (index) => {
-    const tr = localTracks.value?.[index]
-    if (tr?.id) recordVisit({ type: 'track', id: String(tr.id), name: String(tr.title || '').trim() || '' })
     if (player.playList) player.playList(localTracks.value, index)
     else player.playNewQueue(localTracks.value, index)
   }
@@ -59,6 +61,7 @@ export function useTrackListRowActions(localTracks) {
 
   return {
     getTrackImageUrl,
+    prefetchTrackStream,
     playTrack,
     goToArtist,
     goToAlbum,

@@ -9,5 +9,7 @@ export default async function trackRoutes(fastify) {
   fastify.post('/api/tracks/:id/play', { preHandler: [fastify.authenticate] }, postTrackPlayHandler);
   fastify.patch('/api/tracks/:id/rate', patchTrackRatingHandler);
   fastify.patch('/api/tracks/:id', patchTrackHandler);
-  fastify.post('/api/tracks/:id/enrich', enrichTrackHandler);
+  fastify.post('/api/tracks/:id/enrich', {
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+  }, enrichTrackHandler);
 }

@@ -12,13 +12,12 @@ const scrollAreaRef = ref(null)
 
 const trackCoverSrc = (track) => {
   if (!track?.id) return ''
-  return getCoverUrl(auth.serverUrl, 'track', track.id, auth.token)
+  return auth.coverSrc('track', track.id)
 }
 
-const playFromQueue = (index) => {
+const playFromQueue = async (index) => {
   player.currentIndex = index
-  player.loadTrack()
-  player.play()
+  await player.startPlayback()
 }
 
 // 현재 재생 중인 곡으로 자동 스크롤 (기존 로직 유지)

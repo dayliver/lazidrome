@@ -1,16 +1,17 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getCoverUrl } from '@/lib/image' // 💡 공통 이미지 URL 생성기
-
+import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import { Input } from '@/components/ui/input'
 import SafeImage from '@/components/shared/SafeImage.vue'
+import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import { Search, Hash, Tags } from 'lucide-vue-next'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { showAuthEmpty } = useRequiresAuth()
 
 const tags = ref([])
 const isLoading = ref(true)
@@ -18,6 +19,11 @@ const searchQuery = ref('')
 
 // 💡 1. 백엔드에서 통합 태그 데이터를 가져옵니다.
 const fetchTags = async () => {
+  if (showAuthEmpty.value) {
+    tags.value = []
+    isLoading.value = false
+    return
+  }
   try {
     const res = await authStore.fetchWithAuth('/api/tags')
     const result = await res.json()
@@ -32,6 +38,10 @@ const fetchTags = async () => {
 }
 
 onMounted(fetchTags)
+
+watch(showAuthEmpty, () => {
+  void fetchTags()
+})
 
 // 💡 2. 검색어에 맞춰 태그 필터링
 const filteredTags = computed(() => {
@@ -52,7 +62,7 @@ const goToTag = (name) => {
 
 // 💡 태그 이미지 URL 생성 
 // (주의: 백엔드 images.js에 '/api/images/tag/:id' 라우트를 추가해야 합니다!)
-const getTagImageUrl = (name) => getCoverUrl(authStore.serverUrl, 'tag', name, authStore.token)
+const getTagImageUrl = (name) => authStore.coverSrc('tag', name)
 
 const handleCreate = () => {
   console.log('파일 업로드 탐색기 띄우기 (나중에 연결)')
@@ -63,7 +73,7 @@ const handleCreate = () => {
   <div class="w-full space-y-8 animate-in fade-in duration-500">
     
     <ViewHeader
-      title="Tags"
+      title="태그"
       :description="`음악을 분류하는 모든 태그 (총 ${tags.length}개)`"
       @action="handleCreate"
     >
@@ -72,7 +82,9 @@ const handleCreate = () => {
       </template>
     </ViewHeader>
 
-    <div v-if="isLoading" class="py-20 flex flex-col items-center justify-center text-muted-foreground">
+    <AuthEmptyState v-if="showAuthEmpty" />
+
+    <div v-else-if="isLoading" class="py-20 flex flex-col items-center justify-center text-muted-foreground">
       <span class="animate-spin border-4 border-primary/30 border-t-primary rounded-full w-10 h-10 mb-4"></span>
       <p class="font-bold tracking-tight">태그 데이터를 분석 중입니다...</p>
     </div>

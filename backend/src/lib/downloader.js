@@ -1,6 +1,7 @@
 // backend/src/lib/downloader.js
 import fs from 'node:fs';
 import path from 'node:path';
+import { assertSafeExternalUrl } from './safeUrl.js';
 
 /**
  * 외부 URL에서 이미지를 다운로드하여 로컬 디렉토리에 저장합니다.
@@ -21,7 +22,8 @@ export async function downloadImage(url, filename, targetDir = 'storage/images')
 
     const filePath = path.join(dirPath, filename);
 
-    // 2. 이미지 데이터 가져오기 (Node.js Native Fetch)
+    await assertSafeExternalUrl(url);
+
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`HTTP 상태 코드 에러: ${response.status}`);

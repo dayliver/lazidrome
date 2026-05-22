@@ -79,7 +79,7 @@ export const useMetadataEditStore = defineStore('metadataEdit', () => {
       throw new Error(result.error || '저장 실패')
     } catch (err) {
       console.error('🚨 저장 중 오류 발생:', err.message)
-      toast.error(err.message || '저장 실패')
+      toast.error('메타데이터 저장에 실패했습니다.')
       return null
     }
   }

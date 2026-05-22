@@ -7,5 +7,7 @@ export default async function albumRoutes(fastify) {
   fastify.get('/api/albums', getAlbumsHandler);
   fastify.get('/api/albums/:id', getAlbumDetailHandler);
   fastify.patch('/api/albums/:id', patchAlbumHandler);
-  fastify.post('/api/albums/:id/enrich', enrichAlbumHandler);
+  fastify.post('/api/albums/:id/enrich', {
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+  }, enrichAlbumHandler);
 }

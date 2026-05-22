@@ -14,10 +14,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useLibraryStore } from '@/stores/library'
-import { useAuthStore } from '@/stores/auth'
+import { useRequiresAuth } from '@/composables/useRequiresAuth'
+import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 
 const library = useLibraryStore()
-const auth = useAuthStore()
+const { auth, showAuthEmpty } = useRequiresAuth()
 
 const range = ref('7d')
 const loading = ref(false)
@@ -95,20 +96,15 @@ const timeOfDayTotal = computed(() => timeOfDayChart.value.reduce((a, b) => a + 
 <template>
   <div class="w-full space-y-8">
     <ViewHeader
-      title="Stats"
+      title="통계"
       description="기간별 재생 이벤트(절반 이상 재생으로 기록된 횟수)와 시간대 분포를 확인합니다."
       :show-action="false"
     />
 
-    <div
-      v-if="!auth.isAuthenticated"
-      class="rounded-2xl border border-border bg-card/50 p-8 text-center space-y-4"
-    >
-      <p class="text-muted-foreground">통계를 보려면 설정에서 서버에 로그인하세요.</p>
-      <Button as-child variant="outline">
-        <RouterLink to="/settings">설정</RouterLink>
-      </Button>
-    </div>
+    <AuthEmptyState
+      v-if="showAuthEmpty"
+      description="통계를 보려면 설정에서 서버에 로그인하세요."
+    />
 
     <template v-else>
       <div class="flex flex-wrap items-center gap-3">

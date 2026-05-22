@@ -2,51 +2,111 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
 import { aggregateGenresFromTracks } from '@/lib/libraryAggregates'
+import { normalizeTracksResponse } from '@/lib/tracksApi'
 
 export const useLibraryStore = defineStore('library', () => {
   const auth = useAuthStore()
   
   const tracks = ref([])
+  const tracksTotal = ref(0)
   const artists = ref([])
   const albums = ref([])
-  
+  const serverSettings = ref(null)
+
   const isSyncing = ref(false)
   const syncStatusText = ref('대기 중')
-  
-  // 💉 수술: 현재 진행 중인 API 요청을 담아둘 변수
+
   let fetchPromise = null
 
   /** 메타데이터 저장 후 앨범/태그/플레이리스트 등 "별도 배열"에 붙은 트랙 행을 갱신하기 위한 구독자 */
   const trackExternalSyncListeners = new Set()
 
-  const trackCount = computed(() => tracks.value.length)
+  const trackCount = computed(() => tracksTotal.value || tracks.value.length)
 
-  /** 트랙 메타의 genre 기준 집계 (전용 API 없음) */
+  /** 트랙 메타의 genre 기준 집계 (전용 API 없음 — 페이지를 모아 집계) */
   const getGenres = async () => {
-    const allTracks = await getTracks()
+    const allTracks = []
+    let offset = 0
+    const limit = 200
+    while (true) {
+      const page = await fetchTracksPage({ offset, limit })
+      allTracks.push(...page.items)
+      if (!page.hasMore) break
+      offset += limit
+    }
     return aggregateGenresFromTracks(allTracks)
   }
 
+  const fetchServerSettings = async () => {
+    const res = await auth.fetchWithAuth('/api/settings')
+    if (!res.ok) throw new Error('설정 조회 실패')
+    const data = await res.json()
+    serverSettings.value = data
+    if (data?.library?.trackCount != null) {
+      tracksTotal.value = Number(data.library.trackCount) || 0
+    }
+    return data
+  }
+
+  const fetchTracksPage = async ({ offset = 0, limit = 50 } = {}) => {
+    const q = new URLSearchParams({
+      offset: String(offset),
+      limit: String(limit),
+    })
+    const res = await auth.fetchWithAuth(`/api/tracks?${q}`)
+    if (!res.ok) throw new Error('트랙 목록 조회 실패')
+    const body = await res.json()
+    const page = normalizeTracksResponse(body)
+    tracksTotal.value = page.total
+    return page
+  }
+
+  const fetchTracksByIds = async (ids) => {
+    const list = [...new Set(ids.map((id) => String(id)).filter(Boolean))]
+    if (!list.length) return []
+    const q = new URLSearchParams({ ids: list.join(',') })
+    const res = await auth.fetchWithAuth(`/api/tracks?${q}`)
+    if (!res.ok) throw new Error('트랙 조회 실패')
+    const body = await res.json()
+    return normalizeTracksResponse(body).items
+  }
+
+  const searchTracks = async (query, limit = 10) => {
+    const trimmed = String(query ?? '').trim()
+    if (!trimmed) return []
+    const q = new URLSearchParams({ q: trimmed, limit: String(limit) })
+    const res = await auth.fetchWithAuth(`/api/tracks?${q}`)
+    if (!res.ok) throw new Error('트랙 검색 실패')
+    const body = await res.json()
+    return normalizeTracksResponse(body).items
+  }
+
   const fetchLibrary = async () => {
-    // 💉 핵심: 이미 누군가 요청을 보냈다면, 그 요청(Promise)을 똑같이 던져주어 같이 기다리게 합니다.
-    if (fetchPromise) return fetchPromise 
+    if (fetchPromise) return fetchPromise
 
     fetchPromise = (async () => {
       isSyncing.value = true
       syncStatusText.value = 'Lazidrome 엔진에서 데이터 수신 중...'
 
       try {
-        // 💉 속도 최적화: 3개의 라우트를 동시에 찔러서 병렬로 가져옵니다.
-        const [trackRes, artistRes, albumRes] = await Promise.all([
-          auth.fetchWithAuth('/api/tracks'),
+        const [artistRes, albumRes, settingsRes] = await Promise.all([
           auth.fetchWithAuth('/api/artists'),
-          auth.fetchWithAuth('/api/albums')
+          auth.fetchWithAuth('/api/albums'),
+          auth.fetchWithAuth('/api/settings'),
         ])
 
-        // 💡 꼼수 파싱 로직 전면 폐기! 백엔드가 주는 완성품을 그대로 꽂아넣습니다.
-        tracks.value = await trackRes.json()
         artists.value = await artistRes.json()
         albums.value = await albumRes.json()
+        tracks.value = []
+
+        if (settingsRes.ok) {
+          const settings = await settingsRes.json()
+          serverSettings.value = settings
+          tracksTotal.value = Number(settings?.library?.trackCount) || 0
+        } else {
+          const meta = await fetchTracksPage({ offset: 0, limit: 1 })
+          tracksTotal.value = meta.total
+        }
 
         syncStatusText.value = '동기화 완료'
       } catch (error) {
@@ -54,15 +114,16 @@ export const useLibraryStore = defineStore('library', () => {
         syncStatusText.value = '에러 발생'
       } finally {
         isSyncing.value = false
-        fetchPromise = null // 💉 완료되면 Promise를 비워주어 다음 새로고침 시 다시 요청할 수 있게 합니다.
+        fetchPromise = null
       }
     })()
 
     return fetchPromise
   }
 
+  /** 인메모리 캐시(목록 페이지·로컬 패치용). 전체 라이브러리는 자동 로드하지 않음 */
   const getTracks = async () => {
-    if (tracks.value.length === 0) await fetchLibrary()
+    if (artists.value.length === 0 && albums.value.length === 0) await fetchLibrary()
     return tracks.value
   }
 
@@ -202,8 +263,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (!auth.token) return null
 
     const encId = encodeURIComponent(String(trackId))
-    const tokenQ = `?token=${encodeURIComponent(auth.token)}`
-    const path = `/api/tracks/${encId}/play${tokenQ}`
+    const path = `/api/tracks/${encId}/play`
 
     try {
       const res = await auth.fetchWithAuth(path, {
@@ -308,13 +368,19 @@ export const useLibraryStore = defineStore('library', () => {
 
   return {
     tracks,
+    tracksTotal,
     artists,
     albums,
+    serverSettings,
     trackCount,
     isSyncing,
     syncStatusText,
     getGenres,
     fetchLibrary,
+    fetchServerSettings,
+    fetchTracksPage,
+    fetchTracksByIds,
+    searchTracks,
     getArtists,
     getAlbums,
     getTracks,
