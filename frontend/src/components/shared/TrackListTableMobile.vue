@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Heart, Play, MoreVertical, Disc, Users, ListMusic, Sparkles, Trash2, GripVertical } from 'lucide-vue-next'
@@ -60,13 +61,14 @@ const draggableTracks = computed({
   get: () => props.localTracks,
   set: (val) => emit('update:localTracks', val)
 })
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="md:hidden flex flex-col pb-24">
     <div v-if="selectable && draggableTracks.length > 0" class="flex items-center px-4 py-3 border-b bg-muted/10 gap-3">
       <input type="checkbox" :checked="isAllSelected" :indeterminate="isSomeSelected" @change="toggleSelectAll" class="w-5 h-5 rounded border-muted-foreground/30 accent-primary"/>
-      <span class="text-sm font-bold">전체 선택</span>
+      <span class="text-sm font-bold">{{ t('trackTable.selectAll') }}</span>
     </div>
 
     <VueDraggable
@@ -124,16 +126,16 @@ const draggableTracks = computed({
                 <DropdownMenuContent align="end" class="w-48">
                   <template v-if="playlistId && item.playlist_track_id">
                     <DropdownMenuItem @click.stop="removeTrackFromPlaylist(item.playlist_track_id, item.title)" class="text-red-500 focus:text-red-500 focus:bg-red-500/10">
-                      <Trash2 class="mr-2 h-4 w-4" /> 플레이리스트에서 제외
+                      <Trash2 class="mr-2 h-4 w-4" /> {{ t('trackTable.removeFromPlaylistMenu') }}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </template>
 
-                  <DropdownMenuItem @click.stop="openPlaylistModal(item.id)"><ListMusic class="mr-2 h-4 w-4 text-primary" /> 플레이리스트에 추가...</DropdownMenuItem>
+                  <DropdownMenuItem @click.stop="openPlaylistModal(item.id)"><ListMusic class="mr-2 h-4 w-4 text-primary" /> {{ t('trackTable.addToPlaylist') }}</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem v-if="showAlbum" @click.stop="goToAlbum(item.albumId)"><Disc class="mr-2 h-4 w-4" /> 앨범으로 이동</DropdownMenuItem>
-                  <DropdownMenuItem v-if="showArtist" @click.stop="goToArtist(item.artist)"><Users class="mr-2 h-4 w-4" /> 아티스트로 이동</DropdownMenuItem>
-                  <DropdownMenuItem @click.stop="fetchMetadata(item.id)"><Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> 메타데이터 업데이트</DropdownMenuItem>
+                  <DropdownMenuItem v-if="showAlbum" @click.stop="goToAlbum(item.albumId)"><Disc class="mr-2 h-4 w-4" /> {{ t('trackTable.goToAlbum') }}</DropdownMenuItem>
+                  <DropdownMenuItem v-if="showArtist" @click.stop="goToArtist(item.artist)"><Users class="mr-2 h-4 w-4" /> {{ t('trackTable.goToArtist') }}</DropdownMenuItem>
+                  <DropdownMenuItem @click.stop="fetchMetadata(item.id)"><Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> {{ t('trackTable.updateMetadata') }}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -148,7 +150,7 @@ const draggableTracks = computed({
             </template>
             <span v-if="showArtist && showAlbum" class="mx-1">•</span>
             <template v-if="showAlbum">
-              <span @click.stop="goToAlbum(item.albumId)" class="hover:underline cursor-pointer">{{ item.albumName || 'Unknown Album' }}</span>
+              <span @click.stop="goToAlbum(item.albumId)" class="hover:underline cursor-pointer">{{ item.albumName || t('common.unknownAlbum') }}</span>
             </template>
           </div>
 
@@ -163,7 +165,7 @@ const draggableTracks = computed({
                 </PopoverContent>
               </Popover>
             </div>
-            <span class="text-primary/70 font-bold">{{ item.play_count || 0 }}회</span>
+            <span class="text-primary/70 font-bold">{{ t('common.plays', { count: item.play_count || 0 }) }}</span>
             <span>{{ formatTrackTime(item.duration) }}</span>
           </div>
         </div>

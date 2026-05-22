@@ -1,4 +1,5 @@
 import { useRouter } from 'vue-router'
+import { t } from '@/i18n/t'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
@@ -25,7 +26,7 @@ export function useTrackListRowActions(localTracks) {
   }
 
   const goToArtist = async (artistName) => {
-    if (!artistName || artistName === 'Unknown Artist') return
+    if (!artistName) return
     const allArtists = await library.getArtists()
     const targetArtist = allArtists.find((a) => a.name === artistName)
     if (targetArtist) router.push({ name: 'artist-detail', params: { id: targetArtist.id } })
@@ -53,7 +54,7 @@ export function useTrackListRowActions(localTracks) {
   }
 
   const getArtistList = (artistString) => {
-    if (!artistString) return ['Unknown Artist']
+    if (!artistString) return [t('common.unknownArtist')]
     return artistString.split(', ')
   }
 

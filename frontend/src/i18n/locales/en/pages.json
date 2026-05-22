@@ -1,0 +1,110 @@
+{
+  "pages": {
+    "home": {
+      "title": "Home",
+      "description": "Frequently visited pages and top tracks from the last 7 days.",
+      "authEmpty": "Log in to fill your home screen.",
+      "frequentTitle": "Frequently visited",
+      "frequentHint": "Only pages you opened often in the last 7 days.",
+      "frequentEmpty": "Browse playlists, albums, artists, and tags to see them here.",
+      "visitMeta": "{kind} · {count} visits in 7 days",
+      "topTitle": "Most played (7 days)",
+      "topHint": "Tap a track to queue the top 20 from that rank and play from it.",
+      "topLoading": "Loading…",
+      "topError": "Could not load rankings.",
+      "topEmpty": "No plays recorded yet.",
+      "coverAlt": "{name} cover",
+      "albumArtAlt": "{title} album art",
+      "playCount": "{count} plays"
+    },
+    "artists": {
+      "title": "Artists",
+      "description": "{count} artists total",
+      "loading": "Loading artists…"
+    },
+    "albums": {
+      "title": "Albums",
+      "description": "{count} albums total",
+      "loading": "Building album gallery…",
+      "empty": "No albums to show."
+    },
+    "tracks": {
+      "title": "Tracks",
+      "description": "{total} tracks total · showing {shown}",
+      "loading": "Loading track list…",
+      "loadMore": "Load 50 more tracks",
+      "loadingMore": "Loading…",
+      "allLoaded": "All tracks loaded."
+    },
+    "tags": {
+      "title": "Tags",
+      "description": "All tags used to organize music ({count} total)",
+      "loading": "Analyzing tags…",
+      "visualTitle": "Visual tags",
+      "allTitle": "All tags",
+      "searchPlaceholder": "Search tags…",
+      "itemCount": "{count} items",
+      "noResults": "No tags match your search."
+    },
+    "playlists": {
+      "title": "Playlists",
+      "description": "My playlists and smart mixes ({count})",
+      "loading": "Loading playlists…"
+    },
+    "details": {
+      "tagLoading": "Loading tag…",
+      "tagEmpty": "No artists, albums, or tracks use this tag yet.",
+      "tagEmptyHint": "Add the tag in metadata, then check again.",
+      "albumLoading": "Loading album…",
+      "albumNotFound": "Album not found.",
+      "playlistLoading": "Loading playlist…",
+      "playlistNotFound": "Playlist not found",
+      "playlistNotFoundHint": "It may have been deleted or is inaccessible.",
+      "artistLoading": "Loading artist…",
+      "artistNotFound": "Artist not found.",
+      "artistRatingChart": "Rating distribution",
+      "artistRatingChartLabel": "Tracks",
+      "artistComingSoon": "Coming soon (MusicBrainz integration)",
+      "artistStarLabel": "{star} stars",
+      "tagNoName": "Tag name is missing.",
+      "tagFetchFailed": "Could not load tag.",
+      "backToTags": "Back to tags",
+      "statArtists": "Artists",
+      "statAlbums": "Albums",
+      "statTracks": "Tracks",
+      "albumTracks": "Tracks",
+      "albumYear": "Release year",
+      "albumTotalDuration": "Total duration",
+      "albumTrackSummary": "{count} tracks · {duration}",
+      "albumTrackParticipationSummary": "Total {count} track credits · {duration}",
+      "playlistTrackSummary": "Total {count} tracks · {duration}",
+      "play": "Play",
+      "shuffle": "Shuffle",
+      "reshuffleMix": "Reshuffle mix",
+      "backToPlaylists": "Back to playlists",
+      "playlistManual": "Manual playlist",
+      "playlistSmartMix": "Smart mix",
+      "playlistEditSoon": "Playlist edit dialog coming soon.",
+      "statType": "Type",
+      "playlistTypeManual": "Playlist 🎵",
+      "playlistTypeMix": "Smart mix ⚡",
+      "artistStatTotalTracks": "Total tracks",
+      "artistStatAvgRating": "Avg. rating",
+      "entityArtist": "Artist",
+      "entityTag": "Tag",
+      "sectionPopularTracks": "Popular tracks",
+      "sectionAnalytics": "Analytics",
+      "sectionRelatedArtists": "Related artists",
+      "sectionFeaturedArtists": "Featured artists"
+    }
+  },
+  "visit": {
+    "playlist": "Playlist",
+    "album": "Album",
+    "artist": "Artist",
+    "tag": "Tag",
+    "fallbackAlbum": "Album",
+    "fallbackArtist": "Artist",
+    "fallbackPlaylist": "Playlist"
+  }
+}

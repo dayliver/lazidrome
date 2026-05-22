@@ -1,10 +1,12 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Upload, Link, Clipboard, X, Check, Image as ImageIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'vue-sonner'
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: { type: Object, required: true }
@@ -18,7 +20,7 @@ const fileInput = ref(null)
 // 💡 1. 파일 처리 핵심 로직 (미리보기 및 데이터 바인딩)
 const processFile = (file) => {
   if (!file || !file.type.startsWith('image/')) {
-    toast.error('이미지 파일만 업로드할 수 있습니다.')
+    toast.error(t('coverArt.imagesOnly'))
     return
   }
   
@@ -92,8 +94,8 @@ const clearSelection = () => {
       
       <div class="space-y-6">
         <div>
-          <h3 class="text-lg font-black mb-1">새 이미지 등록</h3>
-          <p class="text-xs text-muted-foreground">파일, URL, 또는 클립보드 붙여넣기를 지원합니다.</p>
+          <h3 class="text-lg font-black mb-1">{{ t('coverArt.newImageTitle') }}</h3>
+          <p class="text-xs text-muted-foreground">{{ t('coverArt.newImageHint') }}</p>
         </div>
 
         <div 
@@ -105,18 +107,18 @@ const clearSelection = () => {
             <Upload class="w-8 h-8 text-primary" />
           </div>
           <div class="text-center">
-            <p class="font-bold">이미지 파일 업로드</p>
-            <p class="text-[10px] text-muted-foreground mt-1">클릭하거나 파일을 드래그하여 놓으세요</p>
+            <p class="font-bold">{{ t('coverArt.uploadTitle') }}</p>
+            <p class="text-[10px] text-muted-foreground mt-1">{{ t('coverArt.uploadHint') }}</p>
           </div>
         </div>
 
         <div class="space-y-3 pt-2">
           <Label class="text-[11px] font-black text-muted-foreground uppercase flex items-center gap-2">
-            <Link class="w-3 h-3 text-primary" /> 웹 이미지 주소(URL)
+            <Link class="w-3 h-3 text-primary" /> {{ t('coverArt.urlLabel') }}
           </Label>
           <div class="flex gap-2">
             <Input v-model="urlInput" placeholder="https://..." class="flex-1" @keyup.enter="handleUrlSubmit" />
-            <Button variant="secondary" @click="handleUrlSubmit" class="font-bold">가져오기</Button>
+            <Button variant="secondary" @click="handleUrlSubmit" class="font-bold">{{ t('coverArt.fetch') }}</Button>
           </div>
         </div>
 
@@ -125,14 +127,14 @@ const clearSelection = () => {
             <Clipboard class="w-5 h-5 text-primary" />
           </div>
           <div>
-            <p class="text-xs font-bold text-primary tracking-tight">클립보드 이미지 직접 붙여넣기</p>
-            <p class="text-[10px] text-muted-foreground">Ctrl+V를 누르면 메모리의 이미지가 바로 등록됩니다.</p>
+            <p class="text-xs font-bold text-primary tracking-tight">{{ t('coverArt.clipboardTitle') }}</p>
+            <p class="text-[10px] text-muted-foreground">{{ t('coverArt.clipboardHint') }}</p>
           </div>
         </div>
       </div>
 
       <div class="flex flex-col items-center justify-center bg-muted/20 rounded-2xl border-2 p-8 relative overflow-hidden shadow-inner">
-        <Label class="absolute top-4 left-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Selected Image Preview</Label>
+        <Label class="absolute top-4 left-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">{{ t('coverArt.previewLabel') }}</Label>
         
         <div v-if="previewUrl" class="relative group animate-in zoom-in duration-300">
           <div class="w-64 h-64 rounded-xl shadow-2xl overflow-hidden border-4 border-background relative">
@@ -148,13 +150,13 @@ const clearSelection = () => {
             <X class="w-4 h-4" />
           </Button>
           <p class="text-center mt-6 text-xs font-black text-primary flex items-center justify-center gap-1">
-             <Check class="w-4 h-4" /> 새로운 이미지가 준비되었습니다
+             <Check class="w-4 h-4" /> {{ t('coverArt.imageReady') }}
           </p>
         </div>
 
         <div v-else class="flex flex-col items-center text-muted-foreground/30">
           <ImageIcon class="w-24 h-24 mb-4 stroke-[1px]" />
-          <p class="font-black text-sm tracking-widest uppercase">No Image Selected</p>
+          <p class="font-black text-sm tracking-widest uppercase">{{ t('coverArt.noImageSelected') }}</p>
         </div>
       </div>
 

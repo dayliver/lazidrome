@@ -2,7 +2,9 @@
 import type { HTMLAttributes } from "vue"
 import type { ChartConfig } from "."
 import { computed } from "vue"
+import { useI18n } from "vue-i18n"
 import { cn } from "@/lib/utils"
+import { formatLocaleNumber } from "@/lib/localeFormat"
 
 const props = withDefaults(defineProps<{
   hideLabel?: boolean
@@ -21,6 +23,12 @@ const props = withDefaults(defineProps<{
   config: () => ({}),
   indicator: "dot",
 })
+
+const { locale } = useI18n()
+
+function formatChartValue(value: number) {
+  return formatLocaleNumber(value, undefined, locale.value)
+}
 
 // TODO: currently we use `createElement` and `render` to render the
 // const chartContext = useChart(null)
@@ -95,7 +103,7 @@ const tooltipLabel = computed(() => {
               </span>
             </div>
             <span v-if="value" class="text-foreground font-mono font-medium tabular-nums">
-              {{ value.toLocaleString() }}
+              {{ formatChartValue(value) }}
             </span>
           </div>
         </div>

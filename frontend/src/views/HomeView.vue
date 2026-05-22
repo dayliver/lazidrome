@@ -1,12 +1,13 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
-import { Button } from '@/components/ui/button'
 import SafeImage from '@/components/shared/SafeImage.vue'
 import { playCount } from '@/lib/trackStats'
 import { useHomePage } from '@/composables/useHomePage'
 
+const { t } = useI18n()
 const {
   auth,
   visitItems,
@@ -26,33 +27,41 @@ const {
   <div class="w-full space-y-10">
     <div class="space-y-2 mb-2">
       <ViewHeader
-        title="홈"
-        description="자주 연 페이지와 최근 일주일 인기 곡만 모았습니다."
+        :title="t('pages.home.title')"
+        :description="t('pages.home.description')"
         :show-action="false"
       />
       <div v-if="auth.isAuthenticated" class="flex justify-end">
-        <RouterLink
-          to="/stats"
-          class="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
-        >
-          상세 통계
-        </RouterLink>
+        <div class="flex gap-3 text-xs">
+          <RouterLink
+            to="/charts"
+            class="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+          >
+            {{ t('nav.charts') }}
+          </RouterLink>
+          <RouterLink
+            to="/stats"
+            class="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+          >
+            {{ t('nav.stats') }}
+          </RouterLink>
+        </div>
       </div>
     </div>
 
     <AuthEmptyState
       v-if="!auth.isAuthenticated"
-      description="로그인하면 홈이 채워집니다."
+      :description="t('pages.home.authEmpty')"
     />
 
     <template v-else>
       <section class="space-y-3">
         <h2 class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          자주 찾은 항목
+          {{ t('pages.home.frequentTitle') }}
         </h2>
-        <p class="text-xs text-muted-foreground">최근 7일 동안 자주 연 페이지만 표시합니다.</p>
+        <p class="text-xs text-muted-foreground">{{ t('pages.home.frequentHint') }}</p>
         <p v-if="!visitItems.length" class="text-sm text-muted-foreground py-2">
-          플레이리스트·앨범·아티스트·태그를 둘러보면 여기에 쌓입니다.
+          {{ t('pages.home.frequentEmpty') }}
         </p>
         <ul v-else class="flex flex-col gap-2">
           <li v-for="v in visitItems" :key="`${v.type}-${v.id}`">
@@ -61,7 +70,7 @@ const {
                 v-if="v.type !== 'tag'"
                 :src="v.coverSrc"
                 :type="v.imageType"
-                :alt="`${v.displayName} 커버`"
+                :alt="t('pages.home.coverAlt', { name: v.displayName })"
                 class="h-10 w-10 shrink-0 rounded-md ring-1 ring-border"
               />
               <div
@@ -72,7 +81,9 @@ const {
               </div>
               <div class="min-w-0 flex-1 text-left">
                 <p class="truncate text-sm font-medium">{{ v.displayName }}</p>
-                <p class="text-xs text-muted-foreground">{{ v.kindLabel }} · 최근 7일 {{ v.count }}회</p>
+                <p class="text-xs text-muted-foreground">
+                  {{ t('pages.home.visitMeta', { kind: v.kindLabel, count: v.count }) }}
+                </p>
               </div>
             </RouterLink>
           </li>
@@ -81,23 +92,23 @@ const {
 
       <section class="space-y-3">
         <h2 class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          최근 7일 많이 재생된 곡
+          {{ t('pages.home.topTitle') }}
         </h2>
         <p class="text-xs text-muted-foreground leading-relaxed">
-          곡을 누르면 같은 순위의 상위 20곡이 대기열에 올라가고, 누른 곡부터 재생됩니다.
+          {{ t('pages.home.topHint') }}
         </p>
 
         <div v-if="topLoading && !top20.length" class="flex items-center gap-3 py-6 text-sm text-muted-foreground">
           <div class="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          불러오는 중…
+          {{ t('pages.home.topLoading') }}
         </div>
         <div
           v-else-if="topError"
           class="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
-          순위 데이터를 불러오지 못했습니다.
+          {{ t('pages.home.topError') }}
         </div>
-        <p v-else-if="!top20.length" class="text-sm text-muted-foreground py-4">아직 기록이 없습니다.</p>
+        <p v-else-if="!top20.length" class="text-sm text-muted-foreground py-4">{{ t('pages.home.topEmpty') }}</p>
         <template v-else>
           <ul class="flex flex-col gap-2 md:hidden">
             <li v-for="(track, idx) in top20.slice(0, 5)" :key="track.id">
@@ -110,13 +121,13 @@ const {
                   <SafeImage
                     :src="auth.coverSrc('track', track.id)"
                     type="track"
-                    :alt="`${track.title} 앨범 아트`"
+                    :alt="t('pages.home.albumArtAlt', { title: track.title })"
                     class="h-14 w-14 rounded-lg ring-1 ring-border"
                   />
                   <span
                     class="pointer-events-none absolute left-1 top-1 z-10 rounded bg-black/60 px-1 py-px text-[9px] font-bold tabular-nums text-white shadow-sm ring-1 ring-white/20 backdrop-blur-[1px]"
                   >
-                    {{ playCount(track) }}회
+                    {{ t('pages.home.playCount', { count: playCount(track) }) }}
                   </span>
                 </div>
                 <div class="min-w-0 flex-1">
@@ -148,13 +159,13 @@ const {
                   <SafeImage
                     :src="auth.coverSrc('track', track.id)"
                     type="track"
-                    :alt="`${track.title} 앨범 아트`"
+                    :alt="t('pages.home.albumArtAlt', { title: track.title })"
                     class="aspect-square h-full w-full object-cover"
                   />
                   <span
                     class="pointer-events-none absolute left-2 top-2 z-10 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white shadow-sm ring-1 ring-white/20 backdrop-blur-sm"
                   >
-                    {{ playCount(track) }}회
+                    {{ t('pages.home.playCount', { count: playCount(track) }) }}
                   </span>
                 </div>
                 <div class="space-y-0.5 p-2">

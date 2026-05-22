@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import { useAsyncResource } from '@/composables/useAsyncResource'
@@ -16,6 +17,7 @@ import TrackListTable from '@/components/shared/TrackListTable.vue'
 import { Users, Disc, Music, Hash, Edit } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import TagEditDialog from '@/components/tags/TagEditDialog.vue'
+const { t } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -29,12 +31,12 @@ const tagName = computed(() => {
 const { data: tagDetail, error: fetchError, isLoading, reload: loadTag } = useAsyncResource(
   () => tagName.value,
   async (name) => {
-    if (!name) throw new Error('태그 이름이 없습니다.')
+    if (!name) throw new Error(t('pages.details.tagNoName'))
     const qs = new URLSearchParams({ name })
     const res = await auth.fetchWithAuth(`/api/tags/detail?${qs.toString()}`)
     const body = await res.json()
     if (!res.ok) {
-      throw new Error(body.error || '태그 정보를 불러오지 못했습니다.')
+      throw new Error(body.error || t('pages.details.tagFetchFailed'))
     }
     const d = body.data || {}
     return {
@@ -50,7 +52,7 @@ const albums = computed(() => tagDetail.value?.albums ?? [])
 const tracks = computed(() => tagDetail.value?.tracks ?? [])
 
 const loadError = computed(() => {
-  if (!tagName.value) return '태그 이름이 없습니다.'
+  if (!tagName.value) return t('pages.details.tagNoName')
   return fetchError.value
 })
 
@@ -67,9 +69,9 @@ const imageUrl = computed(() => {
 })
 
 const stats = computed(() => [
-  { label: '아티스트', value: artists.value.length },
-  { label: '앨범', value: albums.value.length },
-  { label: '트랙', value: tracks.value.length }
+  { label: t('pages.details.statArtists'), value: artists.value.length },
+  { label: t('pages.details.statAlbums'), value: albums.value.length },
+  { label: t('pages.details.statTracks'), value: tracks.value.length }
 ])
 
 const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
@@ -87,21 +89,21 @@ const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
 <template>
   <div v-if="isLoading" class="p-16 flex flex-col items-center gap-4 text-muted-foreground">
     <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-    <p>태그 정보를 불러오고 있습니다...</p>
+    <p>{{ t('pages.details.tagLoading') }}</p>
   </div>
 
   <div v-else-if="loadError" class="p-16 text-center text-muted-foreground space-y-4 max-w-lg mx-auto">
     <Hash class="w-12 h-12 mx-auto opacity-30" />
     <p class="font-medium">{{ loadError }}</p>
     <button type="button" class="text-sm font-bold text-primary hover:underline" @click="router.push({ name: 'tags' })">
-      태그 목록으로
+      {{ t('pages.details.backToTags') }}
     </button>
   </div>
 
   <DetailLayout
     v-else
     :title="tagName"
-    subtitle="Tag"
+    :subtitle="t('pages.details.entityTag')"
     :is-round-image="false"
     :image-url="imageUrl"
     :stats="stats"
@@ -109,12 +111,12 @@ const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
     <template #actions>
       <Button variant="outline" size="sm" @click="editOpen = true">
         <Edit class="w-4 h-4 mr-2" />
-        편집
+        {{ t('common.edit') }}
       </Button>
     </template>
 
     <section v-if="artists.length > 0" class="space-y-6">
-      <SectionHeader title="Artists">
+      <SectionHeader :title="t('nav.artists')">
         <template #icon>
           <Users class="w-6 h-6 text-primary" />
         </template>
@@ -125,7 +127,7 @@ const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
     </section>
 
     <section v-if="albums.length > 0" class="space-y-6">
-      <SectionHeader title="Albums">
+      <SectionHeader :title="t('nav.albums')">
         <template #icon>
           <Disc class="w-6 h-6 text-primary" />
         </template>
@@ -134,7 +136,7 @@ const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
     </section>
 
     <section v-if="tracks.length > 0" class="space-y-6 pb-12">
-      <SectionHeader title="Tracks">
+      <SectionHeader :title="t('nav.tracks')">
         <template #icon>
           <Music class="w-6 h-6 text-primary" />
         </template>
@@ -148,8 +150,8 @@ const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
       v-if="!artists.length && !albums.length && !tracks.length"
       class="py-16 text-center border-2 border-dashed rounded-2xl bg-muted/5 text-muted-foreground"
     >
-      <p class="font-bold">이 태그를 사용한 아티스트·앨범·트랙이 없습니다.</p>
-      <p class="text-sm mt-2">메타데이터에 태그를 추가한 뒤 다시 확인해 주세요.</p>
+      <p class="font-bold">{{ t('pages.details.tagEmpty') }}</p>
+      <p class="text-sm mt-2">{{ t('pages.details.tagEmptyHint') }}</p>
     </div>
   </DetailLayout>
 

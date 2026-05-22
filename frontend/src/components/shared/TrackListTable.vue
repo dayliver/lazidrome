@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
 import { formatTrackTime } from '@/lib/audio'
 import { X, Trash2, ListMusic } from 'lucide-vue-next'
@@ -44,6 +45,7 @@ const {
 } = useTrackListTable(props)
 
 const player = usePlayerStore()
+const { t } = useI18n()
 const nowPlayingTrackId = computed(() => player.currentTrack?.id ?? null)
 const playerIsPlaying = computed(() => player.isPlaying)
 const togglePlayerPlay = () => player.togglePlay()
@@ -116,15 +118,15 @@ const togglePlayerPlay = () => player.togglePlay()
       <div v-if="selectedTrackIds.length > 0" class="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-[60] flex items-center bg-foreground text-background px-6 py-3 rounded-full shadow-2xl gap-5 font-sans">
         <div class="flex items-center gap-2">
           <span class="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground font-black text-xs">{{ selectedTrackIds.length }}</span>
-          <span class="font-bold text-sm whitespace-nowrap">곡 선택됨</span>
+          <span class="font-bold text-sm whitespace-nowrap">{{ t('trackTable.tracksSelected') }}</span>
         </div>
         <div class="w-px h-5 bg-background/20"></div>
-        <button @click="openPlaylistModal()" class="text-sm font-bold flex items-center gap-2 hover:text-primary transition-colors whitespace-nowrap"><ListMusic class="w-4 h-4" /> 플레이리스트에 추가</button>
+        <button @click="openPlaylistModal()" class="text-sm font-bold flex items-center gap-2 hover:text-primary transition-colors whitespace-nowrap"><ListMusic class="w-4 h-4" /> {{ t('trackTable.addToPlaylistBulk') }}</button>
         <template v-if="playlistId">
           <div class="w-px h-5 bg-background/20"></div>
-          <button @click="removeSelectedFromPlaylist" class="text-sm font-bold flex items-center gap-2 text-red-400 hover:text-red-500 transition-colors whitespace-nowrap"><Trash2 class="w-4 h-4" /> 제외하기</button>
+          <button @click="removeSelectedFromPlaylist" class="text-sm font-bold flex items-center gap-2 text-red-400 hover:text-red-500 transition-colors whitespace-nowrap"><Trash2 class="w-4 h-4" /> {{ t('trackTable.removeFromPlaylist') }}</button>
         </template>
-        <button @click="selectedTrackIds = []" class="ml-2 text-muted-foreground hover:text-background p-1 focus:outline-none transition-colors" title="선택 취소"><X class="w-5 h-5" /></button>
+        <button @click="selectedTrackIds = []" class="ml-2 text-muted-foreground hover:text-background p-1 focus:outline-none transition-colors" :title="t('trackTable.clearSelection')"><X class="w-5 h-5" /></button>
       </div>
     </Transition>
 

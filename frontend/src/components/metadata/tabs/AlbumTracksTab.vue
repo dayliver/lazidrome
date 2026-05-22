@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { Search, Plus, Trash2, Disc, Star } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,7 @@ import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth' // 💡 추가
 import { getCoverUrl } from '@/lib/image'    // 💡 추가
 import SafeImage from '@/components/shared/SafeImage.vue' // 💡 추가
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -103,14 +105,14 @@ const sortedTracks = computed(() => {
   <div class="space-y-6 animate-in fade-in duration-300 relative h-full">
     
     <div class="bg-muted/30 p-4 rounded-xl border relative z-20">
-      <label class="text-xs font-bold text-muted-foreground uppercase block mb-2">수록곡 검색 및 추가</label>
+      <label class="text-xs font-bold text-muted-foreground uppercase block mb-2">{{ t('metadata.tracksSearchAdd') }}</label>
       <div class="relative">
         <div class="flex items-center gap-2">
           <div class="relative flex-1">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               v-model="searchQuery" 
-              placeholder="추가할 곡의 제목이나 아티스트를 검색하세요" 
+              :placeholder="t('metadata.tracksSearchPlaceholder')" 
               class="bg-background pl-9 font-medium"
               @input="handleSearch"
               @focus="isFocused = true"
@@ -134,7 +136,7 @@ const sortedTracks = computed(() => {
 
             <div class="flex flex-col min-w-0 flex-1 pr-4">
               <span class="font-bold truncate">{{ res.title }}</span>
-              <span class="text-xs text-muted-foreground truncate">{{ res.artist || 'Unknown Artist' }}</span>
+              <span class="text-xs text-muted-foreground truncate">{{ res.artist || t('common.unknownArtist') }}</span>
             </div>
             <div class="shrink-0 flex items-center gap-3">
               <span class="text-[10px] text-muted-foreground font-mono bg-background px-2 py-1 rounded border">{{ res.year || '-' }}</span>
@@ -146,7 +148,7 @@ const sortedTracks = computed(() => {
         </div>
         <div v-else-if="isFocused && searchQuery.trim() && searchResults.length === 0"
              class="absolute top-full left-0 right-0 mt-1 bg-card border rounded-md shadow-xl p-4 text-center text-sm text-muted-foreground">
-          검색된 곡이 없습니다.
+          {{ t('metadata.tracksNoResults') }}
         </div>
       </div>
     </div>
@@ -154,13 +156,13 @@ const sortedTracks = computed(() => {
     <div class="space-y-2 relative z-10 pb-8">
       
       <div class="flex items-center justify-between px-2 mb-4">
-        <span class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">수록곡 목록 ({{ modelValue.length }}곡)</span>
-        <span class="text-[10px] font-bold text-muted-foreground">번호 수정 시 즉시 반영</span>
+        <span class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{{ t('metadata.tracksList', { count: modelValue.length }) }}</span>
+        <span class="text-[10px] font-bold text-muted-foreground">{{ t('metadata.tracksListHint') }}</span>
       </div>
 
       <div v-if="modelValue.length === 0" class="p-10 text-center text-muted-foreground border-2 border-dashed rounded-xl bg-muted/5">
         <Disc class="w-10 h-10 mx-auto mb-3 opacity-20" />
-        앨범에 수록된 곡이 없습니다.<br/>위에서 곡을 검색하여 추가해주세요.
+        {{ t('metadata.tracksEmpty') }}
       </div>
       
       <TransitionGroup name="list" tag="div" class="space-y-2">
@@ -171,11 +173,11 @@ const sortedTracks = computed(() => {
         >
           <div class="flex gap-2 w-[110px] shrink-0">
             <div class="space-y-1">
-              <label class="text-[8px] font-black uppercase text-muted-foreground block text-center">CD</label>
+              <label class="text-[8px] font-black uppercase text-muted-foreground block text-center">{{ t('metadata.discNumber') }}</label>
               <Input type="number" v-model="track.disc_number" @change="triggerUpdate" class="h-8 text-xs text-center font-mono font-bold bg-muted/50 focus:bg-background" />
             </div>
             <div class="space-y-1">
-              <label class="text-[8px] font-black uppercase text-muted-foreground block text-center">No.</label>
+              <label class="text-[8px] font-black uppercase text-muted-foreground block text-center">{{ t('metadata.trackNumber') }}</label>
               <Input type="number" v-model="track.track_number" @change="triggerUpdate" class="h-8 text-xs text-center font-mono font-bold bg-muted/50 focus:bg-background" />
             </div>
           </div>
@@ -187,18 +189,18 @@ const sortedTracks = computed(() => {
 
           <div class="flex-1 min-w-0 flex flex-col justify-center">
             <span class="font-bold text-sm truncate">{{ track.title }}</span>
-            <span class="text-xs text-muted-foreground truncate">{{ track.artist || 'Unknown Artist' }}</span>
+            <span class="text-xs text-muted-foreground truncate">{{ track.artist || t('common.unknownArtist') }}</span>
           </div>
 
           <div class="flex items-center gap-1 shrink-0">
             <button 
               @click="togglePrimary(track)" 
               class="flex flex-col items-center justify-center w-12 h-12 rounded-lg hover:bg-muted transition-colors focus:outline-none"
-              :title="track.is_primary ? '이 곡의 대표 앨범입니다' : '대표 앨범으로 설정'"
+              :title="track.is_primary ? t('metadata.primaryAlbum') : t('metadata.setPrimaryAlbum')"
             >
               <Star class="w-4 h-4 transition-all" :class="track.is_primary ? 'fill-yellow-500 text-yellow-500 scale-110' : 'text-muted-foreground'" />
               <span class="text-[8px] font-bold uppercase mt-1" :class="track.is_primary ? 'text-yellow-600' : 'text-muted-foreground'">
-                {{ track.is_primary ? 'Primary' : 'Sub' }}
+                {{ track.is_primary ? t('metadata.primaryShort') : t('metadata.subShort') }}
               </span>
             </button>
 

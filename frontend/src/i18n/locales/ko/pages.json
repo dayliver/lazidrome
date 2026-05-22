@@ -1,0 +1,110 @@
+{
+  "pages": {
+    "home": {
+      "title": "홈",
+      "description": "자주 연 페이지와 최근 일주일 인기 곡만 모았습니다.",
+      "authEmpty": "로그인하면 홈이 채워집니다.",
+      "frequentTitle": "자주 찾은 항목",
+      "frequentHint": "최근 7일 동안 자주 연 페이지만 표시합니다.",
+      "frequentEmpty": "재생목록·앨범·아티스트·태그를 둘러보면 여기에 쌓입니다.",
+      "visitMeta": "{kind} · 최근 7일 {count}회",
+      "topTitle": "최근 7일 많이 재생된 곡",
+      "topHint": "곡을 누르면 같은 순위의 상위 20곡이 대기열에 올라가고, 누른 곡부터 재생됩니다.",
+      "topLoading": "불러오는 중…",
+      "topError": "순위 데이터를 불러오지 못했습니다.",
+      "topEmpty": "아직 기록이 없습니다.",
+      "coverAlt": "{name} 커버",
+      "albumArtAlt": "{title} 앨범 아트",
+      "playCount": "{count}회"
+    },
+    "artists": {
+      "title": "아티스트",
+      "description": "총 {count}명의 아티스트",
+      "loading": "아티스트 목록을 불러오는 중…"
+    },
+    "albums": {
+      "title": "앨범",
+      "description": "총 {count}장",
+      "loading": "Lazidrome 엔진에서 앨범 갤러리를 구성하고 있습니다...",
+      "empty": "표시할 앨범이 없습니다."
+    },
+    "tracks": {
+      "title": "곡",
+      "description": "전체 {total}곡 · {shown}곡 표시 중",
+      "loading": "Lazidrome에서 곡 목록을 가져오고 있습니다...",
+      "loadMore": "50곡 더 불러오기",
+      "loadingMore": "불러오는 중...",
+      "allLoaded": "모든 트랙을 불러왔습니다."
+    },
+    "tags": {
+      "title": "태그",
+      "description": "음악을 분류하는 모든 태그 (총 {count}개)",
+      "loading": "태그 데이터를 분석 중입니다...",
+      "visualTitle": "시각적 태그",
+      "allTitle": "모든 태그",
+      "searchPlaceholder": "태그 검색...",
+      "itemCount": "{count} 항목",
+      "noResults": "검색된 태그가 없습니다."
+    },
+    "playlists": {
+      "title": "재생목록",
+      "description": "내 재생목록 및 스마트 믹스 ({count}개)",
+      "loading": "재생목록를 불러오는 중…"
+    },
+    "details": {
+      "tagLoading": "태그 정보를 불러오고 있습니다...",
+      "tagEmpty": "이 태그를 사용한 아티스트·앨범·트랙이 없습니다.",
+      "tagEmptyHint": "메타데이터에 태그를 추가한 뒤 다시 확인해 주세요.",
+      "albumLoading": "앨범 정보를 불러오고 있습니다...",
+      "albumNotFound": "앨범 정보를 찾을 수 없습니다.",
+      "playlistLoading": "재생목록를 불러오고 있습니다...",
+      "playlistNotFound": "재생목록를 찾을 수 없습니다",
+      "playlistNotFoundHint": "삭제되었거나 접근할 수 없는 목록입니다.",
+      "artistLoading": "아티스트 정보를 불러오고 있습니다...",
+      "artistNotFound": "아티스트 정보를 찾을 수 없습니다.",
+      "artistRatingChart": "별점 분포 (타율 분석)",
+      "artistRatingChartLabel": "곡 수",
+      "artistComingSoon": "향후 추가될 기능입니다 (MusicBrainz 연동 시 제공)",
+      "artistStarLabel": "{star}점",
+      "tagNoName": "태그 이름이 없습니다.",
+      "tagFetchFailed": "태그 정보를 불러오지 못했습니다.",
+      "backToTags": "태그 목록으로",
+      "statArtists": "아티스트",
+      "statAlbums": "앨범",
+      "statTracks": "트랙",
+      "albumTracks": "수록곡",
+      "albumYear": "발매 연도",
+      "albumTotalDuration": "총 재생 시간",
+      "albumTrackSummary": "총 {count}곡 · {duration}",
+      "albumTrackParticipationSummary": "총 {count}곡 참여 · {duration}",
+      "playlistTrackSummary": "총 {count}곡 · {duration}",
+      "play": "재생",
+      "shuffle": "셔플",
+      "reshuffleMix": "믹스 다시 섞기",
+      "backToPlaylists": "목록으로 돌아가기",
+      "playlistManual": "수동 재생목록",
+      "playlistSmartMix": "스마트 믹스",
+      "playlistEditSoon": "재생목록 편집 다이얼로그는 곧 지원됩니다.",
+      "statType": "유형",
+      "playlistTypeManual": "재생목록 🎵",
+      "playlistTypeMix": "스마트 믹스 ⚡",
+      "artistStatTotalTracks": "참여 곡",
+      "artistStatAvgRating": "평균 별점",
+      "entityArtist": "아티스트",
+      "entityTag": "태그",
+      "sectionPopularTracks": "인기 곡",
+      "sectionAnalytics": "분석",
+      "sectionRelatedArtists": "관련 아티스트",
+      "sectionFeaturedArtists": "참여 아티스트"
+    }
+  },
+  "visit": {
+    "playlist": "재생목록",
+    "album": "앨범",
+    "artist": "아티스트",
+    "tag": "태그",
+    "fallbackAlbum": "앨범",
+    "fallbackArtist": "아티스트",
+    "fallbackPlaylist": "재생목록"
+  }
+}

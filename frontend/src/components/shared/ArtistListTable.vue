@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { Play, MoreVertical, Users, Sparkles } from 'lucide-vue-next'
 import { useLibraryStore } from '@/stores/library'
@@ -26,6 +27,7 @@ const library = useLibraryStore()
 const player = usePlayerStore()
 const auth = useAuthStore()
 const metadataEdit = useMetadataEditStore()
+const { t } = useI18n()
 
 const goToArtistDetail = (artistId) => router.push({ name: 'artist-detail', params: { id: artistId } })
 
@@ -35,7 +37,7 @@ const playTopTrack = async (trackId) => {
     if (fullTrack) {
       player.playNewQueue([fullTrack], 0)
     } else {
-      console.warn('해당 곡의 상세 정보를 찾을 수 없습니다.')
+      console.warn(t('artistTable.trackNotFound'))
     }
   } catch (error) {
     console.error('대표곡 재생 중 오류 발생:', error)
@@ -74,11 +76,11 @@ const fetchMetadata = (artistId) => {
   <Table>
     <TableHeader class="bg-muted/30">
       <TableRow>
-        <TableHead class="w-[250px] md:w-[300px]">아티스트</TableHead>
-        <TableHead class="hidden md:table-cell w-[100px] text-center">참여 곡</TableHead>
-        <TableHead class="hidden md:table-cell w-[120px] text-center">평균 별점</TableHead>
-        <TableHead class="hidden md:table-cell w-[160px]">주요 태그</TableHead>
-        <TableHead class="hidden lg:table-cell">대표곡 (Top 3)</TableHead>
+        <TableHead class="w-[250px] md:w-[300px]">{{ t('artistTable.artist') }}</TableHead>
+        <TableHead class="hidden md:table-cell w-[100px] text-center">{{ t('artistTable.trackCount') }}</TableHead>
+        <TableHead class="hidden md:table-cell w-[120px] text-center">{{ t('artistTable.avgRating') }}</TableHead>
+        <TableHead class="hidden md:table-cell w-[160px]">{{ t('artistTable.topTags') }}</TableHead>
+        <TableHead class="hidden lg:table-cell">{{ t('artistTable.topTracks') }}</TableHead>
         <TableHead class="w-[60px] text-right"></TableHead>
       </TableRow>
     </TableHeader>
@@ -106,14 +108,14 @@ const fetchMetadata = (artistId) => {
             <div class="flex flex-col min-w-0">
               <span class="font-bold text-base md:text-lg truncate group-hover:text-primary transition-colors">{{ artist.name }}</span>
               <span class="md:hidden text-xs font-medium text-muted-foreground mt-0.5">
-                {{ artist.trackCount }}곡 • {{ artist.avgRating > 0 ? `★ ${artist.avgRating}` : '평가 없음' }}
+                {{ t('common.trackCount', { count: artist.trackCount }) }} • {{ artist.avgRating > 0 ? `★ ${artist.avgRating}` : t('common.noRating') }}
               </span>
             </div>
           </div>
         </TableCell>
 
         <TableCell class="hidden md:table-cell text-center font-medium text-muted-foreground tabular-nums">
-          {{ artist.trackCount || 0 }}곡
+          {{ t('common.trackCount', { count: artist.trackCount || 0 }) }}
         </TableCell>
 
         <TableCell class="hidden md:table-cell text-center">
@@ -130,7 +132,7 @@ const fetchMetadata = (artistId) => {
               {{ tag }}
             </span>
           </div>
-          <span v-else class="text-[10px] text-muted-foreground">태그 없음</span>
+          <span v-else class="text-[10px] text-muted-foreground">{{ t('common.noTags') }}</span>
         </TableCell>
 
         <TableCell class="hidden lg:table-cell">
@@ -151,13 +153,13 @@ const fetchMetadata = (artistId) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="w-48">
               <DropdownMenuItem @click.stop="playArtistRandom(artist)">
-                <Play class="mr-2 h-4 w-4" /> 전체 셔플 재생
+                <Play class="mr-2 h-4 w-4" /> {{ t('artistTable.shuffleAll') }}
               </DropdownMenuItem>
               <DropdownMenuItem @click.stop="goToArtistDetail(artist.id)">
-                <Users class="mr-2 h-4 w-4" /> 상세 정보 보기
+                <Users class="mr-2 h-4 w-4" /> {{ t('artistTable.viewDetails') }}
               </DropdownMenuItem>
               <DropdownMenuItem @click.stop="fetchMetadata(artist.id)">
-                <Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> 메타데이터 업데이트
+                <Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> {{ t('artistTable.updateMetadata') }}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

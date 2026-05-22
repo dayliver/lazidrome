@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ChevronLeft, User, Disc } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const { t } = useI18n()
 
 const titleParts = computed(() => splitTrailingParentheticals(props.title))
 </script>
@@ -65,7 +67,7 @@ const titleParts = computed(() => splitTrailingParentheticals(props.title))
               {{ titleParts.main }}<span class="ms-2 md:ms-3 lg:ms-4 font-medium text-muted-foreground/90">{{ titleParts.suffix }}</span>
             </template>
             <template v-else>
-              {{ title || '불러오는 중…' }}
+              {{ title || t('detailHeader.loading') }}
             </template>
           </h1>
         </div>

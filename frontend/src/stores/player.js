@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, shallowRef, watch } from 'vue'
+import { t } from '@/i18n/t'
 import { useAuthStore } from './auth'
 import { useLibraryStore } from './library'
 
@@ -414,8 +415,8 @@ export const usePlayerStore = defineStore('player', () => {
       return
     }
 
-    const title = tr.title || 'Unknown'
-    const artist = tr.artist || 'Unknown Artist'
+    const title = tr.title || t('player.unknownTrack')
+    const artist = tr.artist || t('common.unknownArtist')
     const album = tr.album || undefined
     const cover = auth.token
       ? auth.coverSrc('track', tr.id)
@@ -675,7 +676,7 @@ export const usePlayerStore = defineStore('player', () => {
       cur && cur.id != null
         ? {
             id: String(cur.id),
-            title: (String(cur.title || '').trim() || '알 수 없는 곡').slice(0, 300),
+            title: (String(cur.title || '').trim() || t('player.unknownTrack')).slice(0, 300),
           }
         : trackIds[ci]
           ? { id: String(trackIds[ci]), title: '' }

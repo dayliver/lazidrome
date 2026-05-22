@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
 import md5 from 'md5'
@@ -9,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 const player = usePlayerStore()
 const auth = useAuthStore()
+const { t } = useI18n()
 
 // 대기열 곡 클릭 시 재생
 const playFromQueue = (index) => {
@@ -43,7 +45,7 @@ const getCoverUrl = (coverId) => {
          class="fixed right-0 top-0 bottom-24 w-full md:w-[400px] bg-background border-l z-[70] shadow-2xl flex flex-col">
       
       <div class="p-4 border-b flex items-center justify-between bg-muted/30">
-        <h2 class="font-bold text-lg">재생 대기열 ({{ player.queue.length }})</h2>
+        <h2 class="font-bold text-lg">{{ t('player.queueWithCount', { count: player.queue.length }) }}</h2>
         <Button variant="ghost" size="icon" @click="player.isQueueOpen = false">
           <X class="w-5 h-5" />
         </Button>
@@ -60,7 +62,7 @@ const getCoverUrl = (coverId) => {
                   :src="getCoverUrl(track.coverArt)" 
                   crossorigin="anonymous"
                   class="w-full h-full object-cover" />
-             <span v-else class="text-[10px] font-bold text-muted-foreground">MU</span>
+             <span v-else class="text-[10px] font-bold text-muted-foreground">{{ t('app.short') }}</span>
 
              <div v-if="player.currentIndex === index" class="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
                <div class="w-2 h-2 bg-primary animate-pulse rounded-full"></div>
@@ -72,7 +74,7 @@ const getCoverUrl = (coverId) => {
               {{ track.title }}
             </span>
             <span class="text-xs text-muted-foreground truncate">
-              {{ track.artist || track.albumArtist || track.composer || 'Unknown Artist' }}
+              {{ track.artist || track.albumArtist || track.composer || t('common.unknownArtist') }}
             </span>
           </div>
         </div>

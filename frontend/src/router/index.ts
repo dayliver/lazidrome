@@ -24,6 +24,30 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/charts',
+      name: 'charts',
+      component: () => import('@/views/charts/ChartsOverview.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/charts/weekly',
+      name: 'charts-weekly',
+      component: () => import('@/views/charts/ChartsDetail.vue'),
+      meta: { requiresAuth: true, chartPeriod: 'weekly' },
+    },
+    {
+      path: '/charts/monthly',
+      name: 'charts-monthly',
+      component: () => import('@/views/charts/ChartsDetail.vue'),
+      meta: { requiresAuth: true, chartPeriod: 'monthly' },
+    },
+    {
+      path: '/charts/alltime',
+      name: 'charts-alltime',
+      component: () => import('@/views/charts/ChartsDetail.vue'),
+      meta: { requiresAuth: true, chartPeriod: 'alltime' },
+    },
+    {
       path: '/tracks',
       name: 'tracks',
       component: () => import('@/views/TracksView.vue'),

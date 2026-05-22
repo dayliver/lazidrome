@@ -1,11 +1,12 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
 
-import { formatDuration } from '@/lib/audio'
+import { useDurationLabel } from '@/composables/useDurationLabel'
 import SafeImage from '@/components/shared/SafeImage.vue'
 
 // 💉 2. Sparkles 아이콘 임포트 추가
@@ -27,6 +28,8 @@ const auth = useAuthStore()
 const player = usePlayerStore()
 // 💉 3. 스토어 인스턴스화
 const metadataEdit = useMetadataEditStore()
+const { t } = useI18n()
+const durationLabel = useDurationLabel()
 
 const getAlbumImageUrl = (id) => {
   return auth.coverSrc('album', id)
@@ -70,7 +73,7 @@ const fetchMetadata = (albumId) => {
           v-if="item.cover_type"
           :src="getAlbumImageUrl(item.id)"
           type="album"
-          :alt="`${item.name} 앨범 커버`"
+          :alt="t('common.albumCoverAlt', { name: item.name })"
           class="absolute inset-0 w-full h-full transition-all duration-500 group-hover:scale-105 z-10"
         />
 
@@ -89,7 +92,7 @@ const fetchMetadata = (albumId) => {
               {{ item.name }}
             </span>
             <span class="text-sm font-medium text-muted-foreground truncate mt-0.5" :title="item.displayArtist">
-              {{ item.displayArtist || 'Unknown Artist' }}
+              {{ item.displayArtist || t('common.unknownArtist') }}
             </span>
           </div>
           
@@ -101,13 +104,13 @@ const fetchMetadata = (albumId) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="w-48">
               <DropdownMenuItem @click.stop="playAlbumShuffle(item.id)">
-                <Shuffle class="mr-2 h-4 w-4" /> 셔플 재생
+                <Shuffle class="mr-2 h-4 w-4" /> {{ t('albumGrid.shufflePlay') }}
               </DropdownMenuItem>
               <DropdownMenuItem @click.stop="goToAlbumDetail(item.id)">
-                <Info class="mr-2 h-4 w-4" /> 앨범 정보
+                <Info class="mr-2 h-4 w-4" /> {{ t('albumGrid.albumInfo') }}
               </DropdownMenuItem>
               <DropdownMenuItem @click.stop="fetchMetadata(item.id)">
-                <Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> 메타데이터 업데이트
+                <Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> {{ t('albumGrid.updateMetadata') }}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -116,9 +119,9 @@ const fetchMetadata = (albumId) => {
         <div class="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground/70 font-medium font-mono">
           <span>{{ item.year || '-' }}</span>
           <span>•</span>
-          <span>{{ item.trackCount || 0 }}곡</span>
+          <span>{{ t('common.trackCount', { count: item.trackCount || 0 }) }}</span>
           <span v-if="item.totalDuration">•</span>
-          <span v-if="item.totalDuration">{{ formatDuration(item.totalDuration) }}</span>
+          <span v-if="item.totalDuration">{{ durationLabel(item.totalDuration) }}</span>
         </div>
 
       </div>

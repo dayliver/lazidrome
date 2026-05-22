@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
 import { useRequiresAuth } from '@/composables/useRequiresAuth'
@@ -8,12 +9,17 @@ import AlbumGrid from '@/components/shared/AlbumGrid.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 
+const { t } = useI18n()
 const library = useLibraryStore()
 const auth = useAuthStore()
 const { showAuthEmpty } = useRequiresAuth()
 
 const albumsData = ref([])
 const isLoading = ref(true)
+
+const description = computed(() =>
+  t('pages.albums.description', { count: albumsData.value.length })
+)
 
 const loadAlbums = async () => {
   if (showAuthEmpty.value) {
@@ -30,7 +36,7 @@ const loadAlbums = async () => {
       await auth.prefetchImageSignatures('album', coverIds)
     }
   } catch (error) {
-    console.error('앨범 데이터를 불러오는 중 에러 발생:', error)
+    console.error(error)
   } finally {
     isLoading.value = false
   }
@@ -43,32 +49,30 @@ watch(showAuthEmpty, () => {
 })
 
 const handleCreateAlbum = () => {
-  console.log('새 앨범 생성')
+  console.log('create album')
 }
 </script>
 
 <template>
   <div class="w-full space-y-6">
-    
     <ViewHeader
-      title="앨범"
-      :description="`총 ${albumsData.length}장`"
+      :title="t('pages.albums.title')"
+      :description="description"
       @action="handleCreateAlbum"
     />
 
     <AuthEmptyState v-if="showAuthEmpty" />
 
     <div v-else-if="isLoading" class="p-16 text-center text-muted-foreground flex flex-col items-center gap-4">
-      <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      <p>Lazidrome 엔진에서 앨범 갤러리를 구성하고 있습니다...</p>
+      <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <p>{{ t('pages.albums.loading') }}</p>
     </div>
-    
+
     <div v-else-if="albumsData.length === 0" class="p-16 text-center text-muted-foreground flex flex-col items-center gap-4">
       <Disc class="w-12 h-12 opacity-20" />
-      <p>표시할 앨범이 없습니다.</p>
+      <p>{{ t('pages.albums.empty') }}</p>
     </div>
 
     <AlbumGrid v-else :albums="albumsData" />
-
   </div>
 </template>

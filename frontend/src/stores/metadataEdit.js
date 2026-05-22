@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { t } from '@/i18n/t'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
 import { toast } from 'vue-sonner'
@@ -69,17 +70,17 @@ export const useMetadataEditStore = defineStore('metadataEdit', () => {
       })
 
       if (!res.ok) {
-        throw new Error(res.status === 413 ? '이미지 용량이 너무 큽니다' : '서버 통신 실패')
+        throw new Error(res.status === 413 ? t('metadata.imageTooLarge') : t('metadata.serverError'))
       }
 
       const result = await res.json()
       if (result.success) {
         return result.data
       }
-      throw new Error(result.error || '저장 실패')
+      throw new Error(result.error || t('metadata.saveErrorGeneric'))
     } catch (err) {
       console.error('🚨 저장 중 오류 발생:', err.message)
-      toast.error('메타데이터 저장에 실패했습니다.')
+      toast.error(t('metadata.saveFailed'))
       return null
     }
   }

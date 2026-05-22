@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, defineAsyncComponent } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useLibraryStore } from '@/stores/library'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
 import { Button } from '@/components/ui/button'
@@ -17,21 +18,21 @@ const wrapperRef = ref(null)
 
 const wrapperMap = { track: TrackMetadataPanel, album: AlbumMetadataPanel, artist: ArtistMetadataPanel }
 const currentWrapper = computed(() => item.value ? wrapperMap[item.value.type] : null)
+const { t } = useI18n()
 
-// 💡 잃어버렸던 탭 구성 로직 복구
 const tabs = computed(() => {
   if (!item.value) return []
-  const baseTabs = [{ id: 'basic', label: '기본 정보', icon: Info }]
-  
+  const baseTabs = [{ id: 'basic', label: t('metadata.tabBasic'), icon: Info }]
+
   if (item.value.type === 'track') {
-    baseTabs.push({ id: 'artists', label: '참여 아티스트', icon: Users })
+    baseTabs.push({ id: 'artists', label: t('metadata.tabArtists'), icon: Users })
   } else if (item.value.type === 'album') {
-    baseTabs.push({ id: 'albumArtists', label: '앨범 아티스트', icon: Users }) 
-    baseTabs.push({ id: 'tracks', label: '수록곡 관리', icon: ListMusic })
+    baseTabs.push({ id: 'albumArtists', label: t('metadata.tabAlbumArtists'), icon: Users })
+    baseTabs.push({ id: 'tracks', label: t('metadata.tabTracks'), icon: ListMusic })
   }
-  
-  baseTabs.push({ id: 'cover', label: item.value.type === 'artist' ? '프로필 사진' : '커버 아트', icon: ImageIcon })
-  baseTabs.push({ id: 'external', label: '외부 연동', icon: Globe })
+
+  baseTabs.push({ id: 'cover', label: item.value.type === 'artist' ? t('metadata.tabProfile') : t('metadata.tabCover'), icon: ImageIcon })
+  baseTabs.push({ id: 'external', label: t('metadata.tabExternal'), icon: Globe })
   return baseTabs
 })
 
@@ -63,7 +64,7 @@ const handleSave = async () => {
     <div class="bg-card w-full max-w-5xl h-[85vh] rounded-2xl shadow-2xl border-2 flex flex-col overflow-hidden">
       
       <header class="flex items-center justify-between px-8 py-5 border-b bg-muted/20">
-        <h2 class="text-2xl font-black">메타데이터 편집</h2>
+        <h2 class="text-2xl font-black">{{ t('metadata.editTitle') }}</h2>
         <Button variant="ghost" size="icon" @click="metadataEdit.shiftQueue()"><X /></Button>
       </header>
 
@@ -92,7 +93,7 @@ const handleSave = async () => {
 
       <footer class="p-6 border-t bg-muted/20 flex justify-end">
         <Button @click="handleSave" class="font-black px-12">
-          <Save class="w-4 h-4 mr-2" /> 변경사항 저장
+          <Save class="w-4 h-4 mr-2" /> {{ t('common.save') }}
         </Button>
       </footer>
     </div>

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
 import { toast } from 'vue-sonner'
+import { t } from '@/i18n/t'
 
 export const usePlaylistStore = defineStore('playlist', () => {
   const auth = useAuthStore()
@@ -141,8 +142,8 @@ export const usePlaylistStore = defineStore('playlist', () => {
       if (result.success) {
         
         // 💡 alert 대신 아리따운 sonner 토스트 적용!
-        toast.success('플레이리스트에 추가되었습니다', {
-          description: `총 ${trackIds.length}곡이 성공적으로 담겼습니다.`
+        toast.success(t('playlist.addedSuccess'), {
+          description: t('playlist.addedSuccessDesc', { count: trackIds.length }),
         })
 
         if (currentPlaylist.value?.id === playlistId) {
@@ -153,7 +154,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
       return false
     } catch (err) {
       console.error('곡 추가 실패:', err)
-      toast.error('곡 추가에 실패했습니다.') // 실패 시에도 에러 토스트
+      toast.error(t('playlist.addFailed'))
       return false
     }
   }

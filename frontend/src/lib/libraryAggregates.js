@@ -1,3 +1,5 @@
+import { t } from '@/i18n/t'
+
 /**
  * 라이브러리 트랙 배열에서 파생되는 집계·정렬 (Pinia/Vue와 무관)
  */
@@ -24,7 +26,7 @@ export function aggregateGenresFromTracks(allTracks) {
   const map = new Map()
   for (const t of allTracks) {
     const raw = t.genre
-    const genreName = raw && String(raw).trim() ? String(raw).trim() : '(장르 없음)'
+    const genreName = raw && String(raw).trim() ? String(raw).trim() : t('library.noGenre')
     if (!map.has(genreName)) map.set(genreName, [])
     map.get(genreName).push(t)
   }

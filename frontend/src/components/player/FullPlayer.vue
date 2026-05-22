@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { 
   ArrowLeft
 } from 'lucide-vue-next'
@@ -18,6 +19,7 @@ import { getCoverUrl } from '@/lib/image'
 const player = usePlayerStore()
 const auth = useAuthStore()
 const library = useLibraryStore()
+const { t } = useI18n()
 
 const showMenu = ref(false)
 
@@ -33,7 +35,7 @@ const coverUrl = computed(() => {
 
 // 💉 4. 아티스트 표시 로직 수정 (artist 필드 활용)
 const displayArtist = computed(() => {
-  return currentTrack.value?.artist || '아티스트 없음'
+  return currentTrack.value?.artist || t('player.noArtist')
 })
 
 const toggleFavorite = async () => { 
@@ -94,7 +96,7 @@ const changeRating = async (rate) => {
                 @click="player.toggleQueueView"
               >
                 <ArrowLeft class="w-4 h-4" />
-                <span>BACK TO PLAYER</span>
+                <span>{{ t('player.backToPlayer').toUpperCase() }}</span>
               </Button>
             </div>
           </Transition>

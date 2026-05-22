@@ -11,6 +11,7 @@ import {
   TagsInput, TagsInputInput, TagsInputItem, 
   TagsInputItemDelete, TagsInputItemText 
 } from '@/components/ui/tags-input'
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -31,7 +32,7 @@ const updateField = (field, value) => {
     
     <div class="flex gap-6">
       <div class="space-y-2 flex-1">
-        <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">앨범 제목</Label>
+        <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('metadata.albumTitle') }}</Label>
         <Input 
           :model-value="modelValue.title" 
           @input="e => updateField('title', e.target.value)"
@@ -39,7 +40,7 @@ const updateField = (field, value) => {
         />
       </div>
       <div class="space-y-2 w-32 shrink-0">
-        <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">발매 연도</Label>
+        <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('metadata.releaseYear') }}</Label>
         <Input 
           :model-value="modelValue.year" 
           @input="e => updateField('year', e.target.value)"
@@ -50,7 +51,7 @@ const updateField = (field, value) => {
     </div>
 
     <div class="space-y-3 pt-2">
-      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">앨범 분류 태그</Label>
+      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('metadata.albumTags') }}</Label>
       <TagsInput 
         :model-value="modelValue.tags" 
         @update:model-value="val => updateField('tags', val)"
@@ -60,15 +61,15 @@ const updateField = (field, value) => {
           <TagsInputItemText class="text-xs font-bold" />
           <TagsInputItemDelete />
         </TagsInputItem>
-        <TagsInputInput placeholder="태그 입력..." class="text-sm" />
+        <TagsInputInput :placeholder="t('metadata.tagInput')" class="text-sm" />
       </TagsInput>
     </div>
 
     <div class="space-y-2">
-      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">설명</Label>
+      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('metadata.description') }}</Label>
       <Textarea
         :model-value="modelValue.description"
-        placeholder="출처, 공식 여부, 유튜브 전용 음반 등 메모 (선택)"
+        :placeholder="t('metadata.descriptionPlaceholder')"
         class="min-h-[120px] border-2 leading-relaxed resize-y"
         @input="(e) => updateField('description', e.target.value)"
       />
@@ -77,7 +78,7 @@ const updateField = (field, value) => {
     <div class="pt-6">
       <div class="flex items-center gap-4 mb-8">
         <div class="h-[1px] flex-1 bg-border"></div>
-        <span class="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Album Cover</span>
+        <span class="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{{ t('metadata.albumCoverLabel') }}</span>
         <div class="h-[1px] flex-1 bg-border"></div>
       </div>
 
@@ -95,7 +96,7 @@ const updateField = (field, value) => {
           
           <div class="absolute inset-0 bg-primary/70 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-primary-foreground p-4 text-center backdrop-blur-sm">
             <ImageIcon class="w-10 h-10 mb-3 drop-shadow-md" />
-            <span class="text-sm font-black leading-tight tracking-tight">이미지 스튜디오에서<br/>변경하기</span>
+            <span class="text-sm font-black leading-tight tracking-tight">{{ t('metadata.changeInStudio') }}</span>
           </div>
         </div>
       </div>

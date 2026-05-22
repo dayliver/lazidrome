@@ -1,6 +1,9 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { User, Disc, Music } from 'lucide-vue-next'
+
+const { t } = useI18n()
 
 const props = defineProps({
   src: String,
@@ -11,9 +14,9 @@ const props = defineProps({
 
 const defaultAlt = computed(() => {
   if (props.alt) return props.alt
-  if (props.type === 'artist') return '아티스트 이미지'
-  if (props.type === 'album') return '앨범 커버'
-  return '곡 앨범 아트'
+  if (props.type === 'artist') return t('safeImage.artist')
+  if (props.type === 'album') return t('safeImage.album')
+  return t('safeImage.track')
 })
 
 const hasError = ref(false)

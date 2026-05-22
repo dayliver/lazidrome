@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
+import { t } from '@/i18n/t'
 import { aggregateGenresFromTracks } from '@/lib/libraryAggregates'
 import { normalizeTracksResponse } from '@/lib/tracksApi'
 
@@ -14,7 +15,8 @@ export const useLibraryStore = defineStore('library', () => {
   const serverSettings = ref(null)
 
   const isSyncing = ref(false)
-  const syncStatusText = ref('대기 중')
+  const syncStatusKey = ref('library.syncIdle')
+  const syncStatusText = computed(() => t(syncStatusKey.value))
 
   let fetchPromise = null
 
@@ -39,7 +41,7 @@ export const useLibraryStore = defineStore('library', () => {
 
   const fetchServerSettings = async () => {
     const res = await auth.fetchWithAuth('/api/settings')
-    if (!res.ok) throw new Error('설정 조회 실패')
+    if (!res.ok) throw new Error(t('library.settingsFetchFailed'))
     const data = await res.json()
     serverSettings.value = data
     if (data?.library?.trackCount != null) {
@@ -54,7 +56,7 @@ export const useLibraryStore = defineStore('library', () => {
       limit: String(limit),
     })
     const res = await auth.fetchWithAuth(`/api/tracks?${q}`)
-    if (!res.ok) throw new Error('트랙 목록 조회 실패')
+    if (!res.ok) throw new Error(t('library.tracksFetchFailed'))
     const body = await res.json()
     const page = normalizeTracksResponse(body)
     tracksTotal.value = page.total
@@ -66,7 +68,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (!list.length) return []
     const q = new URLSearchParams({ ids: list.join(',') })
     const res = await auth.fetchWithAuth(`/api/tracks?${q}`)
-    if (!res.ok) throw new Error('트랙 조회 실패')
+    if (!res.ok) throw new Error(t('library.trackFetchFailed'))
     const body = await res.json()
     return normalizeTracksResponse(body).items
   }
@@ -76,7 +78,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (!trimmed) return []
     const q = new URLSearchParams({ q: trimmed, limit: String(limit) })
     const res = await auth.fetchWithAuth(`/api/tracks?${q}`)
-    if (!res.ok) throw new Error('트랙 검색 실패')
+    if (!res.ok) throw new Error(t('library.searchFailed'))
     const body = await res.json()
     return normalizeTracksResponse(body).items
   }
@@ -86,7 +88,7 @@ export const useLibraryStore = defineStore('library', () => {
 
     fetchPromise = (async () => {
       isSyncing.value = true
-      syncStatusText.value = 'Lazidrome 엔진에서 데이터 수신 중...'
+      syncStatusKey.value = 'library.syncFetching'
 
       try {
         const [artistRes, albumRes, settingsRes] = await Promise.all([
@@ -108,10 +110,10 @@ export const useLibraryStore = defineStore('library', () => {
           tracksTotal.value = meta.total
         }
 
-        syncStatusText.value = '동기화 완료'
+        syncStatusKey.value = 'library.syncDone'
       } catch (error) {
         console.error('❌ 데이터 로드 실패:', error)
-        syncStatusText.value = '에러 발생'
+        syncStatusKey.value = 'library.syncError'
       } finally {
         isSyncing.value = false
         fetchPromise = null
@@ -355,8 +357,21 @@ export const useLibraryStore = defineStore('library', () => {
    * 기간 내 play_history 이벤트 수 기준 상위 트랙·앨범 (GET /api/stats/top)
    * @param {'24h'|'48h'|'7d'|'30d'|'all'} range
    */
-  const fetchStatsTop = async (range = '7d', limit = 12) => {
+  const fetchStatsHabits = async (range = '30d', timezone) => {
+    const q = new URLSearchParams({ range })
+    if (timezone) q.set('timezone', timezone)
+    const res = await auth.fetchWithAuth(`/api/stats/habits?${q}`)
+    if (!res.ok) {
+      const t = await res.text()
+      throw new Error(t || res.statusText)
+    }
+    const body = await res.json()
+    return body?.data ?? null
+  }
+
+  const fetchStatsTop = async (range = '7d', limit = 12, timezone) => {
     const q = new URLSearchParams({ range, limit: String(limit) })
+    if (timezone) q.set('timezone', timezone)
     const res = await auth.fetchWithAuth(`/api/stats/top?${q}`)
     if (!res.ok) {
       const t = await res.text()
@@ -398,6 +413,7 @@ export const useLibraryStore = defineStore('library', () => {
     homeShelvesError,
     fetchHomeShelves,
     fetchStatsPlays,
+    fetchStatsHabits,
     fetchStatsTop,
   }
 })

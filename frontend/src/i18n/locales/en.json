@@ -1,0 +1,167 @@
+{
+  "app": {
+    "name": "Lazidrome",
+    "short": "LAZI"
+  },
+  "nav": {
+    "home": "Home",
+    "artists": "Artists",
+    "albums": "Albums",
+    "tracks": "Tracks",
+    "tags": "Tags",
+    "playlists": "Playlists",
+    "charts": "Charts",
+    "stats": "Stats",
+    "settings": "Settings",
+    "menuOpen": "Open menu",
+    "menuClose": "Close menu"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage server connection and personal preferences.",
+    "language": {
+      "title": "Display language",
+      "description": "Choose the language for menus and descriptions.",
+      "en": "English",
+      "ko": "Korean"
+    },
+    "timezone": {
+      "title": "Statistics timezone",
+      "description": "Charts and stats use this timezone for day and hour grouping.",
+      "system": "Use system timezone",
+      "custom": "Choose timezone",
+      "current": "Active: {zone}"
+    },
+    "theme": {
+      "title": "Appearance",
+      "description": "Switch between light and dark mode.",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "deploy": {
+      "title": "Deploy · version",
+      "description": "Check whether this UI and the API server came from the same npm run deploy.",
+      "frontend": "Frontend",
+      "backend": "Backend API",
+      "buildAt": "Built: {time}",
+      "deployAt": "Deployed: {time}",
+      "checking": "Checking…",
+      "noBuildInfo": "No build-info.json — run npm run deploy and deploy:restart",
+      "unknownTime": "Unknown",
+      "noDeployInfo": "No deploy timestamp. Rebuild with npm run deploy.",
+      "versionMismatch": "Version mismatch (frontend {frontend} · backend {backend}). Confirm deploy and server restart.",
+      "buildsInSync": "Frontend and backend appear from the same deploy (within 10 minutes).",
+      "frontendNewer": "Frontend only is newer",
+      "backendNewer": "Backend only is newer",
+      "buildSkew": "{newer}. Confirm you ran npm run deploy and deploy:restart together."
+    },
+    "server": {
+      "title": "Server connection",
+      "description": "Enter your Lazidrome backend URL and master password.",
+      "url": "Server URL",
+      "urlHint": "Leave empty when using npm run dev on localhost:3000 (Vite proxies /api to 5294).",
+      "password": "Master password",
+      "passwordPlaceholder": "Enter password",
+      "login": "Log in",
+      "logout": "Log out",
+      "logoutConfirm": "Log out?",
+      "authStatus": "Authentication",
+      "connected": "Connected (admin session)",
+      "libraryCount": "Library: {count} tracks",
+      "refresh": "Refresh library"
+    },
+    "lastfm": {
+      "title": "Last.fm (server)",
+      "description": "API keys and scrobbling are configured in the backend .env, not in the browser.",
+      "loading": "Checking server settings…",
+      "enrich": "Metadata enrich",
+      "enrichOn": "LASTFM_API_KEY is set",
+      "enrichOff": "No LASTFM_API_KEY — add to .env and restart the server",
+      "scrobble": "Playback scrobble",
+      "scrobbleOn": "API key, secret, and session key are all set",
+      "scrobbleOff": "Scrobbling needs API key, secret, and session key",
+      "loginHint": "Log in to see Last.fm status on the server.",
+      "readme": "See backend/README.md for setup."
+    },
+    "loginFailed": "Login failed."
+  },
+  "stats": {
+    "title": "Stats",
+    "description": "View playback and listening data by period. Bar labels are approximate listen time.",
+    "authEmpty": "Log in under Settings to view statistics.",
+    "range": "Period",
+    "ranges": {
+      "7d": "Last 7 days",
+      "30d": "Last 30 days",
+      "all": "All time"
+    },
+    "timezoneNote": "Grouped in {statsZone}. Play times are stored on the server ({storageZone}).",
+    "listenNote": "Listen time is replays × track file length; actual playback position is not stored.",
+    "loading": "Loading stats…",
+    "error": "Could not load statistics.",
+    "total": "Approx. total listen time: {time}",
+    "byWeekday": "By weekday",
+    "byTime": "By time of day",
+    "timeHint": "Before 8:00 and after 22:00 are grouped; 8:00–21:00 are hourly.",
+    "noData": "No data yet.",
+    "toCharts": "Track charts",
+    "toHome": "Home",
+    "days": {
+      "0": "Sun",
+      "1": "Mon",
+      "2": "Tue",
+      "3": "Wed",
+      "4": "Thu",
+      "5": "Fri",
+      "6": "Sat"
+    },
+    "buckets": {
+      "early": "Before 8",
+      "h08": "8:00",
+      "h09": "9:00",
+      "h10": "10:00",
+      "h11": "11:00",
+      "h12": "12:00",
+      "h13": "13:00",
+      "h14": "14:00",
+      "h15": "15:00",
+      "h16": "16:00",
+      "h17": "17:00",
+      "h18": "18:00",
+      "h19": "19:00",
+      "h20": "20:00",
+      "h21": "21:00",
+      "night": "After 22"
+    }
+  },
+  "charts": {
+    "title": "Charts",
+    "description": "Most played tracks by period. Sort: period plays → rating → all-time plays.",
+    "authEmpty": "Log in under Settings to view charts.",
+    "weekly": {
+      "title": "Weekly chart",
+      "short": "Weekly",
+      "description": "Last 7 days · rating · all-time plays"
+    },
+    "monthly": {
+      "title": "Monthly chart",
+      "short": "Monthly",
+      "description": "Last 30 days · rating · all-time plays"
+    },
+    "alltime": {
+      "title": "All-time chart",
+      "short": "All time",
+      "description": "Full history · rating · all-time plays"
+    },
+    "backToList": "← Charts",
+    "viewMore": "View all",
+    "loading": "Loading…",
+    "noData": "No plays yet.",
+    "loadError": "Could not load chart."
+  },
+  "auth": {
+    "emptyDefault": "Log in under Settings to use your library.",
+    "goSettings": "Go to Settings"
+  }
+}

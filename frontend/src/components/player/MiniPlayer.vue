@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Play, Pause, SkipForward, SkipBack, Maximize2 } from 'lucide-vue-next'
 import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
@@ -10,6 +11,7 @@ const props = defineProps({
 
 const player = usePlayerStore()
 const auth = useAuthStore()
+const { t } = useI18n()
 const currentTrack = computed(() => player.currentTrack)
 
 const coverUrl = computed(() => {
@@ -17,12 +19,12 @@ const coverUrl = computed(() => {
   return auth.coverSrc('track', currentTrack.value.id)
 })
 
-const displayArtist = computed(() => currentTrack.value?.artist || '아티스트 없음')
+const displayArtist = computed(() => currentTrack.value?.artist || t('player.noArtist'))
 
 const coverAlt = computed(() => {
-  const t = currentTrack.value
-  if (!t?.title) return '재생 중인 곡 없음'
-  return `${t.title} — ${displayArtist.value} 앨범 아트`
+  const track = currentTrack.value
+  if (!track?.title) return t('player.noTrackPlaying')
+  return t('player.albumArtAlt', { title: track.title, artist: displayArtist.value })
 })
 
 function onPlayerKeydown(e) {
@@ -63,7 +65,7 @@ function onPlayerKeydown(e) {
       'md:static md:h-20 md:bg-transparent md:border-none',
     ]"
     role="region"
-    aria-label="미니 플레이어"
+    :aria-label="t('player.miniPlayer')"
     tabindex="0"
     @keydown="onPlayerKeydown"
     @click="player.toggleExpand()"
@@ -106,7 +108,7 @@ function onPlayerKeydown(e) {
             class="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground font-black"
             aria-hidden="true"
           >
-            LAZI
+            {{ t('app.short') }}
           </div>
 
           <div
@@ -130,18 +132,18 @@ function onPlayerKeydown(e) {
             class="text-sm font-bold truncate transition-colors"
             :class="player.isPlaying ? 'text-primary' : 'text-foreground'"
           >
-            {{ currentTrack?.title || '재생 대기 중' }}
+            {{ currentTrack?.title || t('player.waiting') }}
           </span>
           <span class="text-xs text-muted-foreground truncate font-medium">
             {{ displayArtist }}
           </span>
         </div>
 
-        <div class="flex items-center gap-1 shrink-0 ml-2" role="group" aria-label="재생 컨트롤">
+        <div class="flex items-center gap-1 shrink-0 ml-2" role="group" :aria-label="t('player.playControls')">
           <button
             type="button"
             class="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-muted transition-colors"
-            aria-label="이전 곡"
+            :aria-label="t('player.previous')"
             @click.stop="player.prev()"
           >
             <SkipBack class="w-4 h-4 fill-current" aria-hidden="true" />
@@ -150,7 +152,7 @@ function onPlayerKeydown(e) {
           <button
             type="button"
             class="w-10 h-10 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all active:scale-95"
-            :aria-label="player.isPlaying ? '일시정지' : '재생'"
+            :aria-label="player.isPlaying ? t('player.pause') : t('player.play')"
             @click.stop="player.togglePlay()"
           >
             <component :is="player.isPlaying ? Pause : Play" class="w-5 h-5 fill-current" aria-hidden="true" />
@@ -159,7 +161,7 @@ function onPlayerKeydown(e) {
           <button
             type="button"
             class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
-            aria-label="다음 곡"
+            :aria-label="t('player.next')"
             @click.stop="player.next()"
           >
             <SkipForward class="w-4 h-4 fill-current" aria-hidden="true" />
@@ -169,7 +171,7 @@ function onPlayerKeydown(e) {
             v-if="!isSidebarExpanded"
             type="button"
             class="hidden md:flex w-9 h-9 items-center justify-center rounded-full text-muted-foreground hover:text-primary transition-colors ml-1"
-            aria-label="전체 화면 플레이어"
+            :aria-label="t('player.fullscreen')"
             @click.stop="player.toggleExpand()"
           >
             <Maximize2 class="w-4 h-4" aria-hidden="true" />

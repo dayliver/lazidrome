@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ListMusic, Heart, Star } from 'lucide-vue-next'
 import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,7 @@ const props = defineProps({
   changeRating: { type: Function, required: true }
 })
 
+const { t } = useI18n()
 const trackTitleParts = computed(() => splitTrailingParentheticals(props.currentTrack?.title))
 </script>
 
@@ -41,7 +43,7 @@ const trackTitleParts = computed(() => splitTrailingParentheticals(props.current
             v-else
             class="w-full h-full bg-muted flex items-center justify-center text-2xl sm:text-3xl md:text-4xl font-black text-muted-foreground/20 italic text-center px-6"
           >
-            LAZIDROME<br /><span class="text-sm md:text-lg opacity-50">NO COVER</span>
+            {{ t('app.name') }}<br /><span class="text-sm md:text-lg opacity-50">{{ t('player.noCover').toUpperCase() }}</span>
           </div>
         </div>
       </div>
@@ -57,7 +59,7 @@ const trackTitleParts = computed(() => splitTrailingParentheticals(props.current
               class="ms-2 sm:ms-2.5 md:ms-3 font-medium text-md sm:text-lg md:text-xl lg:text-2xl text-muted-foreground/95"
             >{{ trackTitleParts.suffix }}</span>
           </template>
-          <template v-else>재생할 곡을 선택하세요</template>
+          <template v-else>{{ t('player.selectTrack') }}</template>
         </h2>
         <p class="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground font-medium opacity-80">
           {{ displayArtist }}
@@ -80,7 +82,7 @@ const trackTitleParts = computed(() => splitTrailingParentheticals(props.current
             :class="currentTrack.starred ? 'fill-red-500 text-red-500' : ''"
           />
         </Button>
-        <div class="flex items-center gap-1 sm:gap-2" role="group" aria-label="트랙 평점">
+        <div class="flex items-center gap-1 sm:gap-2" role="group" :aria-label="t('player.trackRating')">
           <button
             v-for="i in 5"
             :key="i"
@@ -131,7 +133,7 @@ const trackTitleParts = computed(() => splitTrailingParentheticals(props.current
       <div class="flex justify-center md:justify-start border-t pt-6 md:pt-8 border-border/50">
         <Button variant="outline" class="rounded-full px-6 py-6 gap-3 font-bold border-2" @click="player.toggleQueueView">
           <ListMusic class="w-5 h-5" />
-          <span>Up Next</span>
+          <span>{{ t('player.upNext') }}</span>
         </Button>
       </div>
     </div>

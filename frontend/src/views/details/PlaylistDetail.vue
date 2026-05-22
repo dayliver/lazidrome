@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import { useAsyncResource } from '@/composables/useAsyncResource'
@@ -8,12 +9,13 @@ import { usePlaylistStore } from '@/stores/playlist'
 import { usePlayerStore } from '@/stores/player'
 import { toast } from 'vue-sonner'
 
-import { formatDuration } from '@/lib/audio'
+import { useDurationLabel } from '@/composables/useDurationLabel'
 
 import { Play, Shuffle, RefreshCw, ListMusic, Edit } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import DetailLayout from '@/components/layout/DetailLayout.vue'
 import TrackListTable from '@/components/shared/TrackListTable.vue'
+const { t } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -39,18 +41,18 @@ const totalDuration = computed(() => {
 const subtitleText = computed(() => {
   if (!playlist.value) return ''
   if (playlist.value.type === 'list') {
-    return playlist.value.description || '수동 플레이리스트'
+    return playlist.value.description || t('pages.details.playlistManual')
   }
   if (playlist.value.description) return playlist.value.description
   if (playlist.value.rules && playlist.value.rules.conditions?.length > 0) {
     return playlist.value.rules.conditions
       .map((c) => {
-        const fieldName = c.field === 'rating' ? '별점' : c.field === 'tags' ? '태그' : c.field
+        const fieldName = c.field === 'rating' ? t('playlist.fieldRating') : c.field === 'tags' ? t('playlist.fieldTags') : c.field
         return `${fieldName} ${c.value}`
       })
       .join(' • ')
   }
-  return '스마트 믹스'
+  return t('pages.details.playlistSmartMix')
 })
 
 const playSequential = () => {
@@ -73,14 +75,14 @@ const refreshMix = async () => {
 }
 
 const handleEdit = () => {
-  toast.info('플레이리스트 편집 다이얼로그는 곧 지원됩니다.')
+  toast.info(t('pages.details.playlistEditSoon'))
 }
 </script>
 
 <template>
   <div v-if="isLoading" class="p-16 flex flex-col items-center gap-4 text-muted-foreground">
     <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-    <p>플레이리스트를 불러오고 있습니다...</p>
+    <p>{{ t('pages.details.playlistLoading') }}</p>
   </div>
 
   <DetailLayout
@@ -90,24 +92,24 @@ const handleEdit = () => {
     :is-round-image="false"
     :image-url="imageUrl"
     :stats="[
-      { label: '유형', value: playlist.type === 'mix' ? '스마트 믹스 ⚡' : '플레이리스트 🎵' },
-      { label: '수록곡', value: playlist.tracks?.length || 0 },
-      { label: '총 재생 시간', value: formatDuration(totalDuration) }
+      { label: t('pages.details.statType'), value: playlist.type === 'mix' ? t('pages.details.playlistTypeMix') : t('pages.details.playlistTypeManual') },
+      { label: t('pages.details.albumTracks'), value: playlist.tracks?.length || 0 },
+      { label: t('pages.details.albumTotalDuration'), value: durationLabel(totalDuration) }
     ]"
   >
     <template #actions>
       <Button variant="outline" size="sm" @click="handleEdit">
         <Edit class="w-4 h-4 mr-2" />
-        편집
+        {{ t('common.edit') }}
       </Button>
     </template>
 
     <div class="flex items-center gap-4 mb-4 px-2">
       <Button @click="playSequential" class="rounded-full shadow-lg px-8">
-        <Play class="w-4 h-4 mr-2 fill-current" /> 재생
+        <Play class="w-4 h-4 mr-2 fill-current" /> {{ t('pages.details.play') }}
       </Button>
       <Button @click="playShuffle" variant="outline" class="rounded-full px-8">
-        <Shuffle class="w-4 h-4 mr-2" /> 셔플
+        <Shuffle class="w-4 h-4 mr-2" /> {{ t('pages.details.shuffle') }}
       </Button>
 
       <Button
@@ -118,7 +120,7 @@ const handleEdit = () => {
         @click="refreshMix"
       >
         <RefreshCw class="w-4 h-4 mr-2" :class="{ 'animate-spin': isRefreshing }" />
-        믹스 다시 섞기
+        {{ t('pages.details.reshuffleMix') }}
       </Button>
     </div>
 
@@ -132,7 +134,7 @@ const handleEdit = () => {
         />
       </div>
       <div v-if="playlist.tracks?.length > 0" class="px-2 text-[10px] text-muted-foreground opacity-50 text-right">
-        총 {{ playlist.tracks.length }}곡 • {{ formatDuration(totalDuration) }}
+        {{ t('pages.details.albumTrackSummary', { count: playlist.tracks.length, duration: durationLabel(totalDuration) }) }}
       </div>
     </section>
   </DetailLayout>
@@ -142,8 +144,8 @@ const handleEdit = () => {
     class="p-16 text-center text-muted-foreground flex flex-col items-center gap-4 border-2 border-dashed rounded-2xl m-8"
   >
     <ListMusic class="w-12 h-12 opacity-20" />
-    <h2 class="text-xl font-bold text-foreground">플레이리스트를 찾을 수 없습니다</h2>
-    <p class="text-sm">삭제되었거나 접근할 수 없는 목록입니다.</p>
-    <Button variant="outline" class="mt-2" @click="router.push('/playlists')">목록으로 돌아가기</Button>
+    <h2 class="text-xl font-bold text-foreground">{{ t('pages.details.playlistNotFound') }}</h2>
+    <p class="text-sm">{{ t('pages.details.playlistNotFoundHint') }}</p>
+    <Button variant="outline" class="mt-2" @click="router.push('/playlists')">{{ t('pages.details.backToPlaylists') }}</Button>
   </div>
 </template>

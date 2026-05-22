@@ -1,5 +1,6 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { X, Save, Info, Image as ImageIcon } from 'lucide-vue-next'
@@ -7,6 +8,7 @@ import { toast } from 'vue-sonner'
 
 import CoverArtTab from '@/components/shared/tabs/CoverArtTab.vue'
 import TagBasicInfoTab from '@/components/tags/tabs/TagBasicInfoTab.vue'
+const { t } = useI18n()
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false },
@@ -41,16 +43,16 @@ watch(
   { immediate: true }
 )
 
-const tabs = [
-  { id: 'basic', label: '기본 정보', icon: Info },
-  { id: 'cover', label: '커버 아트', icon: ImageIcon }
-]
+const tabs = computed(() => [
+  { id: 'basic', label: t('metadata.tabBasic'), icon: Info },
+  { id: 'cover', label: t('metadata.tabCover'), icon: ImageIcon }
+])
 
 const invalidLabel = (s) => {
-  const t = String(s || '').trim()
-  if (!t) return '태그 이름을 입력해 주세요.'
-  if (t.includes('..') || /[/\\]/.test(t)) return '이름에 /, \\, .. 는 사용할 수 없습니다.'
-  if (t.length > 200) return '이름은 200자 이하여야 합니다.'
+  const value = String(s || '').trim()
+  if (!value) return t('tagEdit.noName')
+  if (value.includes('..') || /[/\\]/.test(value)) return t('tagEdit.invalidChars')
+  if (value.length > 200) return t('tagEdit.maxLength')
   return ''
 }
 
@@ -70,7 +72,7 @@ const handleSave = async () => {
   const coverChanged = !!(localData.value.newCoverFile || localData.value.newCoverUrl)
 
   if (!renamed && !coverChanged) {
-    toast.message('변경 사항이 없습니다.')
+    toast.message(t('tagEdit.noChanges'))
     handleClose()
     return
   }
@@ -84,7 +86,7 @@ const handleSave = async () => {
         body: JSON.stringify({ oldName: props.tagName, newName })
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || '태그 이름 변경에 실패했습니다.')
+      if (!res.ok) throw new Error(data.error || t('tagEdit.renameFailed'))
     }
 
     if (coverChanged) {
@@ -98,10 +100,10 @@ const handleSave = async () => {
       }
       const res2 = await auth.fetchWithAuth('/api/tags/image', { method: 'POST', body: form })
       const data2 = await res2.json().catch(() => ({}))
-      if (!res2.ok) throw new Error(data2.error || '이미지 저장에 실패했습니다.')
+      if (!res2.ok) throw new Error(data2.error || t('tagEdit.imageSaveFailed'))
     }
 
-    toast.success('저장했습니다.')
+    toast.success(t('tagEdit.saved'))
     emit('success', {
       newName: renamed ? newName : props.tagName,
       renamed,
@@ -109,7 +111,7 @@ const handleSave = async () => {
     })
     handleClose()
   } catch (e) {
-    toast.error(e.message || '저장 중 오류가 발생했습니다.')
+    toast.error(e.message || t('tagEdit.saveError'))
   } finally {
     isSubmitting.value = false
   }
@@ -123,7 +125,7 @@ const handleSave = async () => {
   >
     <div class="bg-card w-full max-w-5xl h-[85vh] rounded-2xl shadow-2xl border-2 flex flex-col overflow-hidden">
       <header class="flex items-center justify-between px-8 py-5 border-b bg-muted/20">
-        <h2 class="text-2xl font-black">태그 편집</h2>
+        <h2 class="text-2xl font-black">{{ t('tagEdit.title') }}</h2>
         <Button variant="ghost" size="icon" :disabled="isSubmitting" @click="handleClose">
           <X />
         </Button>
@@ -157,14 +159,14 @@ const handleSave = async () => {
       </main>
 
       <footer class="p-6 border-t bg-muted/20 flex justify-end gap-3">
-        <Button variant="ghost" class="font-bold" :disabled="isSubmitting" @click="handleClose">취소</Button>
+        <Button variant="ghost" class="font-bold" :disabled="isSubmitting" @click="handleClose">{{ t('common.cancel') }}</Button>
         <Button class="font-black px-12 shadow-lg" :disabled="isSubmitting" @click="handleSave">
           <span
             v-if="isSubmitting"
             class="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
           />
           <Save class="w-4 h-4 mr-2" />
-          변경사항 저장
+          {{ t('common.save') }}
         </Button>
       </footer>
     </div>

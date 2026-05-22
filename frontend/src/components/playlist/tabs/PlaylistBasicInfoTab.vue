@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -6,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Plus, X, Zap } from 'lucide-vue-next'
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -17,24 +20,24 @@ const updateField = (field, value) => {
   emit('update:modelValue', { ...props.modelValue, [field]: value })
 }
 
-const fieldOptions = [
-  { label: '별점', value: 'rating', type: 'number' },
-  { label: '태그', value: 'tags', type: 'string' },
-  { label: '장르', value: 'genre', type: 'string' },
-  { label: '재생 횟수', value: 'play_count', type: 'number' },
-  { label: '발매 연도', value: 'year', type: 'number' }
-]
+const fieldOptions = computed(() => [
+  { label: t('playlist.fieldRating'), value: 'rating', type: 'number' },
+  { label: t('playlist.fieldTags'), value: 'tags', type: 'string' },
+  { label: t('playlist.fieldGenre'), value: 'genre', type: 'string' },
+  { label: t('playlist.fieldPlayCount'), value: 'play_count', type: 'number' },
+  { label: t('playlist.fieldYear'), value: 'year', type: 'number' }
+])
 
-const operators = {
+const operators = computed(() => ({
   number: [
-    { label: '이상 (>=)', value: '>=' }, { label: '이하 (<=)', value: '<=' },
-    { label: '일치 (=)', value: '=' }, { label: '불일치 (!=)', value: '!=' }
+    { label: t('playlist.opGte'), value: '>=' }, { label: t('playlist.opLte'), value: '<=' },
+    { label: t('playlist.opEq'), value: '=' }, { label: t('playlist.opNeq'), value: '!=' }
   ],
   string: [
-    { label: '포함 (contains)', value: 'contains' },
-    { label: '일치 (=)', value: '=' }
+    { label: t('playlist.opContains'), value: 'contains' },
+    { label: t('playlist.opEq'), value: '=' }
   ]
-}
+}))
 
 const addCondition = () => {
   const updated = { ...props.modelValue }
@@ -53,7 +56,7 @@ const removeCondition = (idx) => {
   <div class="space-y-8 animate-in fade-in duration-500 h-full">
     
     <div class="space-y-3">
-      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-widest ml-1">Playlist Type</Label>
+      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-widest ml-1">{{ t('playlist.labelType') }}</Label>
       <Tabs :model-value="modelValue.type" @update:model-value="val => updateField('type', val)" class="w-full">
         <TabsList class="grid w-full grid-cols-2 h-14 bg-muted/40 border p-1 rounded-xl">
           <TabsTrigger 
@@ -61,14 +64,14 @@ const removeCondition = (idx) => {
             :disabled="isEdit" 
             class="h-full rounded-lg font-black text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-300"
           >
-            일반 리스트 (수동)
+            {{ t('playlist.typeManualList') }}
           </TabsTrigger>
           <TabsTrigger 
             value="mix" 
             :disabled="isEdit" 
             class="h-full rounded-lg font-black text-sm data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
           >
-            스마트 믹스 (자동)
+            {{ t('playlist.typeSmartMixAuto') }}
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -76,26 +79,26 @@ const removeCondition = (idx) => {
 
     <div class="flex gap-6">
       <div class="space-y-2 flex-1">
-        <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">Playlist Title</Label>
+        <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('playlist.labelTitle') }}</Label>
         <Input 
           :model-value="modelValue.name" @input="e => updateField('name', e.target.value)"
-          placeholder="이름을 입력하세요" class="text-xl font-bold h-14 border-2 focus-visible:ring-primary" 
+          :placeholder="t('playlist.namePlaceholder')" class="text-xl font-bold h-14 border-2 focus-visible:ring-primary" 
         />
       </div>
     </div>
 
     <div class="space-y-2">
-      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">Description</Label>
+      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('playlist.labelDescription') }}</Label>
       <Textarea 
         :model-value="modelValue.description" @input="e => updateField('description', e.target.value)"
-        placeholder="설명을 입력하세요 (선택 사항)" class="min-h-[120px] border-2 leading-relaxed resize-none"
+        :placeholder="t('playlist.descriptionPlaceholder')" class="min-h-[120px] border-2 leading-relaxed resize-none"
       />
     </div>
 
     <div v-if="modelValue.type === 'mix'" class="pt-6 border-t-2 space-y-6 animate-in slide-in-from-top-4">
       <div class="flex items-center justify-between px-1">
-        <h3 class="text-lg font-black flex items-center gap-2"><Zap class="w-5 h-5 text-purple-500"/> 자동 선곡 규칙</h3>
-        <Button variant="outline" size="sm" @click="addCondition" class="font-bold border-2 hover:bg-purple-500/10 hover:text-purple-500"><Plus class="w-4 h-4 mr-1"/> 조건 추가</Button>
+        <h3 class="text-lg font-black flex items-center gap-2"><Zap class="w-5 h-5 text-purple-500"/> {{ t('playlist.smartRules') }}</h3>
+        <Button variant="outline" size="sm" @click="addCondition" class="font-bold border-2 hover:bg-purple-500/10 hover:text-purple-500"><Plus class="w-4 h-4 mr-1"/> {{ t('playlist.addCondition') }}</Button>
       </div>
 
       <div class="space-y-3">
@@ -118,35 +121,35 @@ const removeCondition = (idx) => {
           <Button variant="ghost" size="icon" @click="removeCondition(idx)" class="text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"><X class="w-4 h-4"/></Button>
         </div>
         <div v-if="modelValue.rules.conditions.length === 0" class="text-center py-10 border-2 border-dashed rounded-xl text-muted-foreground text-sm font-medium bg-muted/5">
-          조건을 추가하면 자동으로 곡이 선별됩니다.
+          {{ t('playlist.addConditionHint') }}
         </div>
       </div>
 
       <div class="grid grid-cols-3 gap-6 pt-2">
         <div class="space-y-2">
-          <Label class="text-[10px] font-black text-muted-foreground uppercase">조건 일치 방식</Label>
+          <Label class="text-[10px] font-black text-muted-foreground uppercase">{{ t('playlist.matchMode') }}</Label>
           <Select :model-value="modelValue.rules.match" @update:model-value="val => modelValue.rules.match = val">
             <SelectTrigger class="bg-muted/50 border-2 font-bold"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">모두 만족 (AND)</SelectItem>
-              <SelectItem value="any">하나라도 만족 (OR)</SelectItem>
+              <SelectItem value="all">{{ t('playlist.matchAll') }}</SelectItem>
+              <SelectItem value="any">{{ t('playlist.matchAny') }}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div class="space-y-2">
-          <Label class="text-[10px] font-black text-muted-foreground uppercase">정렬 기준</Label>
+          <Label class="text-[10px] font-black text-muted-foreground uppercase">{{ t('playlist.sortBy') }}</Label>
           <Select :model-value="modelValue.rules.sortBy" @update:model-value="val => modelValue.rules.sortBy = val">
             <SelectTrigger class="bg-muted/50 border-2 font-bold"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="random">무작위 (Random)</SelectItem>
-              <SelectItem value="newest">최신 추가순</SelectItem>
-              <SelectItem value="highest_rated">별점 높은순</SelectItem>
-              <SelectItem value="most_played">많이 들은순</SelectItem>
+              <SelectItem value="random">{{ t('playlist.sortRandom') }}</SelectItem>
+              <SelectItem value="newest">{{ t('playlist.sortNewest') }}</SelectItem>
+              <SelectItem value="highest_rated">{{ t('playlist.sortRating') }}</SelectItem>
+              <SelectItem value="most_played">{{ t('playlist.sortPlayed') }}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div class="space-y-2">
-          <Label class="text-[10px] font-black text-muted-foreground uppercase">최대 곡 수</Label>
+          <Label class="text-[10px] font-black text-muted-foreground uppercase">{{ t('playlist.maxTracks') }}</Label>
           <Input
             type="number"
             min="1"
@@ -158,7 +161,7 @@ const removeCondition = (idx) => {
             }"
             class="bg-muted/50 border-2 font-mono font-bold"
           />
-          <p class="text-[10px] text-muted-foreground">최대 200곡까지 조회됩니다.</p>
+          <p class="text-[10px] text-muted-foreground">{{ t('playlist.maxTracksHint') }}</p>
         </div>
       </div>
     </div>

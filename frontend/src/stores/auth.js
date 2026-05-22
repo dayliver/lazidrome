@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { getCoverUrl } from '@/lib/image'
+import { t } from '@/i18n/t'
 import { formatMediaQuery, imageResourceKey, streamResourceKey } from '@/lib/mediaSign'
 
 const SIG_REFRESH_BUFFER_MS = 120_000
@@ -41,14 +42,13 @@ export const useAuthStore = defineStore('auth', () => {
       })
 
       if (!response.ok) {
-        let message = `로그인 실패 (${response.status})`
+        let message = t('library.loginFailed', { status: response.status })
         try {
           const errorData = await response.json()
           if (errorData?.error) message = errorData.error
         } catch {
           if (response.status === 403) {
-            message =
-              'CORS가 차단되었습니다. 서버 주소를 비우고(현재 페이지 /api 프록시) 다시 시도하거나, 백엔드 CORS_ORIGINS에 이 사이트 주소를 추가하세요.'
+            message = t('library.corsBlocked')
           }
         }
         throw new Error(message)
@@ -86,7 +86,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (response.status === 401) {
       logout()
-      throw new Error('인증 세션이 만료되었습니다. 다시 로그인해주세요.')
+      throw new Error(t('library.sessionExpired'))
     }
 
     return response

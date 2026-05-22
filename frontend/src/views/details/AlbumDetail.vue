@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import { useAsyncResource } from '@/composables/useAsyncResource'
@@ -8,7 +9,7 @@ import { useMetadataEditStore } from '@/stores/metadataEdit'
 import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
 
-import { formatDuration } from '@/lib/audio'
+import { useDurationLabel } from '@/composables/useDurationLabel'
 
 import { Play, Shuffle, Users, Edit } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,8 @@ import DetailLayout from '@/components/layout/DetailLayout.vue'
 import TrackListTable from '@/components/shared/TrackListTable.vue'
 import ArtistListTable from '@/components/shared/ArtistListTable.vue'
 import SectionHeader from '@/components/shared/SectionHeader.vue'
+const { t } = useI18n()
+const durationLabel = useDurationLabel()
 
 const route = useRoute()
 const router = useRouter()
@@ -84,35 +87,35 @@ const handleEdit = async () => {
 <template>
   <div v-if="isLoading" class="p-16 flex flex-col items-center gap-4 text-muted-foreground">
     <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-    <p>앨범 정보를 불러오고 있습니다...</p>
+    <p>{{ t('pages.details.albumLoading') }}</p>
   </div>
 
   <DetailLayout
     v-else-if="album"
     :title="album.name"
     split-parenthetical-title
-    :subtitle="album.displayArtist || 'Unknown Artist'"
+    :subtitle="album.displayArtist || t('common.unknownArtist')"
     :is-round-image="false"
     :image-url="albumCoverUrl"
     :stats="[
-      { label: '수록곡', value: album.tracks?.length || 0 },
-      { label: '발매 연도', value: album.year || '-' },
-      { label: '총 재생 시간', value: formatDuration(album.totalDuration) }
+      { label: t('pages.details.albumTracks'), value: album.tracks?.length || 0 },
+      { label: t('pages.details.albumYear'), value: album.year || '-' },
+      { label: t('pages.details.albumTotalDuration'), value: durationLabel(album.totalDuration) }
     ]"
   >
     <template #actions>
       <Button variant="outline" size="sm" @click="handleEdit">
         <Edit class="w-4 h-4 mr-2" />
-        편집
+        {{ t('common.edit') }}
       </Button>
     </template>
 
     <div class="flex items-center gap-4 mb-4 px-2">
       <Button @click="playSequential" class="rounded-full shadow-lg px-8">
-        <Play class="w-4 h-4 mr-2 fill-current" /> 재생
+        <Play class="w-4 h-4 mr-2 fill-current" /> {{ t('pages.details.play') }}
       </Button>
       <Button @click="playShuffle" variant="outline" class="rounded-full px-8">
-        <Shuffle class="w-4 h-4 mr-2" /> 셔플
+        <Shuffle class="w-4 h-4 mr-2" /> {{ t('pages.details.shuffle') }}
       </Button>
     </div>
 
@@ -132,12 +135,12 @@ const handleEdit = async () => {
         <TrackListTable :tracks="album.tracks" :show-album="false" :show-cover="false" />
       </div>
       <div v-if="album.tracks?.length > 0" class="px-2 text-[10px] text-muted-foreground opacity-50 text-right">
-        총 {{ album.tracks.length }}곡 참여 • {{ formatDuration(album.totalDuration) }}
+        {{ t('pages.details.albumTrackSummary', { count: album.tracks.length, duration: durationLabel(album.totalDuration) }) }}
       </div>
     </section>
 
     <section v-if="albumArtists.length > 0" class="space-y-6 pb-12 mt-12">
-      <SectionHeader title="Featured Artists">
+      <SectionHeader :title="t('pages.details.sectionFeaturedArtists')">
         <template #icon>
           <Users class="w-6 h-6 text-primary" />
         </template>
@@ -146,5 +149,5 @@ const handleEdit = async () => {
     </section>
   </DetailLayout>
 
-  <div v-else class="p-16 text-center text-muted-foreground">앨범 정보를 찾을 수 없습니다.</div>
+  <div v-else class="p-16 text-center text-muted-foreground">{{ t('pages.details.albumNotFound') }}</div>
 </template>

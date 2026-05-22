@@ -1,10 +1,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlaylistStore } from '@/stores/playlist'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Search, X, ListMusic, Plus } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+const { t } = useI18n()
 
 const props = defineProps({
   isOpen: { type: Boolean, required: true },
@@ -38,7 +40,7 @@ const handleClose = () => {
 
 const handleSelect = async (playlistId) => {
   if (props.trackIds.length === 0) {
-    toast.warning('추가할 곡이 없습니다.')
+    toast.warning(t('playlist.noTracksToAdd'))
     return
   }
 
@@ -61,7 +63,7 @@ const handleSelect = async (playlistId) => {
 
       <header class="flex items-center justify-between px-6 py-4 border-b bg-muted/20 shrink-0">
         <h2 class="text-lg font-black flex items-center gap-2">
-          <ListMusic class="w-5 h-5 text-primary" /> 플레이리스트에 추가
+          <ListMusic class="w-5 h-5 text-primary" /> {{ t('playlist.selectModalTitle') }}
         </h2>
         <Button variant="ghost" size="icon" @click="handleClose" :disabled="isSubmitting" class="h-8 w-8 rounded-full focus:outline-none">
           <X class="w-4 h-4" />
@@ -73,7 +75,7 @@ const handleSelect = async (playlistId) => {
           <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             v-model="searchQuery"
-            placeholder="플레이리스트 검색..."
+            :placeholder="t('playlist.selectSearchPlaceholder')"
             class="pl-9 font-medium bg-background focus-visible:ring-primary"
             :disabled="isSubmitting"
           />
@@ -99,7 +101,7 @@ const handleSelect = async (playlistId) => {
 
             <div class="flex flex-col min-w-0 flex-1">
               <span class="font-bold text-sm truncate group-hover:text-primary transition-colors">{{ pl.name }}</span>
-              <span class="text-[11px] text-muted-foreground truncate">{{ pl.description || '수동 플레이리스트' }}</span>
+              <span class="text-[11px] text-muted-foreground truncate">{{ pl.description || t('pages.details.playlistManual') }}</span>
             </div>
 
             <div class="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -109,19 +111,19 @@ const handleSelect = async (playlistId) => {
         </div>
 
         <div v-else-if="searchQuery" class="p-8 text-center text-muted-foreground">
-          <p class="text-sm font-medium">검색된 플레이리스트가 없습니다.</p>
+          <p class="text-sm font-medium">{{ t('playlist.noSearchPlaylists') }}</p>
         </div>
 
         <div v-else class="p-8 flex flex-col items-center justify-center text-center">
           <ListMusic class="w-10 h-10 text-muted-foreground/30 mb-3" />
-          <p class="text-sm font-bold text-foreground">수동 플레이리스트가 없습니다.</p>
-          <p class="text-xs text-muted-foreground mt-1 mb-4">먼저 메뉴에서 새 플레이리스트를<br/>만들어주세요.</p>
+          <p class="text-sm font-bold text-foreground">{{ t('playlist.noManualPlaylists') }}</p>
+          <p class="text-xs text-muted-foreground mt-1 mb-4">{{ t('playlist.createPlaylistHint') }}</p>
         </div>
       </div>
 
       <footer class="p-3 border-t bg-muted/10 shrink-0 text-center flex items-center justify-center gap-1">
-        <span class="text-xs font-black text-primary">{{ trackIds.length }}곡</span>
-        <span class="text-xs font-medium text-muted-foreground">추가 예정</span>
+        <span class="text-xs font-black text-primary">{{ t('common.trackCount', { count: trackIds.length }) }}</span>
+        <span class="text-xs font-medium text-muted-foreground">{{ t('playlist.tracksPendingAdd') }}</span>
       </footer>
 
     </div>

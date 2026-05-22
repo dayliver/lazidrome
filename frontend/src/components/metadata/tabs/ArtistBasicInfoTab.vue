@@ -11,6 +11,7 @@ import {
   TagsInput, TagsInputInput, TagsInputItem, 
   TagsInputItemDelete, TagsInputItemText 
 } from '@/components/ui/tags-input'
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -28,7 +29,7 @@ const updateField = (field, value) => {
 <template>
   <div class="space-y-8 animate-in fade-in duration-500">
     <div class="space-y-2">
-      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">아티스트 이름</Label>
+      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('metadata.artistName') }}</Label>
       <Input 
         :model-value="modelValue.title" 
         @input="e => updateField('title', e.target.value)"
@@ -37,17 +38,17 @@ const updateField = (field, value) => {
     </div>
 
     <div class="space-y-2">
-      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">아티스트 소개 (Biography)</Label>
+      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('metadata.biography') }}</Label>
       <Textarea 
         :model-value="modelValue.biography" 
         @input="e => updateField('biography', e.target.value)"
-        placeholder="아티스트에 대한 설명을 입력하세요..." 
+        :placeholder="t('metadata.biographyPlaceholder')" 
         class="min-h-[160px] border-2 leading-relaxed resize-none"
       />
     </div>
 
     <div class="space-y-3 pt-2">
-      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">분류 태그</Label>
+      <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('metadata.tags') }}</Label>
       <TagsInput 
         :model-value="modelValue.tags" 
         @update:model-value="val => updateField('tags', val)"
@@ -57,14 +58,14 @@ const updateField = (field, value) => {
           <TagsInputItemText class="text-xs font-bold" />
           <TagsInputItemDelete />
         </TagsInputItem>
-        <TagsInputInput placeholder="태그 입력..." class="text-sm" />
+        <TagsInputInput :placeholder="t('metadata.tagInput')" class="text-sm" />
       </TagsInput>
     </div>
 
     <div class="pt-6">
       <div class="flex items-center gap-4 mb-8">
         <div class="h-[1px] flex-1 bg-border"></div>
-        <span class="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Profile Image</span>
+        <span class="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{{ t('metadata.profileImageLabel') }}</span>
         <div class="h-[1px] flex-1 bg-border"></div>
       </div>
 
@@ -81,7 +82,7 @@ const updateField = (field, value) => {
           />
           <div class="absolute inset-0 bg-primary/70 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-primary-foreground">
              <ImageIcon class="w-8 h-8 mb-2" />
-             <span class="text-xs font-bold">변경하기</span>
+             <span class="text-xs font-bold">{{ t('metadata.changePhoto') }}</span>
           </div>
         </div>
       </div>

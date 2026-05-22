@@ -1,11 +1,13 @@
 <script setup>
 import { computed, nextTick, watch, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
 import { getCoverUrl } from '@/lib/image'
 // 💉 수술 1: md5 제거
 import { ScrollArea } from '@/components/ui/scroll-area'
 
+const { t } = useI18n()
 const player = usePlayerStore()
 const auth = useAuthStore()
 const scrollAreaRef = ref(null)
@@ -35,8 +37,8 @@ watch(() => player.isQueueView, (isOpen) => {
   <div class="w-full h-full flex flex-col overflow-hidden bg-background/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl min-h-0">
     
     <div class="p-6 border-b border-white/10 flex justify-between items-center bg-muted/20 shrink-0">
-      <h3 class="font-black text-xl tracking-tighter uppercase">Up Next</h3>
-      <span class="text-xs font-bold text-muted-foreground bg-muted px-2 py-1 rounded">{{ player.queue.length }} Tracks</span>
+      <h3 class="font-black text-xl tracking-tighter uppercase">{{ t('player.upNext') }}</h3>
+      <span class="text-xs font-bold text-muted-foreground bg-muted px-2 py-1 rounded">{{ t('player.queueTrackCount', { count: player.queue.length }) }}</span>
     </div>
 
     <div class="flex-1 overflow-y-auto min-h-0 px-2 scroll-smooth" ref="scrollAreaRef">
@@ -58,7 +60,7 @@ watch(() => player.isQueueView, (isOpen) => {
 
           <div class="w-12 h-12 rounded-lg overflow-hidden border border-white/5 bg-muted shrink-0">
             <img v-if="trackCoverSrc(track)" :src="trackCoverSrc(track)" crossorigin="anonymous" loading="lazy" class="w-full h-full object-cover" />
-            <div v-else class="w-full h-full flex items-center justify-center text-[10px] font-black opacity-20">LAZI</div>
+            <div v-else class="w-full h-full flex items-center justify-center text-[10px] font-black opacity-20">{{ t('app.short') }}</div>
           </div>
 
           <div class="flex flex-col min-w-0 flex-1">
@@ -66,7 +68,7 @@ watch(() => player.isQueueView, (isOpen) => {
               {{ track.title }}
             </span>
             <span class="text-xs text-muted-foreground truncate font-medium">
-              {{ track.primary_artist || 'Unknown Artist' }}
+              {{ track.primary_artist || t('common.unknownArtist') }}
             </span>
           </div>
           

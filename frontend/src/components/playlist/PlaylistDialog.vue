@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlaylistStore } from '@/stores/playlist'
 import { Button } from '@/components/ui/button'
 import { X, Save, Info, ListMusic, ImageIcon } from 'lucide-vue-next'
@@ -8,6 +9,7 @@ import { X, Save, Info, ListMusic, ImageIcon } from 'lucide-vue-next'
 import PlaylistBasicInfoTab from './tabs/PlaylistBasicInfoTab.vue'
 import PlaylistTracksTab from './tabs/PlaylistTracksTab.vue'
 import CoverArtTab from '@/components/shared/tabs/CoverArtTab.vue' // 💡 shared로 이동 가정
+const { t } = useI18n()
 
 const props = defineProps({
   isOpen: Boolean,
@@ -56,11 +58,11 @@ watch(() => props.isOpen, (open) => {
 
 // 💡 스마트 믹스는 곡을 수동으로 관리하지 않으므로 탭에서 제외합니다.
 const tabs = computed(() => {
-  const base = [{ id: 'basic', label: '기본 정보', icon: Info }]
+  const base = [{ id: 'basic', label: t('playlist.tabBasic'), icon: Info }]
   if (localData.value.type === 'list') {
-    base.push({ id: 'tracks', label: '수록곡 관리', icon: ListMusic })
+    base.push({ id: 'tracks', label: t('playlist.tabTracks'), icon: ListMusic })
   }
-  base.push({ id: 'cover', label: '커버 아트', icon: ImageIcon })
+  base.push({ id: 'cover', label: t('metadata.tabCover'), icon: ImageIcon })
   return base
 })
 
@@ -89,7 +91,7 @@ const handleSave = async () => {
     <div class="bg-card w-full max-w-5xl h-[85vh] rounded-2xl shadow-2xl border-2 flex flex-col overflow-hidden">
       
       <header class="flex items-center justify-between px-8 py-5 border-b bg-muted/20">
-        <h2 class="text-2xl font-black">{{ editTarget ? '플레이리스트 편집' : '새 플레이리스트' }}</h2>
+        <h2 class="text-2xl font-black">{{ editTarget ? t('playlist.dialogEdit') : t('playlist.dialogCreate') }}</h2>
         <Button variant="ghost" size="icon" @click="emit('update:isOpen', false)"><X /></Button>
       </header>
 
@@ -118,10 +120,10 @@ const handleSave = async () => {
       </main>
 
       <footer class="p-6 border-t bg-muted/20 flex justify-end gap-3">
-        <Button variant="ghost" @click="emit('update:isOpen', false)" class="font-bold">취소</Button>
+        <Button variant="ghost" @click="emit('update:isOpen', false)" class="font-bold">{{ t('common.cancel') }}</Button>
         <Button @click="handleSave" :disabled="isSubmitting" class="font-black px-12 shadow-lg">
           <span v-if="isSubmitting" class="mr-2 h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full"></span>
-          <Save class="w-4 h-4 mr-2" /> 저장하기
+          <Save class="w-4 h-4 mr-2" /> {{ t('playlist.saveButton') }}
         </Button>
       </footer>
     </div>

@@ -1,15 +1,11 @@
+import { t } from '@/i18n/t'
+import { formatLocaleDateTime } from '@/lib/localeFormat'
+
 const BUILD_SKEW_MS = 10 * 60 * 1000;
 
 export function formatBuildTime(iso) {
-  if (!iso) return '알 수 없음';
-  try {
-    return new Date(iso).toLocaleString('ko-KR', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-  } catch {
-    return iso;
-  }
+  if (!iso) return t('settings.deploy.unknownTime');
+  return formatLocaleDateTime(iso, { dateStyle: 'medium', timeStyle: 'short' }) || iso;
 }
 
 /**
@@ -18,7 +14,7 @@ export function formatBuildTime(iso) {
  */
 export function compareBuilds(frontend, backend) {
   if (!frontend?.builtAt || !backend?.builtAt) {
-    return { status: 'unknown', message: '배포 시각 정보가 없습니다. npm run deploy로 다시 빌드하세요.' };
+    return { status: 'unknown', message: t('settings.deploy.noDeployInfo') };
   }
 
   const fv = frontend.version ?? '';
@@ -28,22 +24,24 @@ export function compareBuilds(frontend, backend) {
   if (fv && bv && fv !== bv) {
     return {
       status: 'mismatch',
-      message: `버전 불일치 (프론트 ${fv} · 백엔드 ${bv}). deploy 후 서버 재시작을 확인하세요.`,
+      message: t('settings.deploy.versionMismatch', { frontend: fv, backend: bv }),
     };
   }
 
   if (diff <= BUILD_SKEW_MS) {
     return {
       status: 'ok',
-      message: '프론트와 백엔드가 같은 배포(10분 이내)로 보입니다.',
+      message: t('settings.deploy.buildsInSync'),
     };
   }
 
   const newer =
-    new Date(frontend.builtAt) > new Date(backend.builtAt) ? '프론트만 더 최신' : '백엔드만 더 최신';
+    new Date(frontend.builtAt) > new Date(backend.builtAt)
+      ? t('settings.deploy.frontendNewer')
+      : t('settings.deploy.backendNewer');
   return {
     status: 'skew',
-    message: `${newer}입니다. npm run deploy와 deploy:restart를 함께 실행했는지 확인하세요.`,
+    message: t('settings.deploy.buildSkew', { newer }),
   };
 }
 

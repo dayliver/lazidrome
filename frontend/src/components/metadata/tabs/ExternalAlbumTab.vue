@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { 
   Globe, Database, RefreshCw, 
   Disc, User, Image as ImageIcon, 
@@ -11,6 +12,9 @@ import { Button } from '@/components/ui/button'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
 import { useExternalMetadataSearch } from '@/composables/useExternalMetadataSearch'
 import { notify } from '@/lib/notify'
+import { formatLocaleNumber } from '@/lib/localeFormat'
+const { t, locale } = useI18n()
+const formatPlaycount = (n) => formatLocaleNumber(n, undefined, locale.value)
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -30,12 +34,12 @@ const handleFetch = () =>
   fetchExternal({
     textValid: () => {
       if (searchAlbum.value && searchArtist.value) return true
-      notify.warning('앨범명과 아티스트를 모두 입력하세요.')
+      notify.warning(t('external.enterAlbum'))
       return false
     },
     onText: () => metadataEdit.reFetchPreview(searchAlbum.value, searchArtist.value),
     mbidValue: searchMbid.value,
-    mbidMissingMessage: 'MBID를 입력하세요.',
+    mbidMissingMessage: t('external.enterMbid'),
   })
 
 const updateField = (field, value) => {
@@ -61,7 +65,7 @@ const applyArtist = () => {
   const isExisting = currentArtists.some(a => a.name.toLowerCase() === extName.toLowerCase())
   
   if (isExisting) {
-    notify.warning('이미 동일한 이름의 앨범 아티스트가 목록에 있습니다.')
+    notify.warning(t('external.albumArtistDuplicate'))
     return
   }
 
@@ -96,32 +100,32 @@ const applyAll = () => {
     
     <div class="space-y-4 bg-muted/20 p-6 rounded-2xl border-2 border-dashed">
       <div class="flex items-center justify-between mb-2">
-        <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-widest">Last.fm 앨범 데이터 조회</Label>
+        <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-widest">{{ t('external.albumLookup') }}</Label>
         <div class="flex bg-background border rounded-lg p-1">
-          <button @click="searchMethod = 'text'" :class="['px-3 py-1 text-[10px] font-bold rounded-md transition-all', searchMethod === 'text' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted']">정보 검색</button>
-          <button @click="searchMethod = 'mbid'" :class="['px-3 py-1 text-[10px] font-bold rounded-md transition-all', searchMethod === 'mbid' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted']">MBID 검색</button>
+          <button @click="searchMethod = 'text'" :class="['px-3 py-1 text-[10px] font-bold rounded-md transition-all', searchMethod === 'text' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted']">{{ t('external.searchByInfo') }}</button>
+          <button @click="searchMethod = 'mbid'" :class="['px-3 py-1 text-[10px] font-bold rounded-md transition-all', searchMethod === 'mbid' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted']">{{ t('external.searchByMbid') }}</button>
         </div>
       </div>
 
       <div v-if="searchMethod === 'text'" class="grid grid-cols-2 gap-4">
         <div class="space-y-2">
-          <Label class="text-[10px] font-bold ml-1 flex items-center gap-1"><Disc class="w-3 h-3" /> 앨범명</Label>
-          <Input v-model="searchAlbum" placeholder="앨범 제목" class="bg-background border-2 h-10" />
+          <Label class="text-[10px] font-bold ml-1 flex items-center gap-1"><Disc class="w-3 h-3" /> {{ t('external.albumName') }}</Label>
+          <Input v-model="searchAlbum" :placeholder="t('external.albumName')" class="bg-background border-2 h-10" />
         </div>
         <div class="space-y-2">
-          <Label class="text-[10px] font-bold ml-1 flex items-center gap-1"><User class="w-3 h-3" /> 아티스트</Label>
-          <Input v-model="searchArtist" placeholder="아티스트 이름" class="bg-background border-2 h-10" />
+          <Label class="text-[10px] font-bold ml-1 flex items-center gap-1"><User class="w-3 h-3" /> {{ t('external.artistName') }}</Label>
+          <Input v-model="searchArtist" :placeholder="t('external.artistName')" class="bg-background border-2 h-10" />
         </div>
       </div>
       <div v-else class="space-y-2">
-        <Label class="text-[10px] font-bold ml-1 flex items-center gap-1"><Database class="w-3 h-3" /> MusicBrainz ID</Label>
-        <Input v-model="searchMbid" placeholder="Release/Release Group MBID 입력" class="bg-background border-2 h-10 font-mono text-xs" />
+        <Label class="text-[10px] font-bold ml-1 flex items-center gap-1"><Database class="w-3 h-3" /> {{ t('external.musicbrainzId') }}</Label>
+        <Input v-model="searchMbid" :placeholder="t('external.mbidRelease')" class="bg-background border-2 h-10 font-mono text-xs" />
       </div>
 
       <div class="flex justify-end pt-2">
         <Button @click="handleFetch" :disabled="metadataEdit.isFetching" class="font-black px-8">
           <RefreshCw class="w-4 h-4 mr-2" :class="{ 'animate-spin': metadataEdit.isFetching }" />
-          외부 데이터 불러오기
+          {{ t('external.fetch') }}
         </Button>
       </div>
     </div>
@@ -129,7 +133,7 @@ const applyAll = () => {
     <div class="pt-2">
       <div class="flex items-center gap-4 mb-6">
         <div class="h-[1px] flex-1 bg-border"></div>
-        <span class="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] whitespace-nowrap">Last.fm Results & Apply</span>
+        <span class="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] whitespace-nowrap">{{ t('external.resultsDivider') }}</span>
         <div class="h-[1px] flex-1 bg-border"></div>
       </div>
 
@@ -141,11 +145,11 @@ const applyAll = () => {
             <img v-if="item.external.imageUrl" :src="item.external.imageUrl" class="w-full h-full object-cover" />
             <div v-else class="w-full h-full flex flex-col items-center justify-center text-muted-foreground/30">
               <ImageIcon class="w-10 h-10 mb-2" />
-              <span class="text-[10px] font-bold uppercase">No Image</span>
+              <span class="text-[10px] font-bold uppercase">{{ t('external.noImage') }}</span>
             </div>
           </div>
           <Button v-if="item.external.imageUrl" @click="applyCover" variant="outline" class="w-full h-8 text-[11px] font-bold bg-background">
-            <Download class="w-3 h-3 mr-1" /> 이 커버 적용
+            <Download class="w-3 h-3 mr-1" /> {{ t('external.applyCover') }}
           </Button>
         </div>
 
@@ -155,12 +159,12 @@ const applyAll = () => {
             <div>
               <div class="flex items-center gap-2 mb-1">
                 <CheckCircle2 class="w-4 h-4 text-green-500" />
-                <p class="text-[10px] font-black text-muted-foreground uppercase">조회된 앨범명</p>
+                <p class="text-[10px] font-black text-muted-foreground uppercase">{{ t('external.foundAlbumName') }}</p>
               </div>
-              <h3 class="font-black text-xl tracking-tight">{{ item.external.name || item.external.title || 'N/A' }}</h3>
+              <h3 class="font-black text-xl tracking-tight">{{ item.external.name || item.external.title || t('external.notAvailable') }}</h3>
             </div>
             <Button v-if="item.external.name || item.external.title" @click="applyTitle" variant="secondary" size="sm" class="h-7 text-[10px] font-bold">
-              <Download class="w-3 h-3 mr-1" /> 앨범명 적용
+              <Download class="w-3 h-3 mr-1" /> {{ t('metadata.albumNameApply') }}
             </Button>
           </div>
           
@@ -168,27 +172,27 @@ const applyAll = () => {
             
             <div class="flex items-center justify-between bg-muted/30 p-2 rounded-lg border">
               <div>
-                <p class="text-[10px] font-black text-muted-foreground uppercase mb-0.5">앨범 아티스트 (안전 추가)</p>
-                <p class="font-bold text-primary">{{ item.external.artist || 'N/A' }}</p>
+                <p class="text-[10px] font-black text-muted-foreground uppercase mb-0.5">{{ t('external.foundAlbumArtist') }}</p>
+                <p class="font-bold text-primary">{{ item.external.artist || t('external.notAvailable') }}</p>
               </div>
-              <Button v-if="item.external.artist" @click="applyArtist" variant="ghost" size="icon" class="h-8 w-8 hover:bg-primary/20 hover:text-primary" title="아티스트 목록에 추가">
+              <Button v-if="item.external.artist" @click="applyArtist" variant="ghost" size="icon" class="h-8 w-8 hover:bg-primary/20 hover:text-primary" :title="t('external.applyArtist')">
                 <Download class="w-4 h-4" />
               </Button>
             </div>
 
             <div>
-              <p class="text-[10px] font-black text-muted-foreground uppercase mb-0.5">Playcount</p>
-              <p class="font-mono font-bold">{{ Number(item.external.playcount || 0).toLocaleString() }}</p>
+              <p class="text-[10px] font-black text-muted-foreground uppercase mb-0.5">{{ t('external.playcount') }}</p>
+              <p class="font-mono font-bold">{{ formatPlaycount(item.external.playcount || 0) }}</p>
             </div>
             <div>
-              <p class="text-[10px] font-black text-muted-foreground uppercase mb-0.5">MBID</p>
-              <p class="font-mono text-[10px] truncate w-32" :title="item.external.mbid">{{ item.external.mbid || 'N/A' }}</p>
+              <p class="text-[10px] font-black text-muted-foreground uppercase mb-0.5">{{ t('external.mbidLabel') }}</p>
+              <p class="font-mono text-[10px] truncate w-32" :title="item.external.mbid">{{ item.external.mbid || t('external.notAvailable') }}</p>
             </div>
           </div>
 
           <div class="pt-4 flex justify-end">
             <Button @click="applyAll" class="bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground font-black shadow-none border border-primary/20 transition-all">
-              <Zap class="w-4 h-4 mr-2" /> 전체 자동 병합 (Merge All)
+              <Zap class="w-4 h-4 mr-2" /> {{ t('external.mergeAll') }}
             </Button>
           </div>
 
@@ -197,8 +201,8 @@ const applyAll = () => {
 
       <div v-else class="p-16 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-muted-foreground/50">
         <Globe class="w-12 h-12 mb-4 opacity-20" />
-        <p class="font-bold">외부 데이터 소스가 비어있습니다.</p>
-        <p class="text-xs mt-1">위의 검색 설정을 확인한 후 데이터를 불러와주세요.</p>
+        <p class="font-bold">{{ t('external.emptySource') }}</p>
+        <p class="text-xs mt-1">{{ t('external.emptySourceHint') }}</p>
       </div>
     </div>
 

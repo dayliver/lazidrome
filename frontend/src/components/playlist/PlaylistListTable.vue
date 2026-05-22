@@ -1,4 +1,6 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
+import { i18n } from '@/i18n'
 import { useRouter } from 'vue-router'
 import { usePlaylistStore } from '@/stores/playlist'
 import { useAuthStore } from '@/stores/auth' // 💡 커버 이미지 로드용
@@ -9,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { ListMusic, Zap, MoreVertical, Play, Trash2, Edit } from 'lucide-vue-next'
 import SafeImage from '@/components/shared/SafeImage.vue' // 💡 안전한 썸네일 렌더러
+const { t } = useI18n()
 
 const props = defineProps({
   playlists: {
@@ -32,36 +35,37 @@ const goToDetail = (id) => {
 }
 
 const deletePlaylist = async (id, name) => {
-  if (confirm(`'${name}' 플레이리스트를 정말 삭제하시겠습니까?`)) {
+  if (confirm(t('playlist.deleteConfirm', { name }))) {
     await playlistStore.deletePlaylist(id)
   }
 }
 
 const getListSummary = (pl) => {
   if (pl.firstTrackTitle) {
-    const artist = pl.firstTrackArtist || 'Unknown'
+    const artist = pl.firstTrackArtist || t('common.unknownArtist')
     let summary = `${pl.firstTrackTitle} • ${artist}`
-    if (pl.trackCount > 1) summary += ` 외 ${pl.trackCount - 1}곡`
+    if (pl.trackCount > 1) summary += t('playlist.trackSummaryMore', { count: pl.trackCount - 1 })
     if (pl.totalDuration) summary += ` (${pl.totalDuration})`
     return summary
   }
-  return pl.description || '수동 플레이리스트'
+  return pl.description || t('pages.details.playlistManual')
 }
 
 const getMixSummary = (pl) => {
   if (pl.description) return pl.description
   if (pl.rules && pl.rules.conditions?.length > 0) {
     return pl.rules.conditions.map(c => {
-      const fieldName = c.field === 'rating' ? '별점' : c.field === 'tags' ? '태그' : c.field
+      const fieldName = c.field === 'rating' ? t('playlist.fieldRating') : c.field === 'tags' ? t('playlist.fieldTags') : c.field
       return `${fieldName} ${c.value}`
     }).join(' • ')
   }
-  return '스마트 믹스 (조건 설정 필요)'
+  return t('playlist.smartMixNeedsRules')
 }
 
 const formatDate = (dateString) => {
   if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString('ko-KR', {
+  const locale = i18n.global.locale.value === 'ko' ? 'ko-KR' : 'en-US'
+  return new Date(dateString).toLocaleDateString(locale, {
     year: 'numeric', month: '2-digit', day: '2-digit'
   })
 }
@@ -75,9 +79,9 @@ const formatDate = (dateString) => {
         <TableHeader>
           <TableRow class="bg-muted/30">
             <TableHead class="w-[60px] text-center">#</TableHead>
-            <TableHead class="w-16 text-center">커버</TableHead>
-            <TableHead>플레이리스트 정보</TableHead>
-            <TableHead class="w-32 text-center">생성일</TableHead>
+            <TableHead class="w-16 text-center">{{ t('playlistTable.cover') }}</TableHead>
+            <TableHead>{{ t('playlistTable.info') }}</TableHead>
+            <TableHead class="w-32 text-center">{{ t('playlistTable.created') }}</TableHead>
             <TableHead class="w-16"></TableHead>
           </TableRow>
         </TableHeader>
@@ -131,11 +135,11 @@ const formatDate = (dateString) => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="w-40">
                   <DropdownMenuItem @click.stop="emit('edit', pl)">
-                    <Edit class="mr-2 h-4 w-4" /> 정보 수정
+                    <Edit class="mr-2 h-4 w-4" /> {{ t('playlist.editInfo') }}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem @click.stop="deletePlaylist(pl.id, pl.name)" class="text-red-500 focus:text-red-500 focus:bg-red-500/10">
-                    <Trash2 class="mr-2 h-4 w-4" /> 삭제
+                    <Trash2 class="mr-2 h-4 w-4" /> {{ t('common.delete') }}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -179,11 +183,11 @@ const formatDate = (dateString) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem @click.stop="emit('edit', pl)">
-                  <Edit class="mr-2 h-4 w-4" /> 정보 수정
+                  <Edit class="mr-2 h-4 w-4" /> {{ t('playlist.editInfo') }}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem @click.stop="deletePlaylist(pl.id, pl.name)" class="text-red-500">
-                  <Trash2 class="mr-2 h-4 w-4" /> 삭제
+                  <Trash2 class="mr-2 h-4 w-4" /> {{ t('common.delete') }}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

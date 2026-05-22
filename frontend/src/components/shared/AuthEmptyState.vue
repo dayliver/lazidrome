@@ -1,13 +1,13 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 
+const { t } = useI18n()
+
 defineProps({
-  description: {
-    type: String,
-    default: '설정에서 서버에 로그인하면 라이브러리를 사용할 수 있습니다.',
-  },
-  actionLabel: { type: String, default: '설정으로 이동' },
+  description: { type: String, default: '' },
+  actionLabel: { type: String, default: '' },
   actionTo: { type: String, default: '/settings' },
 })
 </script>
@@ -17,9 +17,9 @@ defineProps({
     class="rounded-2xl border border-border bg-card/50 p-8 text-center space-y-4"
     role="status"
   >
-    <p class="text-muted-foreground">{{ description }}</p>
+    <p class="text-muted-foreground">{{ description || t('auth.emptyDefault') }}</p>
     <Button as-child>
-      <RouterLink :to="actionTo">{{ actionLabel }}</RouterLink>
+      <RouterLink :to="actionTo">{{ actionLabel || t('auth.goSettings') }}</RouterLink>
     </Button>
   </div>
 </template>

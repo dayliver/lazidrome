@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { usePlaylistStore } from '@/stores/playlist'
+import { t } from '@/i18n/t'
 
 export function useTrackListSelection(localTracks, props) {
   const playlistStore = usePlaylistStore()
@@ -38,14 +39,14 @@ export function useTrackListSelection(localTracks, props) {
 
   const removeTrackFromPlaylist = async (playlistTrackId, trackTitle) => {
     if (!props.playlistId || !playlistTrackId) return
-    if (confirm(`'${trackTitle}' 곡을 이 플레이리스트에서 제외하시겠습니까?`)) {
+    if (confirm(t('trackTable.removeFromPlaylistConfirm', { title: trackTitle }))) {
       await playlistStore.removeTrack(props.playlistId, playlistTrackId)
     }
   }
 
   const removeSelectedFromPlaylist = async () => {
     if (!props.playlistId) return
-    if (confirm(`선택한 ${selectedTrackIds.value.length}곡을 플레이리스트에서 일괄 제외하시겠습니까?`)) {
+    if (confirm(t('trackTable.removeBulkConfirm', { count: selectedTrackIds.value.length }))) {
       const tracksToRemove = localTracks.value.filter(
         (t) => selectedTrackIds.value.includes(t.id) && t.playlist_track_id
       )

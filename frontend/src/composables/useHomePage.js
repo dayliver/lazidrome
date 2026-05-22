@@ -9,12 +9,12 @@ import {
   useHorizontalDragScroll,
   isHorizontalDragInteractiveTarget,
 } from '@/composables/useHorizontalDragScroll'
+import { t } from '@/i18n/t'
 
-const KIND_LABEL = {
-  playlist: '플레이리스트',
-  album: '앨범',
-  artist: '아티스트',
-  tag: '태그',
+function kindLabel(type) {
+  const key = `visit.${type}`
+  const msg = t(key)
+  return msg !== key ? msg : type
 }
 
 export function useHomePage() {
@@ -52,15 +52,15 @@ export function useHomePage() {
     if (v.name && String(v.name).trim()) return String(v.name).trim()
     if (v.type === 'album') {
       const a = library.albums.find((x) => String(x.id) === String(v.id))
-      return a?.name || '앨범'
+      return a?.name || t('visit.fallbackAlbum')
     }
     if (v.type === 'artist') {
       const a = library.artists.find((x) => String(x.id) === String(v.id))
-      return a?.name || '아티스트'
+      return a?.name || t('visit.fallbackArtist')
     }
     if (v.type === 'playlist') {
       const p = playlistStore.playlists.find((x) => String(x.id) === String(v.id))
-      return p?.name || '플레이리스트'
+      return p?.name || t('visit.fallbackPlaylist')
     }
   if (v.type === 'tag') return v.id
     return v.id
@@ -83,7 +83,7 @@ export function useHomePage() {
   const visitItems = computed(() =>
     visits.value.map((v) => ({
       ...v,
-      kindLabel: KIND_LABEL[v.type] || v.type,
+      kindLabel: kindLabel(v.type),
       displayName: resolveVisitName(v),
       to: visitTo(v),
       coverSrc: visitCoverSrc(v),

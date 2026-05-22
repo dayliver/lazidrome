@@ -1,13 +1,22 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { notify } from '@/lib/notify'
 import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
 import { useThemeStore } from '@/stores/theme'
+import { usePreferencesStore } from '@/stores/preferences'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Sparkles,
   Server,
@@ -19,6 +28,8 @@ import {
   CheckCircle2,
   Circle,
   Package,
+  Languages,
+  Globe,
 } from 'lucide-vue-next'
 import {
   fetchFrontendBuildInfo,
@@ -27,9 +38,11 @@ import {
   compareBuilds,
 } from '@/lib/buildInfo'
 
+const { t } = useI18n()
 const auth = useAuthStore()
 const library = useLibraryStore()
 const theme = useThemeStore()
+const prefs = usePreferencesStore()
 
 const adminPassword = ref('')
 const settingsLoading = ref(false)
@@ -66,7 +79,7 @@ const loadServerSettings = async () => {
     await library.fetchServerSettings()
     await refreshBackendBuild()
   } catch (e) {
-    console.error('설정 조회 실패:', e)
+    console.error(e)
   } finally {
     settingsLoading.value = false
   }
@@ -88,12 +101,12 @@ const handleLogin = async () => {
     await library.fetchLibrary()
     await loadServerSettings()
   } else {
-    notify.error(result.message || '로그인에 실패했습니다.')
+    notify.error(result.message || t('settings.loginFailed'))
   }
 }
 
 const handleLogout = () => {
-  if (confirm('로그아웃 하시겠습니까?')) {
+  if (confirm(t('settings.server.logoutConfirm'))) {
     auth.logout()
   }
 }
@@ -108,46 +121,132 @@ const handleRefresh = async () => {
   <div class="container max-w-2xl py-10 space-y-8">
 
     <div class="space-y-2">
-      <h1 class="text-3xl font-black tracking-tight">Settings</h1>
-      <p class="text-muted-foreground">서버 연결 및 개인 설정을 관리합니다.</p>
+      <h1 class="text-3xl font-black tracking-tight">{{ t('settings.title') }}</h1>
+      <p class="text-muted-foreground">{{ t('settings.subtitle') }}</p>
     </div>
 
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
-          <Package class="w-5 h-5 text-primary" />
-          배포 · 버전
+          <Languages class="w-5 h-5 text-primary" />
+          {{ t('settings.language.title') }}
         </CardTitle>
-        <CardDescription>
-          이 화면(프론트)과 API 서버(백엔드)가 같은 <code>npm run deploy</code> 결과인지 확인합니다.
-        </CardDescription>
+        <CardDescription>{{ t('settings.language.description') }}</CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-3">
+        <div class="flex items-center gap-2">
+          <Button
+            :variant="prefs.locale === 'en' ? 'default' : 'outline'"
+            size="sm"
+            :class="prefs.locale === 'en' ? 'font-bold shadow-sm' : ''"
+            @click="prefs.setLocale('en')"
+          >
+            {{ t('settings.language.en') }}
+          </Button>
+          <Button
+            :variant="prefs.locale === 'ko' ? 'default' : 'outline'"
+            size="sm"
+            :class="prefs.locale === 'ko' ? 'font-bold shadow-sm' : ''"
+            @click="prefs.setLocale('ko')"
+          >
+            {{ t('settings.language.ko') }}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2">
+          <Globe class="w-5 h-5 text-primary" />
+          {{ t('settings.timezone.title') }}
+        </CardTitle>
+        <CardDescription>{{ t('settings.timezone.description') }}</CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <Button
+            :variant="prefs.timezoneMode === 'system' ? 'default' : 'outline'"
+            size="sm"
+            :class="prefs.timezoneMode === 'system' ? 'font-bold shadow-sm' : ''"
+            @click="prefs.setTimezoneMode('system')"
+          >
+            {{ t('settings.timezone.system') }}
+          </Button>
+          <Button
+            :variant="prefs.timezoneMode === 'custom' ? 'default' : 'outline'"
+            size="sm"
+            :class="prefs.timezoneMode === 'custom' ? 'font-bold shadow-sm' : ''"
+            @click="prefs.setTimezoneMode('custom')"
+          >
+            {{ t('settings.timezone.custom') }}
+          </Button>
+        </div>
+        <div v-if="prefs.timezoneMode === 'custom'" class="space-y-2">
+          <Label>{{ t('settings.timezone.custom') }}</Label>
+          <Select
+            :model-value="prefs.customTimezone"
+            @update:model-value="(v) => prefs.setCustomTimezone(String(v))"
+          >
+            <SelectTrigger class="w-full max-w-md font-mono text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent class="max-h-72">
+              <SelectItem
+                v-for="tz in prefs.timezoneOptions"
+                :key="tz"
+                :value="tz"
+                class="font-mono text-sm"
+              >
+                {{ tz }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <p class="text-xs text-muted-foreground">
+          {{ t('settings.timezone.current', { zone: prefs.effectiveTimezone }) }}
+          <span v-if="prefs.timezoneMode === 'system'">
+            ({{ prefs.systemTimezone }})
+          </span>
+        </p>
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2">
+          <Package class="w-5 h-5 text-primary" />
+          {{ t('settings.deploy.title') }}
+        </CardTitle>
+        <CardDescription>{{ t('settings.deploy.description') }}</CardDescription>
       </CardHeader>
       <CardContent class="space-y-4">
         <div class="grid gap-3 sm:grid-cols-2 text-sm">
           <div class="rounded-lg border p-3 bg-muted/20">
-            <p class="text-xs font-bold uppercase text-muted-foreground mb-1">프론트엔드</p>
+            <p class="text-xs font-bold uppercase text-muted-foreground mb-1">{{ t('settings.deploy.frontend') }}</p>
             <p class="font-mono font-semibold">v{{ frontendBuild?.version ?? '—' }}</p>
-            <p class="text-muted-foreground text-xs mt-1">빌드: {{ formatBuildTime(frontendBuild?.builtAt) }}</p>
+            <p class="text-muted-foreground text-xs mt-1">
+              {{ t('settings.deploy.buildAt', { time: formatBuildTime(frontendBuild?.builtAt) }) }}
+            </p>
           </div>
           <div class="rounded-lg border p-3 bg-muted/20">
-            <p class="text-xs font-bold uppercase text-muted-foreground mb-1">백엔드 API</p>
+            <p class="text-xs font-bold uppercase text-muted-foreground mb-1">{{ t('settings.deploy.backend') }}</p>
             <template v-if="!settingsLoading">
               <p class="font-mono font-semibold">v{{ backendBuild?.version ?? '—' }}</p>
-              <p class="text-muted-foreground text-xs mt-1">배포: {{ formatBuildTime(backendBuild?.builtAt) }}</p>
+              <p class="text-muted-foreground text-xs mt-1">
+                {{ t('settings.deploy.deployAt', { time: formatBuildTime(backendBuild?.builtAt) }) }}
+              </p>
               <p
                 v-if="!backendBuild?.builtAt"
                 class="text-xs text-amber-600 dark:text-amber-400 mt-1"
               >
-                build-info.json 없음 — npm run deploy 후 deploy:restart 확인
+                {{ t('settings.deploy.noBuildInfo') }}
               </p>
             </template>
-            <p v-else class="text-xs text-muted-foreground">확인 중…</p>
+            <p v-else class="text-xs text-muted-foreground">{{ t('settings.deploy.checking') }}</p>
           </div>
         </div>
-        <p
-          class="text-sm rounded-lg border px-3 py-2"
-          :class="buildStatusClass"
-        >
+        <p class="text-sm rounded-lg border px-3 py-2" :class="buildStatusClass">
           {{ buildCompare.message }}
         </p>
       </CardContent>
@@ -157,9 +256,9 @@ const handleRefresh = async () => {
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
           <component :is="theme.isDark ? Moon : Sun" class="w-5 h-5 text-primary" />
-          화면 테마
+          {{ t('settings.theme.title') }}
         </CardTitle>
-        <CardDescription>라이트/다크 모드를 전환합니다.</CardDescription>
+        <CardDescription>{{ t('settings.theme.description') }}</CardDescription>
       </CardHeader>
       <CardContent class="space-y-3">
         <div class="flex items-center gap-2">
@@ -169,7 +268,7 @@ const handleRefresh = async () => {
             :class="theme.mode === 'light' ? 'font-bold shadow-sm' : ''"
             @click="theme.setMode('light')"
           >
-            라이트
+            {{ t('settings.theme.light') }}
           </Button>
           <Button
             :variant="theme.mode === 'dark' ? 'default' : 'outline'"
@@ -177,7 +276,7 @@ const handleRefresh = async () => {
             :class="theme.mode === 'dark' ? 'font-bold shadow-sm' : ''"
             @click="theme.setMode('dark')"
           >
-            다크
+            {{ t('settings.theme.dark') }}
           </Button>
           <Button
             :variant="theme.mode === 'system' ? 'default' : 'outline'"
@@ -185,7 +284,7 @@ const handleRefresh = async () => {
             :class="theme.mode === 'system' ? 'font-bold shadow-sm' : ''"
             @click="theme.setMode('system')"
           >
-            시스템
+            {{ t('settings.theme.system') }}
           </Button>
         </div>
       </CardContent>
@@ -193,71 +292,66 @@ const handleRefresh = async () => {
 
     <Card>
       <CardHeader>
-        <CardTitle class="flex items-center gap-2"><Server class="w-5 h-5 text-primary"/> 서버 연결</CardTitle>
-        <CardDescription>Lazidrome 백엔드 주소와 마스터 비밀번호를 입력하세요.</CardDescription>
+        <CardTitle class="flex items-center gap-2"><Server class="w-5 h-5 text-primary"/> {{ t('settings.server.title') }}</CardTitle>
+        <CardDescription>{{ t('settings.server.description') }}</CardDescription>
       </CardHeader>
       <CardContent class="space-y-4">
         <div class="space-y-2">
-          <Label for="url">서버 주소</Label>
+          <Label for="url">{{ t('settings.server.url') }}</Label>
           <Input
             id="url"
             v-model="auth.serverUrl"
-            placeholder="개발: 비워 두기 (Vite가 /api → 5294). 직접 연결 시 http://localhost:5294"
+            placeholder="http://localhost:5294"
           />
-          <p class="text-xs text-muted-foreground">
-            <code>npm run dev</code>로 <strong>localhost:3000</strong>에 접속할 때는 서버 주소를 비워 두는 것이 가장 간단합니다.
-          </p>
+          <p class="text-xs text-muted-foreground">{{ t('settings.server.urlHint') }}</p>
         </div>
 
         <div v-if="!auth.isAuthenticated" class="space-y-2">
-          <Label for="pw">마스터 비밀번호</Label>
+          <Label for="pw">{{ t('settings.server.password') }}</Label>
           <div class="flex gap-2">
-            <Input id="pw" v-model="adminPassword" type="password" placeholder="비밀번호 입력" @keyup.enter="handleLogin" />
+            <Input id="pw" v-model="adminPassword" type="password" :placeholder="t('settings.server.passwordPlaceholder')" @keyup.enter="handleLogin" />
             <Button @click="handleLogin">
-              <LogIn class="w-4 h-4 mr-2"/> 로그인
+              <LogIn class="w-4 h-4 mr-2"/> {{ t('settings.server.login') }}
             </Button>
           </div>
         </div>
 
         <div v-else class="p-4 bg-primary/5 rounded-lg border border-primary/20 flex justify-between items-center">
           <div class="flex flex-col">
-            <span class="text-xs font-bold text-primary uppercase">인증 상태</span>
-            <span class="text-sm font-medium">연결됨 (Admin 세션)</span>
+            <span class="text-xs font-bold text-primary uppercase">{{ t('settings.server.authStatus') }}</span>
+            <span class="text-sm font-medium">{{ t('settings.server.connected') }}</span>
           </div>
           <Button variant="outline" size="sm" @click="handleLogout">
-            <LogOut class="w-4 h-4 mr-2"/> 로그아웃
+            <LogOut class="w-4 h-4 mr-2"/> {{ t('settings.server.logout') }}
           </Button>
         </div>
       </CardContent>
       <CardFooter v-if="auth.isAuthenticated" class="flex items-center justify-between border-t px-6 py-4 bg-muted/10">
         <div class="text-sm font-medium text-muted-foreground">
-          라이브러리: <strong>{{ library.trackCount }}</strong>곡
+          {{ t('settings.server.libraryCount', { count: library.trackCount }) }}
         </div>
         <Button @click="handleRefresh" :disabled="library.isSyncing" variant="secondary">
           <RefreshCw class="w-4 h-4 mr-2" :class="{ 'animate-spin': library.isSyncing }" />
-          라이브러리 새로고침
+          {{ t('settings.server.refresh') }}
         </Button>
       </CardFooter>
     </Card>
 
     <Card class="border-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.1)]">
       <CardHeader>
-        <CardTitle class="flex items-center gap-2"><Sparkles class="w-5 h-5 text-primary"/> Last.fm (서버 설정)</CardTitle>
-        <CardDescription>
-          API 키·스크롭은 브라우저가 아니라 백엔드 <code>.env</code>에서 설정합니다.
-          트랙·앨범·아티스트 상세의 메타데이터 편집에서 Last.fm 보강을 사용할 수 있습니다.
-        </CardDescription>
+        <CardTitle class="flex items-center gap-2"><Sparkles class="w-5 h-5 text-primary"/> {{ t('settings.lastfm.title') }}</CardTitle>
+        <CardDescription>{{ t('settings.lastfm.description') }}</CardDescription>
       </CardHeader>
       <CardContent v-if="auth.isAuthenticated" class="space-y-3">
-        <p v-if="settingsLoading" class="text-sm text-muted-foreground">서버 설정 확인 중…</p>
+        <p v-if="settingsLoading" class="text-sm text-muted-foreground">{{ t('settings.lastfm.loading') }}</p>
         <template v-else-if="lastfm">
           <div class="flex items-start gap-3 text-sm">
             <CheckCircle2 v-if="lastfm.enrich" class="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <Circle v-else class="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
             <div>
-              <p class="font-medium">메타데이터 보강 (enrich)</p>
+              <p class="font-medium">{{ t('settings.lastfm.enrich') }}</p>
               <p class="text-muted-foreground text-xs">
-                {{ lastfm.enrich ? 'LASTFM_API_KEY 설정됨' : 'LASTFM_API_KEY 없음 — .env에 추가 후 서버 재시작' }}
+                {{ lastfm.enrich ? t('settings.lastfm.enrichOn') : t('settings.lastfm.enrichOff') }}
               </p>
             </div>
           </div>
@@ -265,21 +359,17 @@ const handleRefresh = async () => {
             <CheckCircle2 v-if="lastfm.scrobble" class="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <Circle v-else class="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
             <div>
-              <p class="font-medium">재생 스크롭 (scrobble)</p>
+              <p class="font-medium">{{ t('settings.lastfm.scrobble') }}</p>
               <p class="text-muted-foreground text-xs">
-                {{ lastfm.scrobble
-                  ? 'API Key + Secret + Session Key 모두 설정됨'
-                  : '스크롭은 API Key·Secret·Session Key 세 값이 모두 필요합니다' }}
+                {{ lastfm.scrobble ? t('settings.lastfm.scrobbleOn') : t('settings.lastfm.scrobbleOff') }}
               </p>
             </div>
           </div>
         </template>
-        <p class="text-xs text-muted-foreground">
-          설정 방법은 저장소 <code>backend/README.md</code>의 Last.fm 절을 참고하세요.
-        </p>
+        <p class="text-xs text-muted-foreground">{{ t('settings.lastfm.readme') }}</p>
       </CardContent>
       <CardContent v-else class="text-sm text-muted-foreground">
-        로그인 후 서버의 Last.fm 연동 상태를 확인할 수 있습니다.
+        {{ t('settings.lastfm.loginHint') }}
       </CardContent>
     </Card>
 

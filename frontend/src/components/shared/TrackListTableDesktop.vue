@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -60,6 +61,7 @@ function splitTrackTitle(title) {
 }
 
 const emit = defineEmits(['update:localTracks'])
+const { t } = useI18n()
 
 const draggableTracks = computed({
   get: () => props.localTracks,
@@ -77,12 +79,12 @@ const draggableTracks = computed({
             <input type="checkbox" :checked="isAllSelected" :indeterminate="isSomeSelected" @change="toggleSelectAll" class="w-4 h-4 rounded border-muted-foreground/30 accent-primary cursor-pointer focus:ring-primary focus:ring-offset-2 transition-all"/>
           </TableHead>
           <TableHead class="w-[50px] text-center">#</TableHead>
-          <TableHead v-if="showCover" class="w-16 text-center">커버</TableHead>
-          <TableHead>곡 정보</TableHead>
-          <TableHead class="w-24 text-center">시간</TableHead>
-          <TableHead class="w-24 text-center">연도</TableHead>
-          <TableHead class="w-32 text-center">별점</TableHead>
-          <TableHead class="w-24 text-center">재생 횟수</TableHead>
+          <TableHead v-if="showCover" class="w-16 text-center">{{ t('trackTable.cover') }}</TableHead>
+          <TableHead>{{ t('trackTable.trackInfo') }}</TableHead>
+          <TableHead class="w-24 text-center">{{ t('trackTable.duration') }}</TableHead>
+          <TableHead class="w-24 text-center">{{ t('trackTable.year') }}</TableHead>
+          <TableHead class="w-32 text-center">{{ t('trackTable.rating') }}</TableHead>
+          <TableHead class="w-24 text-center">{{ t('trackTable.playCount') }}</TableHead>
           <TableHead class="w-16"></TableHead>
         </TableRow>
       </TableHeader>
@@ -154,7 +156,7 @@ const draggableTracks = computed({
                 </template>
                 <span v-if="showArtist && showAlbum" class="mx-1.5">•</span>
                 <template v-if="showAlbum">
-                  <span class="hover:underline hover:text-primary cursor-pointer" @click.stop="goToAlbum(item.albumId)">{{ item.albumName || 'Unknown Album' }}</span>
+                  <span class="hover:underline hover:text-primary cursor-pointer" @click.stop="goToAlbum(item.albumId)">{{ item.albumName || t('common.unknownAlbum') }}</span>
                 </template>
               </div>
             </div>
@@ -186,17 +188,17 @@ const draggableTracks = computed({
               <DropdownMenuContent align="end" class="w-48">
                 <template v-if="playlistId && item.playlist_track_id">
                   <DropdownMenuItem @click.stop="removeTrackFromPlaylist(item.playlist_track_id, item.title)" class="text-red-500 focus:text-red-500 focus:bg-red-500/10">
-                    <Trash2 class="mr-2 h-4 w-4" /> 플레이리스트에서 제외
+                    <Trash2 class="mr-2 h-4 w-4" /> {{ t('trackTable.removeFromPlaylistMenu') }}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                 </template>
 
-                <DropdownMenuItem @click.stop="openPlaylistModal(item.id)"><ListMusic class="mr-2 h-4 w-4 text-primary" /> 플레이리스트에 추가...</DropdownMenuItem>
+                <DropdownMenuItem @click.stop="openPlaylistModal(item.id)"><ListMusic class="mr-2 h-4 w-4 text-primary" /> {{ t('trackTable.addToPlaylist') }}</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem v-if="showAlbum" @click.stop="goToAlbum(item.albumId)"><Disc class="mr-2 h-4 w-4" /> 앨범으로 이동</DropdownMenuItem>
-                <DropdownMenuItem v-if="showArtist" @click.stop="goToArtist(item.artist)"><Users class="mr-2 h-4 w-4" /> 아티스트로 이동</DropdownMenuItem>
-                <DropdownMenuItem @click.stop><ListPlus class="mr-2 h-4 w-4" /> 다음에 재생</DropdownMenuItem>
-                <DropdownMenuItem @click.stop="fetchMetadata(item.id)"><Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> 메타데이터 업데이트</DropdownMenuItem>
+                <DropdownMenuItem v-if="showAlbum" @click.stop="goToAlbum(item.albumId)"><Disc class="mr-2 h-4 w-4" /> {{ t('trackTable.goToAlbum') }}</DropdownMenuItem>
+                <DropdownMenuItem v-if="showArtist" @click.stop="goToArtist(item.artist)"><Users class="mr-2 h-4 w-4" /> {{ t('trackTable.goToArtist') }}</DropdownMenuItem>
+                <DropdownMenuItem @click.stop><ListPlus class="mr-2 h-4 w-4" /> {{ t('trackTable.playNext') }}</DropdownMenuItem>
+                <DropdownMenuItem @click.stop="fetchMetadata(item.id)"><Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> {{ t('trackTable.updateMetadata') }}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </TableCell>

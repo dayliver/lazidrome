@@ -1,35 +1,37 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterView, RouterLink } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
-import { useAuthStore } from '@/stores/auth' // 💉 추가됨
+import { useAuthStore } from '@/stores/auth'
 import PlayerWrapper from '@/components/player/PlayerWrapper.vue'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, BarChart2 } from 'lucide-vue-next'
+import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, BarChart2, Trophy } from 'lucide-vue-next'
 import MetadataEditDialog from '@/components/metadata/MetadataEditDialog.vue'
 
 import 'vue-sonner/style.css'
 import { Toaster } from '@/components/ui/sonner'
 
+const { t } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
-const auth = useAuthStore() // 💉 추가됨
+const auth = useAuthStore()
 
-// 상태 관리
 const isSidebarExpanded = ref(true)
 const isMobileMenuOpen = ref(false)
 
-const navItems = [
-  { name: '홈', path: '/', icon: Compass },
-  { name: '아티스트', path: '/artists', icon: Users },
-  { name: '앨범', path: '/albums', icon: Disc },
-  { name: '곡', path: '/tracks', icon: Music },
-  { name: '태그', path: '/tags', icon: Hash },
-  { name: '플레이리스트', path: '/playlists', icon: List },
-  { name: '통계', path: '/stats', icon: BarChart2 },
-  { name: '설정', path: '/settings', icon: Settings },
-]
+const navItems = computed(() => [
+  { name: t('nav.home'), path: '/', icon: Compass },
+  { name: t('nav.artists'), path: '/artists', icon: Users },
+  { name: t('nav.albums'), path: '/albums', icon: Disc },
+  { name: t('nav.tracks'), path: '/tracks', icon: Music },
+  { name: t('nav.tags'), path: '/tags', icon: Hash },
+  { name: t('nav.playlists'), path: '/playlists', icon: List },
+  { name: t('nav.charts'), path: '/charts', icon: Trophy },
+  { name: t('nav.stats'), path: '/stats', icon: BarChart2 },
+  { name: t('nav.settings'), path: '/settings', icon: Settings },
+])
 
 onMounted(async () => {
   if (auth.isAuthenticated) {
@@ -62,14 +64,14 @@ watch(
       <div class="p-6 h-16 flex items-center overflow-hidden whitespace-nowrap">
         <RouterLink to="/" class="flex items-center text-xl font-black tracking-tighter text-primary">
           <Compass class="w-6 h-6 shrink-0 transition-all" :class="{ 'mr-3': isSidebarExpanded }" />
-          <span v-if="isSidebarExpanded">LAZIDROME</span>
+          <span v-if="isSidebarExpanded">{{ t('app.name') }}</span>
         </RouterLink>
       </div>
 
       <nav class="flex-1 px-3 py-4 space-y-2 overflow-y-auto no-scrollbar">
         <RouterLink 
           v-for="item in navItems" 
-          :key="item.name"
+          :key="item.path"
           :to="item.path"
           class="flex items-center p-3 rounded-lg hover:bg-muted transition-colors group text-muted-foreground hover:text-foreground"
           active-class="bg-primary/10 text-primary hover:text-primary font-bold"
@@ -87,12 +89,12 @@ watch(
     <header class="md:hidden border-b px-4 h-14 flex items-center justify-between bg-card/95 backdrop-blur-md z-50 shrink-0 relative">
       <RouterLink to="/" class="flex items-center text-lg font-black tracking-tighter text-primary" @click="isMobileMenuOpen = false">
         <Compass class="w-5 h-5 mr-2" />
-        LAZIDROME
+        {{ t('app.name') }}
       </RouterLink>
       <Button
         variant="ghost"
         size="icon"
-        :aria-label="isMobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'"
+        :aria-label="isMobileMenuOpen ? t('nav.menuClose') : t('nav.menuOpen')"
         @click="isMobileMenuOpen = !isMobileMenuOpen"
       >
         <component :is="isMobileMenuOpen ? X : Menu" class="w-6 h-6 transition-transform" />
@@ -103,7 +105,7 @@ watch(
       <nav v-if="isMobileMenuOpen" class="md:hidden absolute top-14 left-0 w-full bg-card/95 backdrop-blur-xl border-b z-40 px-4 py-4 shadow-2xl flex flex-col gap-2">
         <RouterLink 
           v-for="item in navItems" 
-          :key="item.name" 
+          :key="item.path" 
           :to="item.path" 
           class="flex items-center p-4 rounded-xl text-muted-foreground hover:bg-muted transition-colors font-bold"
           active-class="bg-primary/10 text-primary"

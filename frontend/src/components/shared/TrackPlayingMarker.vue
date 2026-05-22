@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   /** 0 기반 행 번호 (# 열 표시용) */
@@ -16,6 +17,7 @@ const active = computed(
 )
 const showPauseButton = computed(() => active.value && props.playerIsPlaying)
 const showPlayButton = computed(() => active.value && !props.playerIsPlaying)
+const { t } = useI18n()
 </script>
 
 <template>
@@ -24,7 +26,7 @@ const showPlayButton = computed(() => active.value && !props.playerIsPlaying)
       <button
         type="button"
         class="playing-toggle"
-        title="일시정지"
+        :title="t('player.pause')"
         @click.stop="togglePlay()"
       >||</button>
     </template>
@@ -32,7 +34,7 @@ const showPlayButton = computed(() => active.value && !props.playerIsPlaying)
       <button
         type="button"
         class="playing-toggle"
-        title="재생"
+        :title="t('player.play')"
         @click.stop="togglePlay()"
       >▶</button>
     </template>

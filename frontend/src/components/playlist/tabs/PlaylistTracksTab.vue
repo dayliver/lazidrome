@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth' // 💡 추가: 이미지 인증용
 import { getCoverUrl } from '@/lib/image'    // 💡 추가: 커버 URL 생성기
@@ -9,6 +10,7 @@ import { Search, Plus, Trash2, GripVertical, ListMusic, Disc } from 'lucide-vue-
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { VueDraggable } from 'vue-draggable-plus'
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: { type: Array, required: true, default: () => [] }
@@ -80,12 +82,12 @@ const onDragEnd = () => updateParent()
   <div class="space-y-6 animate-in fade-in duration-500 relative h-full">
     
     <div class="bg-muted/30 p-6 rounded-2xl border-2 relative z-20">
-      <label class="text-xs font-black text-muted-foreground uppercase tracking-widest block mb-3 ml-1">수록곡 검색 및 추가</label>
+      <label class="text-xs font-black text-muted-foreground uppercase tracking-widest block mb-3 ml-1">{{ t('metadata.tracksSearchAdd') }}</label>
       <div class="relative">
         <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
         <Input 
           v-model="searchQuery" 
-          placeholder="추가할 곡의 제목이나 아티스트를 검색하세요" 
+          :placeholder="t('playlist.tracksSearchPlaceholder')" 
           class="bg-background pl-12 font-bold h-14 text-base border-2 rounded-xl focus-visible:ring-primary shadow-sm"
           @input="handleSearch"
           @focus="isFocused = true"
@@ -106,7 +108,7 @@ const onDragEnd = () => updateParent()
 
             <div class="flex flex-col min-w-0 flex-1 pr-4 gap-0.5">
               <span class="font-bold text-base truncate">{{ res.title }}</span>
-              <span class="text-xs text-muted-foreground font-medium truncate">{{ res.artist || 'Unknown Artist' }}</span>
+              <span class="text-xs text-muted-foreground font-medium truncate">{{ res.artist || t('common.unknownArtist') }}</span>
             </div>
             <Button size="icon" variant="ghost" class="shrink-0 w-8 h-8 rounded-full group-hover:bg-primary group-hover:text-primary-foreground pointer-events-none transition-transform group-hover:scale-110">
               <Plus class="w-4 h-4" />
@@ -115,7 +117,7 @@ const onDragEnd = () => updateParent()
         </div>
         <div v-else-if="isFocused && searchQuery.trim() && searchResults.length === 0"
              class="absolute top-[calc(100%+8px)] left-0 right-0 bg-card border-2 rounded-xl shadow-xl p-8 text-center text-sm font-bold text-muted-foreground">
-          검색된 곡이 없습니다.
+          {{ t('playlist.noSearchTracks') }}
         </div>
       </div>
     </div>
@@ -124,17 +126,17 @@ const onDragEnd = () => updateParent()
       
       <div class="flex items-end justify-between px-2 mb-2 border-b-2 pb-3">
         <span class="text-xs font-black text-foreground uppercase tracking-widest">
-          현재 수록곡 <span class="text-primary">({{ localTracks.length }}곡)</span>
+          {{ t('playlist.currentTracks', { count: localTracks.length }) }}
         </span>
         <span class="text-[10px] font-black text-muted-foreground uppercase tracking-widest bg-muted/50 px-2 py-1 rounded-md">
-          드래그하여 순서 변경
+          {{ t('playlist.dragReorder') }}
         </span>
       </div>
 
       <div v-if="localTracks.length === 0" class="p-14 text-center text-muted-foreground border-2 border-dashed rounded-2xl bg-muted/5">
         <ListMusic class="w-12 h-12 mx-auto mb-4 opacity-20" />
-        <h3 class="text-lg font-black text-foreground mb-1">수록된 곡이 없습니다</h3>
-        <p class="text-sm font-medium">위에서 검색하여 이 플레이리스트에 곡을 채워보세요.</p>
+        <h3 class="text-lg font-black text-foreground mb-1">{{ t('metadata.playlistTracksEmptyTitle') }}</h3>
+        <p class="text-sm font-medium">{{ t('metadata.playlistTracksEmpty') }}</p>
       </div>
       
       <VueDraggable
@@ -164,7 +166,7 @@ const onDragEnd = () => updateParent()
 
           <div class="flex-1 min-w-0 flex flex-col justify-center">
             <span class="font-bold text-base truncate">{{ track.title }}</span>
-            <span class="text-xs text-muted-foreground font-medium truncate">{{ track.artist || 'Unknown Artist' }}</span>
+            <span class="text-xs text-muted-foreground font-medium truncate">{{ track.artist || t('common.unknownArtist') }}</span>
           </div>
 
           <Button variant="ghost" size="icon" @click="removeTrack(index)" class="text-muted-foreground hover:bg-red-500/10 hover:text-red-500 shrink-0">

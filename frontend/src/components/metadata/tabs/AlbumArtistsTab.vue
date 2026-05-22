@@ -1,10 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { UserPlus, Trash2, User, Search, Users } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useLibraryStore } from '@/stores/library'
 import { notify } from '@/lib/notify'
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {
@@ -55,7 +57,7 @@ const addArtist = (artistOrName) => {
 
   // 중복 검사
   if (props.modelValue.some(a => a.name.toLowerCase() === name.toLowerCase())) {
-    notify.warning('이미 추가된 앨범 아티스트입니다.')
+    notify.warning(t('metadata.albumArtistAlreadyAdded'))
     searchQuery.value = ''
     searchResults.value = []
     return
@@ -92,20 +94,20 @@ const handleBlur = () => {
         <Users class="w-5 h-5 text-primary" />
       </div>
       <div>
-        <p class="text-xs font-bold text-primary tracking-tight">앨범 아티스트 관리</p>
-        <p class="text-[10px] text-muted-foreground mt-0.5">합작 앨범이나 컴필레이션 앨범의 경우, 이 앨범을 소유/발행한 주체(예: 다수 아티스트, 제작사)를 모두 추가해 주세요.</p>
+        <p class="text-xs font-bold text-primary tracking-tight">{{ t('metadata.albumArtistManage') }}</p>
+        <p class="text-[10px] text-muted-foreground mt-0.5">{{ t('metadata.albumArtistHint') }}</p>
       </div>
     </div>
 
     <div class="bg-muted/30 p-4 rounded-xl border relative z-20">
-      <label class="text-xs font-bold text-muted-foreground uppercase block mb-2">앨범 아티스트 검색 및 추가</label>
+      <label class="text-xs font-bold text-muted-foreground uppercase block mb-2">{{ t('metadata.albumArtistSearch') }}</label>
       <div class="relative">
         <div class="flex items-center gap-2">
           <div class="relative flex-1">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               v-model="searchQuery" 
-              placeholder="아티스트 이름을 검색하세요" 
+              :placeholder="t('metadata.artistSearchPlaceholder')" 
               class="bg-background pl-9 font-medium"
               @input="handleSearch"
               @focus="isFocused = true"
@@ -114,7 +116,7 @@ const handleBlur = () => {
             />
           </div>
           <Button @click="addArtist(searchQuery)" variant="default" class="shrink-0 font-bold" :disabled="!searchQuery.trim()">
-            <UserPlus class="w-4 h-4 mr-2" /> 신규 추가
+            <UserPlus class="w-4 h-4 mr-2" /> {{ t('metadata.albumArtistCreateAdd') }}
           </Button>
         </div>
 
@@ -129,7 +131,7 @@ const handleBlur = () => {
             >
               <span class="font-bold">{{ res.name }}</span>
               <span class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                기존 라이브러리 연동
+                {{ t('metadata.linkExisting') }}
               </span>
             </button>
           </div>
@@ -139,7 +141,7 @@ const handleBlur = () => {
               @click.stop="addArtist(searchQuery)"
               class="w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-muted/80 flex items-center gap-2"
             >
-              <UserPlus class="w-4 h-4" /> "{{ searchQuery }}" (으)로 새 아티스트 생성
+              <UserPlus class="w-4 h-4" /> {{ t('metadata.createArtistAs', { name: searchQuery }) }}
             </button>
           </div>
           
@@ -149,7 +151,7 @@ const handleBlur = () => {
 
     <div class="space-y-3 relative z-10 pb-8">
       <div v-if="modelValue.length === 0" class="p-8 text-center text-muted-foreground border-2 border-dashed rounded-xl bg-muted/5">
-        지정된 앨범 아티스트가 없습니다. 위에서 검색하여 추가해주세요.
+        {{ t('metadata.albumArtistNone') }}
       </div>
       
       <TransitionGroup name="list" tag="div" class="space-y-2">
@@ -165,7 +167,7 @@ const handleBlur = () => {
             <div>
               <span class="font-bold text-base block">{{ artist.name }}</span>
               <span v-if="artist.id" class="text-[10px] bg-muted px-2 py-0.5 rounded text-muted-foreground font-mono inline-block mt-1">DB ID: {{ artist.id }}</span>
-              <span v-else class="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded font-bold inline-block mt-1">신규 아티스트</span>
+              <span v-else class="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded font-bold inline-block mt-1">{{ t('metadata.newAlbumArtist') }}</span>
             </div>
           </div>
           

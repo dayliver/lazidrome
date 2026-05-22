@@ -1,12 +1,31 @@
 import { getDB } from '../db.js';
+import {
+  aggregateListenHabits,
+  countPlaysByTrack,
+  filterEventsByRange,
+  getPlayHistoryStorageZone,
+  parsePlayedAt,
+  resolveStatsTimezone,
+} from '../lib/playHistoryTime.js';
 
 const db = getDB();
 
-/** 집계는 SQLite가 해석하는 `played_at` 문자열 기준이며, 호스트 OS 로컬 타임존에 따릅니다. */
-export const PLAY_STATS_TIMEZONE_POLICY =
-  'play_history.played_at는 SQLite CURRENT_TIMESTAMP/로컬 규칙으로 저장·집계됩니다. 브라우저 TZ와 다를 수 있습니다.';
-
 const RANGES = new Set(['24h', '48h', '7d', '30d', 'all']);
+/** 순위 차트 전용 */
+export const CHART_RANGES = new Set(['7d', '30d', 'all']);
+/** 습관 통계 기본 후보 */
+export const HABIT_RANGES = new Set(['7d', '30d', 'all']);
+
+const LISTEN_FROM = `
+  FROM play_history h
+  JOIN track_metadata t ON t.id = h.track_id
+  JOIN track_filedata f ON f.id = t.file_id
+`;
+
+/** 재생 1회당 해당 곡 파일 길이(초) 합산 — 실제 청취 초는 저장되지 않음 */
+function listenSecExpr() {
+  return 'SUM(COALESCE(f.duration, 0))';
+}
 
 /**
  * @param {'24h'|'48h'|'7d'|'30d'|'all'} range
@@ -111,6 +130,139 @@ export function getPlaySeriesMonthlyAllTime() {
     .map((r) => ({ label: r.label, count: Number(r.cnt) || 0 }));
 }
 
+/** 요일별 청취 시간 (월=1 … 일=0, SQLite %w) */
+export function getListenSecondsByDayOfWeek(range) {
+  const f = cutoffFilter(range);
+  if (!f) return null;
+  const rows = db
+    .prepare(
+      `
+    SELECT CAST(strftime('%w', h.played_at) AS INTEGER) AS dow,
+           ${listenSecExpr()} AS listen_sec
+    ${LISTEN_FROM}
+    WHERE ${f.sql.replaceAll('played_at', 'h.played_at')}
+    GROUP BY dow
+    ORDER BY dow
+  `
+    )
+    .all(...f.params);
+
+  const labels = ['일', '월', '화', '수', '목', '금', '토'];
+  const byDow = Object.fromEntries(rows.map((r) => [Number(r.dow), Number(r.listen_sec) || 0]));
+  return labels.map((label, dow) => ({
+    dow,
+    label,
+    listenSec: byDow[dow] ?? 0,
+  }));
+}
+
+const TIME_HABIT_BUCKETS = [
+  { key: 'early', label: '8시 이전', match: (h) => h < 8 },
+  { key: 'h08', label: '08시', match: (h) => h === 8 },
+  { key: 'h09', label: '09시', match: (h) => h === 9 },
+  { key: 'h10', label: '10시', match: (h) => h === 10 },
+  { key: 'h11', label: '11시', match: (h) => h === 11 },
+  { key: 'h12', label: '12시', match: (h) => h === 12 },
+  { key: 'h13', label: '13시', match: (h) => h === 13 },
+  { key: 'h14', label: '14시', match: (h) => h === 14 },
+  { key: 'h15', label: '15시', match: (h) => h === 15 },
+  { key: 'h16', label: '16시', match: (h) => h === 16 },
+  { key: 'h17', label: '17시', match: (h) => h === 17 },
+  { key: 'h18', label: '18시', match: (h) => h === 18 },
+  { key: 'h19', label: '19시', match: (h) => h === 19 },
+  { key: 'h20', label: '20시', match: (h) => h === 20 },
+  { key: 'h21', label: '21시', match: (h) => h === 21 },
+  { key: 'night', label: '22시 이후', match: (h) => h >= 22 },
+];
+
+/** 시간대별 청취 습관 (8시 전·22시 후 덩어리 + 8–21시 시간별) */
+export function getListenSecondsByTimeHabit(range) {
+  const f = cutoffFilter(range);
+  if (!f) return null;
+  const rows = db
+    .prepare(
+      `
+    SELECT CAST(strftime('%H', h.played_at) AS INTEGER) AS hour,
+           ${listenSecExpr()} AS listen_sec
+    ${LISTEN_FROM}
+    WHERE ${f.sql.replaceAll('played_at', 'h.played_at')}
+    GROUP BY hour
+  `
+    )
+    .all(...f.params);
+
+  const byHour = Object.fromEntries(rows.map((r) => [Number(r.hour), Number(r.listen_sec) || 0]));
+  return TIME_HABIT_BUCKETS.map((b) => {
+    let listenSec = 0;
+    for (const [hourStr, sec] of Object.entries(byHour)) {
+      const hour = Number(hourStr);
+      if (b.match(hour)) listenSec += sec;
+    }
+    return { key: b.key, label: b.label, listenSec };
+  });
+}
+
+export function getTotalListenSeconds(range) {
+  const f = cutoffFilter(range);
+  if (!f) return 0;
+  const row = db
+    .prepare(
+      `
+    SELECT ${listenSecExpr()} AS listen_sec
+    ${LISTEN_FROM}
+    WHERE ${f.sql.replaceAll('played_at', 'h.played_at')}
+  `
+    )
+    .get(...f.params);
+  return Number(row?.listen_sec) || 0;
+}
+
+function loadPlayHistoryEvents() {
+  const rows = db
+    .prepare(
+      `
+    SELECT h.played_at, h.track_id AS track_id, COALESCE(f.duration, 0) AS duration_sec
+    FROM play_history h
+    JOIN track_metadata t ON t.id = h.track_id
+    JOIN track_filedata f ON f.id = t.file_id
+  `
+    )
+    .all();
+  return rows
+    .map((r) => {
+      const playedAt = parsePlayedAt(r.played_at);
+      if (!playedAt) return null;
+      return {
+        playedAt,
+        trackId: Number(r.track_id),
+        durationSec: Number(r.duration_sec) || 0,
+      };
+    })
+    .filter(Boolean);
+}
+
+function getPlayHistoryEvents() {
+  return loadPlayHistoryEvents();
+}
+
+/** 습관·순위 차트: 사용자 IANA 타임존 기준 집계 */
+export function getHabitStatsPayload(range, timezoneRaw) {
+  if (!HABIT_RANGES.has(range)) return null;
+  const statsZone = resolveStatsTimezone(timezoneRaw);
+  const storageZone = getPlayHistoryStorageZone();
+  const all = getPlayHistoryEvents();
+  const inRange = filterEventsByRange(all, range, statsZone);
+  const { totalListenSec, dayOfWeek, timeOfDay } = aggregateListenHabits(inRange, statsZone);
+  return {
+    range,
+    timezone: statsZone,
+    storageZone,
+    totalListenSec,
+    dayOfWeek,
+    timeOfDay,
+  };
+}
+
 export function getPlayStatsPayload(range) {
   if (!RANGES.has(range)) return null;
 
@@ -132,18 +284,19 @@ export function getPlayStatsPayload(range) {
   return {
     range,
     granularity,
-    timezonePolicy: PLAY_STATS_TIMEZONE_POLICY,
     series,
     timeOfDay,
   };
 }
 
-const TRACK_LIST_SELECT = `
-  SELECT
+const TRACK_LIST_COLUMNS = `
     t.id, t.title, t.rating, t.starred, t.year, t.tags, t.play_count, t.last_played,
     t.custom_cover_type, f.duration, f.format, f.bitrate,
     alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
     GROUP_CONCAT(a.name, ', ') as artist
+`;
+
+const TRACK_LIST_JOINS = `
   FROM track_metadata t
   JOIN track_filedata f ON t.file_id = f.id
   LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
@@ -154,56 +307,113 @@ const TRACK_LIST_SELECT = `
 
 const GROUP_BY_TRACK = 'GROUP BY t.id';
 
-/** play_history 기간 내 이벤트 수 기준 상위 트랙 */
-export function getTopTracksByPlayEvents(range, limit = 20) {
-  const f = cutoffFilter(range);
-  if (!f) return [];
-  return db
+function fetchTracksByIdsOrdered(trackIds) {
+  if (!trackIds.length) return [];
+  const placeholders = trackIds.map(() => '?').join(',');
+  const rows = db
     .prepare(
       `
-    WITH ev AS (
-      SELECT track_id, COUNT(*) AS ev_cnt
-      FROM play_history
-      WHERE ${f.sql}
-      GROUP BY track_id
-    )
-    ${TRACK_LIST_SELECT}
-    JOIN ev ON ev.track_id = t.id
-    ${GROUP_BY_TRACK}, ev.ev_cnt
-    ORDER BY ev.ev_cnt DESC, COALESCE(t.rating, 0) DESC, t.title
-    LIMIT ?
+    SELECT ${TRACK_LIST_COLUMNS}
+    ${TRACK_LIST_JOINS}
+    WHERE t.id IN (${placeholders})
+    ${GROUP_BY_TRACK}
   `
     )
-    .all(...f.params, limit);
+    .all(...trackIds);
+  const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+  return trackIds.map((id) => byId[id]).filter(Boolean);
+}
+
+/** play_history 기간 내 재생 수 → 별점 → 통산 재생 수 */
+export function getTopTracksByPlayEvents(range, limit = 20, timezoneRaw) {
+  if (!CHART_RANGES.has(range) && !RANGES.has(range)) return [];
+  const statsZone = resolveStatsTimezone(timezoneRaw);
+  const all = getPlayHistoryEvents();
+  const periodEv = filterEventsByRange(all, range, statsZone);
+  const allTimeCounts = countPlaysByTrack(all);
+  const periodCounts = countPlaysByTrack(periodEv);
+
+  const ranked = [...periodCounts.entries()]
+    .map(([trackId, periodPlays]) => ({
+      trackId,
+      periodPlays,
+      allTimePlays: allTimeCounts.get(trackId) || 0,
+    }))
+    .sort(
+      (a, b) =>
+        b.periodPlays - a.periodPlays ||
+        0 // rating applied after fetch
+    );
+
+  const topIds = ranked.slice(0, Math.min(limit * 3, ranked.length)).map((r) => r.trackId);
+  const tracks = fetchTracksByIdsOrdered(topIds);
+  const meta = Object.fromEntries(ranked.map((r) => [r.trackId, r]));
+
+  return tracks
+    .map((t) => ({
+      ...t,
+      period_plays: meta[t.id]?.periodPlays ?? 0,
+      all_time_plays: meta[t.id]?.allTimePlays ?? 0,
+    }))
+    .sort(
+      (a, b) =>
+        (meta[b.id]?.periodPlays ?? 0) - (meta[a.id]?.periodPlays ?? 0) ||
+        (Number(b.rating) || 0) - (Number(a.rating) || 0) ||
+        (meta[b.id]?.allTimePlays ?? 0) - (meta[a.id]?.allTimePlays ?? 0) ||
+        String(a.title || '').localeCompare(String(b.title || ''), undefined, {
+          sensitivity: 'base',
+        })
+    )
+    .slice(0, limit);
 }
 
 /** 대표 앨범 기준으로 롤업 */
-export function getTopAlbumsByPlayEvents(range, limit = 20) {
-  const f = cutoffFilter(range);
-  if (!f) return [];
-  return db
+export function getTopAlbumsByPlayEvents(range, limit = 20, timezoneRaw) {
+  if (!CHART_RANGES.has(range) && !RANGES.has(range)) return [];
+  const statsZone = resolveStatsTimezone(timezoneRaw);
+  const periodEv = filterEventsByRange(getPlayHistoryEvents(), range, statsZone);
+  const periodCounts = countPlaysByTrack(periodEv);
+  if (!periodCounts.size) return [];
+
+  const trackIds = [...periodCounts.keys()];
+  const placeholders = trackIds.map(() => '?').join(',');
+  const albumRows = db
     .prepare(
       `
-    WITH ev AS (
-      SELECT track_id, COUNT(*) AS ev_cnt
-      FROM play_history
-      WHERE ${f.sql}
-      GROUP BY track_id
-    ),
-    alb_plays AS (
-      SELECT at.album_id AS album_id, SUM(ev.ev_cnt) AS play_events
-      FROM ev
-      JOIN album_tracks at ON at.track_id = ev.track_id AND at.is_primary = 1
-      GROUP BY at.album_id
-    )
-    SELECT alb.id, alb.name, alb.cover_type as albumCoverType, alb.year, ap.play_events
-    FROM alb_plays ap
-    JOIN albums alb ON alb.id = ap.album_id
-    ORDER BY ap.play_events DESC, alb.name
-    LIMIT ?
+    SELECT at.track_id AS track_id, at.album_id AS album_id
+    FROM album_tracks at
+    WHERE at.track_id IN (${placeholders}) AND at.is_primary = 1
   `
     )
-    .all(...f.params, limit);
+    .all(...trackIds);
+
+  const albumPlays = new Map();
+  for (const row of albumRows) {
+    const plays = periodCounts.get(row.track_id) || 0;
+    albumPlays.set(row.album_id, (albumPlays.get(row.album_id) || 0) + plays);
+  }
+
+  const sortedAlbumIds = [...albumPlays.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id);
+  if (!sortedAlbumIds.length) return [];
+
+  const albPlaceholders = sortedAlbumIds.map(() => '?').join(',');
+  const albums = db
+    .prepare(
+      `
+    SELECT id, name, cover_type as albumCoverType, year
+    FROM albums
+    WHERE id IN (${albPlaceholders})
+  `
+    )
+    .all(...sortedAlbumIds);
+  const byId = Object.fromEntries(albums.map((a) => [a.id, a]));
+  return sortedAlbumIds.map((id) => ({
+    ...byId[id],
+    play_events: albumPlays.get(id) || 0,
+  }));
 }
 
 export { RANGES };
