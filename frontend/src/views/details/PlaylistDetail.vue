@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import DetailLayout from '@/components/layout/DetailLayout.vue'
 import TrackListTable from '@/components/shared/TrackListTable.vue'
 const { t } = useI18n()
+const durationLabel = useDurationLabel()
 
 const route = useRoute()
 const router = useRouter()

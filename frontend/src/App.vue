@@ -7,7 +7,7 @@ import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
 import PlayerWrapper from '@/components/player/PlayerWrapper.vue'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, BarChart2, Trophy } from 'lucide-vue-next'
+import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, BarChart2, Trophy, Wrench } from 'lucide-vue-next'
 import MetadataEditDialog from '@/components/metadata/MetadataEditDialog.vue'
 
 import 'vue-sonner/style.css'
@@ -30,6 +30,7 @@ const navItems = computed(() => [
   { name: t('nav.playlists'), path: '/playlists', icon: List },
   { name: t('nav.charts'), path: '/charts', icon: Trophy },
   { name: t('nav.stats'), path: '/stats', icon: BarChart2 },
+  { name: t('nav.admin'), path: '/admin', icon: Wrench },
   { name: t('nav.settings'), path: '/settings', icon: Settings },
 ])
 

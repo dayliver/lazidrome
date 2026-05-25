@@ -12,9 +12,34 @@
     "playlists": "재생목록",
     "charts": "차트",
     "stats": "통계",
+    "admin": "라이브러리 관리",
     "settings": "설정",
     "menuOpen": "메뉴 열기",
     "menuClose": "메뉴 닫기"
+  },
+  "admin": {
+    "title": "라이브러리 관리",
+    "subtitle": "잘못 만들어진 앨범·아티스트를 정리합니다. 트랙은 건드리지 않습니다.",
+    "authRequired": "관리 페이지를 보려면 먼저 설정에서 로그인하세요.",
+    "loading": "현황을 불러오는 중…",
+    "fetchFailed": "라이브러리 현황을 불러오지 못했습니다.",
+    "refresh": "새로고침",
+    "cleanup": "{count}개 정리하기",
+    "cleanupHint": "트랙이 0인 앨범과 어디에도 연결되지 않은 아티스트만 삭제합니다. 트랙·파일은 보존됩니다.",
+    "cleanupConfirm": "{count}개의 빈 앨범·고아 아티스트를 삭제할까요? 되돌릴 수 없습니다.",
+    "cleanupDone": "정리 완료 · 앨범 {albums}개, 아티스트 {artists}개 삭제",
+    "cleanupFailed": "정리 작업에 실패했습니다.",
+    "truncated": "최근 {shown}개 표시 / 총 {total}개",
+    "emptyAlbums": {
+      "title": "트랙 없는 앨범",
+      "description": "곡이 하나도 묶이지 않은 앨범 행입니다. 파일 삭제 후 남거나, 태그 누락으로 생긴 잔여물입니다.",
+      "count": "개"
+    },
+    "orphanArtists": {
+      "title": "참조 없는 아티스트",
+      "description": "어느 곡·앨범과도 연결되지 않은 아티스트 행입니다.",
+      "count": "명"
+    }
   },
   "settings": {
     "title": "설정",

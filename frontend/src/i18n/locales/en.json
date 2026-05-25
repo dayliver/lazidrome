@@ -12,9 +12,34 @@
     "playlists": "Playlists",
     "charts": "Charts",
     "stats": "Stats",
+    "admin": "Library tools",
     "settings": "Settings",
     "menuOpen": "Open menu",
     "menuClose": "Close menu"
+  },
+  "admin": {
+    "title": "Library maintenance",
+    "subtitle": "Tidy up albums and artists that got orphaned by tag mistakes. Track files are left alone.",
+    "authRequired": "Log in from Settings to use the maintenance tools.",
+    "loading": "Loading current state…",
+    "fetchFailed": "Could not load the library state.",
+    "refresh": "Refresh",
+    "cleanup": "Clean up {count}",
+    "cleanupHint": "Only albums with zero tracks and artists with no links are removed. Tracks and audio files stay intact.",
+    "cleanupConfirm": "Delete {count} empty albums / orphan artists? This cannot be undone.",
+    "cleanupDone": "Done — removed {albums} albums and {artists} artists.",
+    "cleanupFailed": "Cleanup failed.",
+    "truncated": "Showing {shown} of {total}",
+    "emptyAlbums": {
+      "title": "Albums without tracks",
+      "description": "Album rows that no longer have any tracks attached — leftovers from file deletion or missing album tags.",
+      "count": "album(s)"
+    },
+    "orphanArtists": {
+      "title": "Unreferenced artists",
+      "description": "Artist rows that no track or album refers to anymore.",
+      "count": "artist(s)"
+    }
   },
   "settings": {
     "title": "Settings",

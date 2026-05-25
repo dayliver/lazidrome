@@ -8,6 +8,7 @@ import sharp from 'sharp';
 import { ROLES } from '../constants/roles.js';
 import { splitArtistNames } from '../lib/artistTags.js';
 import { sha256FileStream } from '../lib/fileHash.js';
+import { cleanupOrphans } from '../lib/orphanCleanup.js';
 
 export function startScanner(watchPath) {
   const watcher = chokidar.watch(watchPath, {
@@ -92,7 +93,9 @@ export function startScanner(watchPath) {
         const albumArtistIds = getOrCreateArtistIds(albumNamesForAlbum);
 
         // 💡 2. 앨범 찾기 (다대다 구조 반영)
-        const safeAlbumName = albumName || `Unknown Album (${title})`;
+        // 태그에 앨범명이 없으면 'Unknown Album' 하나로 모은다.
+        // (예전엔 `Unknown Album (${title})`로 트랙마다 따로 만들어 누락 시 폭발했음)
+        const safeAlbumName = (albumName && String(albumName).trim()) || 'Unknown Album';
         
         // 동일한 이름을 가진 앨범 후보들을 모두 가져옴
         const candidateAlbums = db.prepare('SELECT id FROM albums WHERE name = ?').all(safeAlbumName);
@@ -254,7 +257,19 @@ export function startScanner(watchPath) {
     queue = queue.then(() => {
       const row = db.prepare('SELECT id FROM track_filedata WHERE path = ?').get(filePath);
       if (!row) return;
+      // track_filedata 삭제는 FK CASCADE로 track_metadata / album_tracks / track_artists / play_history 까지 비운다.
       db.prepare('DELETE FROM track_filedata WHERE id = ?').run(row.id);
+      // 트랙이 빠진 뒤에 남는 빈 앨범과 고아 아티스트를 함께 정리.
+      try {
+        const { albumsRemoved, artistsRemoved } = cleanupOrphans();
+        if (albumsRemoved || artistsRemoved) {
+          console.log(
+            `🧹 [Scanner] orphan 정리: 앨범 ${albumsRemoved}개 · 아티스트 ${artistsRemoved}개 제거`,
+          );
+        }
+      } catch (cleanupErr) {
+        console.error('❌ orphan 정리 중 오류:', cleanupErr?.message || cleanupErr);
+      }
     }).catch((e) => {
       console.error(`❌ 삭제 동기화 오류 (${filePath}):`, e?.message || e);
     });

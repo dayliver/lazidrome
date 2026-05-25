@@ -27,6 +27,7 @@ import playlistsRoutes from './routes/playlists.js';
 import homeRoutes from './routes/home.js';
 import statsRoutes from './routes/stats.js';
 import settingsRoutes from './routes/settings.js';
+import adminRoutes from './routes/admin.js';
 
 dotenv.config();
 
@@ -179,6 +180,7 @@ fastify.register(playlistsRoutes);
 fastify.register(homeRoutes);
 fastify.register(statsRoutes);
 fastify.register(settingsRoutes);
+fastify.register(adminRoutes);
 
 const start = async () => {
   try {

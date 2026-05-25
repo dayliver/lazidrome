@@ -73,6 +73,12 @@ const router = createRouter({
     },
     { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },
     {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('@/views/AdminView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/artist/:id',
       name: 'artist-detail',
       component: () => import('@/views/details/ArtistDetail.vue'),
