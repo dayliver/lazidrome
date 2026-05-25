@@ -232,9 +232,11 @@ function loadPlayHistoryEvents() {
     .map((r) => {
       const playedAt = parsePlayedAt(r.played_at);
       if (!playedAt) return null;
+      // track_id 는 ULID(TEXT). 예전엔 Number()로 변환해 NaN을 만들고 있어
+      // countPlaysByTrack/Top* 결과가 항상 비어 있었음 (차트 무표시 버그).
       return {
         playedAt,
-        trackId: Number(r.track_id),
+        trackId: String(r.track_id),
         durationSec: Number(r.duration_sec) || 0,
       };
     })
@@ -365,6 +367,30 @@ export function getTopTracksByPlayEvents(range, limit = 20, timezoneRaw) {
         })
     )
     .slice(0, limit);
+}
+
+/**
+ * 기간 합계(차트 헤더용): 총 재생 수, 청취 초, 고유 트랙 수.
+ * `getTopTracksByPlayEvents`가 잘라 보내는 limit과 무관하게
+ * 그 기간의 모든 play_history 이벤트를 집계한다.
+ */
+export function getChartTotals(range, timezoneRaw) {
+  if (!CHART_RANGES.has(range) && !RANGES.has(range)) {
+    return { totalPlays: 0, totalListenSec: 0, uniqueTrackCount: 0 };
+  }
+  const statsZone = resolveStatsTimezone(timezoneRaw);
+  const periodEv = filterEventsByRange(getPlayHistoryEvents(), range, statsZone);
+  let totalListenSec = 0;
+  const uniqueTracks = new Set();
+  for (const ev of periodEv) {
+    totalListenSec += ev.durationSec;
+    uniqueTracks.add(ev.trackId);
+  }
+  return {
+    totalPlays: periodEv.length,
+    totalListenSec,
+    uniqueTrackCount: uniqueTracks.size,
+  };
 }
 
 /** 대표 앨범 기준으로 롤업 */

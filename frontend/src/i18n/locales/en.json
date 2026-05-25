@@ -183,7 +183,15 @@
     "viewMore": "View all",
     "loading": "Loading…",
     "noData": "No plays yet.",
-    "loadError": "Could not load chart."
+    "noPlaysYet": "No plays in this period yet. Listen to a track to start the chart.",
+    "loadError": "Could not load chart.",
+    "restHeading": "#{from}–{to}",
+    "totalsBadge": "{plays} plays · {unique} tracks",
+    "totals": {
+      "plays": "Total plays",
+      "listen": "Listen time",
+      "unique": "Unique tracks"
+    }
   },
   "auth": {
     "emptyDefault": "Log in under Settings to use your library.",

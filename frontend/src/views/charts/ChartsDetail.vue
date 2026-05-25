@@ -9,6 +9,8 @@ import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import ChartRankRow from '@/components/charts/ChartRankRow.vue'
+import ChartPodium from '@/components/charts/ChartPodium.vue'
+import ChartTotalsStrip from '@/components/charts/ChartTotalsStrip.vue'
 import { Button } from '@/components/ui/button'
 
 const { t } = useI18n()
@@ -35,12 +37,16 @@ const meta = computed(() => {
 })
 
 const tracks = ref([])
+const totals = ref(null)
 const loading = ref(true)
 const error = ref(null)
+
+const rest = computed(() => tracks.value.slice(3))
 
 const load = async () => {
   if (showAuthEmpty.value) {
     tracks.value = []
+    totals.value = null
     return
   }
   loading.value = true
@@ -48,10 +54,12 @@ const load = async () => {
   try {
     const data = await library.fetchStatsTop(meta.value.range, 50, prefs.effectiveTimezone)
     tracks.value = Array.isArray(data?.tracks) ? data.tracks : []
+    totals.value = data?.totals ?? null
   } catch (e) {
     console.error(e)
     error.value = e
     tracks.value = []
+    totals.value = null
   } finally {
     loading.value = false
   }
@@ -93,14 +101,25 @@ function playAt(index) {
       </div>
 
       <p v-else-if="!tracks.length" class="text-sm text-muted-foreground py-8 text-center">
-        {{ t('charts.noData') }}
+        {{ t('charts.noPlaysYet') }}
       </p>
 
-      <ul v-else class="flex flex-col gap-2 max-w-3xl">
-        <li v-for="(track, idx) in tracks" :key="track.id">
-          <ChartRankRow :rank="idx + 1" :track="track" @play="playAt(idx)" />
-        </li>
-      </ul>
+      <template v-else>
+        <ChartTotalsStrip v-if="totals" :totals="totals" class="max-w-3xl" />
+
+        <ChartPodium :tracks="tracks" class="max-w-3xl" @play="playAt" />
+
+        <div v-if="rest.length" class="space-y-3 max-w-3xl">
+          <h2 class="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+            {{ t('charts.restHeading', { from: 4, to: 3 + rest.length }) }}
+          </h2>
+          <ul class="flex flex-col gap-2">
+            <li v-for="(track, idx) in rest" :key="track.id">
+              <ChartRankRow :rank="idx + 4" :track="track" @play="playAt(idx + 3)" />
+            </li>
+          </ul>
+        </div>
+      </template>
     </template>
   </div>
 </template>

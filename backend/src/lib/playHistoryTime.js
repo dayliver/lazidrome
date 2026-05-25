@@ -95,7 +95,7 @@ export function luxonWeekdayToSqlDow(weekday) {
 }
 
 /**
- * @param {{ playedAt: import('luxon').DateTime, durationSec: number, trackId?: number }[]} events
+ * @param {{ playedAt: import('luxon').DateTime, durationSec: number, trackId?: string }[]} events
  * @param {string} range
  * @param {string} statsZone
  */
@@ -141,7 +141,7 @@ export function aggregateListenHabits(events, statsZone) {
 }
 
 /**
- * @param {{ playedAt: import('luxon').DateTime, trackId: number }[]} events
+ * @param {{ playedAt: import('luxon').DateTime, trackId: string }[]} events
  */
 export function countPlaysByTrack(events) {
   const counts = new Map();
