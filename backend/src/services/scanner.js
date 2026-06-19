@@ -10,9 +10,22 @@ import { splitArtistNames } from '../lib/artistTags.js';
 import { sha256FileStream } from '../lib/fileHash.js';
 import { cleanupOrphans } from '../lib/orphanCleanup.js';
 
+/** 스캔·감시 제외 폴더명 (경로 어디에든 동일하게 적용) */
+export const SCAN_EXCLUDED_DIR = '_excluded';
+
+/**
+ * `/music/_excluded`, `/music/Artist/_excluded/Album/...` 등
+ * 경로 세그먼트에 `_excluded`가 있으면 true.
+ */
+export function isExcludedScanPath(filePath) {
+  if (!filePath) return false;
+  const parts = path.normalize(String(filePath)).split(path.sep);
+  return parts.includes(SCAN_EXCLUDED_DIR);
+}
+
 export function startScanner(watchPath) {
   const watcher = chokidar.watch(watchPath, {
-    ignored: /(^|[\/\\])\../,
+    ignored: (p) => isExcludedScanPath(p) || /(^|[\/\\])\../.test(p),
     persistent: true,
     ignoreInitial: false,
     // 대용량 파일 복사 중간(add/change) 이벤트를 줄여 부분 파일 파싱을 방지
@@ -254,6 +267,7 @@ export function startScanner(watchPath) {
   };
 
   const handleUnlink = (filePath) => {
+    if (isExcludedScanPath(filePath)) return;
     queue = queue.then(() => {
       const row = db.prepare('SELECT id FROM track_filedata WHERE path = ?').get(filePath);
       if (!row) return;

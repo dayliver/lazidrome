@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'vue-sonner'
+import { compressCoverImage } from '@/lib/compressCoverImage'
 const { t } = useI18n()
 
 const props = defineProps({
@@ -18,30 +19,37 @@ const urlInput = ref('')
 const fileInput = ref(null)
 
 // 💡 1. 파일 처리 핵심 로직 (미리보기 및 데이터 바인딩)
-const processFile = (file) => {
+const processFile = async (file) => {
   if (!file || !file.type.startsWith('image/')) {
     toast.error(t('coverArt.imagesOnly'))
     return
   }
-  
+
+  let uploadFile = file
+  try {
+    uploadFile = await compressCoverImage(file)
+  } catch (err) {
+    console.warn('Cover compress failed, using original:', err)
+  }
+
   // 기존 미리보기 메모리 해제
   if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
     URL.revokeObjectURL(previewUrl.value)
   }
-  
-  previewUrl.value = URL.createObjectURL(file)
-  
+
+  previewUrl.value = URL.createObjectURL(uploadFile)
+
   // 부모(MetadataEditDialog 등)의 formData 업데이트
-  emit('update:modelValue', { 
-    ...props.modelValue, 
-    newCoverFile: file, 
-    newCoverUrl: null // 파일이 우선순위
+  emit('update:modelValue', {
+    ...props.modelValue,
+    newCoverFile: uploadFile,
+    newCoverUrl: null, // 파일이 우선순위
   })
 }
 
 const handleFileChange = (e) => {
   const file = e.target.files[0]
-  if (file) processFile(file)
+  if (file) void processFile(file)
 }
 
 // 💡 2. URL 입력 처리
@@ -59,12 +67,13 @@ const handleUrlSubmit = () => {
 const handlePaste = (e) => {
   const items = e.clipboardData?.items
   if (!items) return
-  
+
   for (const item of items) {
     if (item.type.indexOf('image') !== -1) {
+      e.preventDefault()
+      e.stopPropagation()
       const file = item.getAsFile()
-      processFile(file)
-      console.log('📋 클립보드에서 이미지를 감지하여 로드했습니다.')
+      if (file) void processFile(file)
       break
     }
   }

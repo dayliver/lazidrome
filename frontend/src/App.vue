@@ -7,8 +7,9 @@ import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
 import PlayerWrapper from '@/components/player/PlayerWrapper.vue'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, BarChart2, Trophy, Wrench } from 'lucide-vue-next'
+import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, BarChart2, Trophy, Wrench, FolderOpen } from 'lucide-vue-next'
 import MetadataEditDialog from '@/components/metadata/MetadataEditDialog.vue'
+import { useYoutubePaste } from '@/composables/useYoutubePaste'
 
 import 'vue-sonner/style.css'
 import { Toaster } from '@/components/ui/sonner'
@@ -21,11 +22,14 @@ const auth = useAuthStore()
 const isSidebarExpanded = ref(true)
 const isMobileMenuOpen = ref(false)
 
+useYoutubePaste()
+
 const navItems = computed(() => [
   { name: t('nav.home'), path: '/', icon: Compass },
   { name: t('nav.artists'), path: '/artists', icon: Users },
   { name: t('nav.albums'), path: '/albums', icon: Disc },
   { name: t('nav.tracks'), path: '/tracks', icon: Music },
+  { name: t('nav.files'), path: '/files', icon: FolderOpen },
   { name: t('nav.tags'), path: '/tags', icon: Hash },
   { name: t('nav.playlists'), path: '/playlists', icon: List },
   { name: t('nav.charts'), path: '/charts', icon: Trophy },

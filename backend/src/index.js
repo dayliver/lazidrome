@@ -28,6 +28,8 @@ import homeRoutes from './routes/home.js';
 import statsRoutes from './routes/stats.js';
 import settingsRoutes from './routes/settings.js';
 import adminRoutes from './routes/admin.js';
+import importRoutes from './routes/import.js';
+import filesRoutes from './routes/files.js';
 
 dotenv.config();
 
@@ -44,7 +46,7 @@ startScanner(TRACKS_PATH);
 
 const fastify = Fastify({
   logger: true,
-  bodyLimit: 10485760 * 2,
+  bodyLimit: 85 * 1024 * 1024,
 });
 const PORT = process.env.PORT || 5294;
 
@@ -96,7 +98,13 @@ fastify.register(fastifyStatic, {
   decorateReply: true,
 });
 
-fastify.register(fastifyMultipart);
+// 커버 이미지·업로드: 클립보드 PNG 등이 기본 1MB 제한을 쉽게 넘김
+fastify.register(fastifyMultipart, {
+  limits: {
+    fileSize: 80 * 1024 * 1024, // 음원 업로드 (bodyLimit 85MB 이내)
+    files: 1,
+  },
+});
 
 fastify.decorate('mediaSigningSecret', JWT_SECRET);
 
@@ -181,6 +189,8 @@ fastify.register(homeRoutes);
 fastify.register(statsRoutes);
 fastify.register(settingsRoutes);
 fastify.register(adminRoutes);
+fastify.register(importRoutes);
+fastify.register(filesRoutes);
 
 const start = async () => {
   try {

@@ -79,6 +79,22 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/import',
+      name: 'import',
+      component: () => import('@/views/ImportView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/download',
+      redirect: (to) => ({ name: 'import', query: to.query }),
+    },
+    {
+      path: '/files',
+      name: 'files',
+      component: () => import('@/views/FilesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/artist/:id',
       name: 'artist-detail',
       component: () => import('@/views/details/ArtistDetail.vue'),

@@ -2,14 +2,15 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLibraryStore } from '@/stores/library'
-import { useRequiresAuth } from '@/composables/useRequiresAuth'
+import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import TrackListTable from '@/components/shared/TrackListTable.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
-import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
+import { useRequiresAuth } from '@/composables/useRequiresAuth'
 
 const { t } = useI18n()
 const library = useLibraryStore()
+const router = useRouter()
 const { showAuthEmpty } = useRequiresAuth()
 
 const tracksData = ref([])
@@ -86,7 +87,7 @@ const handleLoadMore = () => {
 }
 
 const handleCreateTrack = () => {
-  console.log('upload track')
+  void router.push({ name: 'import', query: { tab: 'files' } })
 }
 </script>
 

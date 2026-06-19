@@ -104,6 +104,7 @@ npm run smoke:phase1:prod
 
 - **`startScanner(watchPath)`**: chokidar로 `TRACKS_PATH` 감시.
 - 확장자: `.mp3`, `.flac`, `.wav`, `.m4a`, `.ogg`, `.aac` 등.
+- 경로 어디에든 **`_excluded`** 폴더(예: `/music/_excluded`, `/music/Artist/_excluded`) 아래는 감시·스캔하지 않음.
 - 추가·변경 시 **`src/lib/fileHash.js`** 스트리밍 SHA-256, `music-metadata` 파싱 후 트랙·앨범·아티스트 관계 갱신.
 - `awaitWriteFinish`로 복사 중간 상태 파싱 완화.
 
@@ -171,8 +172,47 @@ npm run smoke:phase1:prod
 | 플레이리스트 | CRUD, 트랙 추가·정렬; 스마트 믹스 `LIMIT` **최대 200** (`playlistService.clampMixLimit`) |
 | 홈 선반 | `GET /api/home/shelves` — (API 유지, 프론트 홈은 주로 stats·방문 기록 사용) |
 | 통계 | `GET /api/stats/plays?range=`, `GET /api/stats/top?range=&limit=` |
+| YouTube 가져오기 | `POST /api/import/youtube/resolve`, `POST /api/import/youtube/start`, `GET /api/import/youtube/jobs/:id` |
 
 헬스: **`GET /api`** → `{ message, db, build }`.
+
+---
+
+## YouTube 가져오기 (`src/services/youtubeImportService.js`)
+
+브라우저에서 YouTube URL을 붙여넣으면 메타데이터를 편집한 뒤 서버가 **yt-dlp + ffmpeg**로 MP3를 추출해 `TRACKS_PATH`에 저장합니다. 스캐너가 자동으로 DB에 반영합니다.
+
+### 서버 의존성
+
+```bash
+# Debian/Ubuntu 예시
+sudo apt install ffmpeg
+sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
+```
+
+`.env` (선택):
+
+| 변수 | 기본값 |
+|------|--------|
+| `YT_DLP_BIN` | `yt-dlp` |
+| `FFMPEG_BIN` | `ffmpeg` |
+| `IMPORT_TEMP_DIR` | `/dev/shm/lazidrome-import` |
+
+### 저장 경로
+
+- 아티스트 + 앨범 → `{TRACKS_PATH}/{artist}/{album}/제목.mp3`
+- 아티스트만 → `{TRACKS_PATH}/{artist}/제목.mp3`
+- 둘 다 비어 있음 → `{TRACKS_PATH}/제목.mp3`
+
+### 수동 테스트 체크리스트
+
+1. 서버에 `yt-dlp`, `ffmpeg` 설치 후 `yt-dlp --version` 확인
+2. 프론트 로그인 → 아무 페이지에서 YouTube **단일 영상** URL Ctrl+V → 확인 → `/download` 이동
+3. 메타 편집 후 가져오기 → 진행률 100% → 곡 목록에 반영 (스캐너 몇 초 대기)
+4. **플레이리스트** URL 붙여넣기 → 전체 목록·체크박스·공통 아티스트/앨범 적용
+5. 입력 칸(`input`) 안에서 붙여넣기 시 **일반 paste** 동작 유지
+6. 비공개·연령 제한 영상 → 오류 메시지 표시, 다른 곡은 계속 진행 (플레이리스트)
 
 ---
 
