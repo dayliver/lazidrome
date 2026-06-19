@@ -9,8 +9,6 @@ import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import ImportTrackTable from '@/components/download/ImportTrackTable.vue'
 import ImportProgress from '@/components/download/ImportProgress.vue'
-import LocalFileImportPanel from '@/components/import/LocalFileImportPanel.vue'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,14 +22,12 @@ const importStore = useImportStore()
 const library = useLibraryStore()
 const { showAuthEmpty } = useRequiresAuth()
 
-const activeTab = ref('youtube')
 const urlInput = ref('')
 const rows = ref([])
 const playlistTitle = ref('')
 const sourceUrl = ref('')
 const ytPhase = ref('form')
 const starting = ref(false)
-const localPanel = ref(null)
 
 const canSubmitYoutube = computed(
   () => rows.value.some((r) => r.selected) && !starting.value && ytPhase.value === 'form',
@@ -56,7 +52,6 @@ async function resolveFromUrl(url) {
     notify.error(t('download.invalidUrl'))
     return
   }
-  activeTab.value = 'youtube'
   try {
     const data = await importStore.resolveYoutube(url)
     mapResolveToRows(data)
@@ -66,9 +61,6 @@ async function resolveFromUrl(url) {
 }
 
 async function loadFromQuery() {
-  const tab = String(route.query.tab || '').trim()
-  if (tab === 'files') activeTab.value = 'files'
-
   const q = String(route.query.url || '').trim()
   if (q) {
     urlInput.value = q
@@ -94,13 +86,6 @@ watch(
     }
   },
 )
-
-watch(activeTab, (tab) => {
-  const q = { ...route.query }
-  if (tab === 'files') q.tab = 'files'
-  else delete q.tab
-  void router.replace({ name: 'import', query: q })
-})
 
 async function handleResolveManual() {
   const u = urlInput.value.trim()
@@ -158,72 +143,66 @@ function resetYoutube() {
     <AuthEmptyState v-if="showAuthEmpty" :description="t('import.authRequired')" />
 
     <template v-else>
-      <Tabs v-model="activeTab">
-        <TabsList class="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="youtube">{{ t('import.tabYoutube') }}</TabsTrigger>
-          <TabsTrigger value="files">{{ t('import.tabFiles') }}</TabsTrigger>
-        </TabsList>
+      <div class="space-y-3 rounded-xl border p-4">
+        <Label for="yt-url">{{ t('download.urlLabel') }}</Label>
+        <div class="flex gap-2">
+          <Input
+            id="yt-url"
+            v-model="urlInput"
+            :placeholder="t('download.urlPlaceholder')"
+            class="font-mono text-sm"
+            @keyup.enter="handleResolveManual"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            :disabled="importStore.resolving"
+            @click="handleResolveManual"
+          >
+            {{ importStore.resolving ? t('download.resolving') : t('download.resolve') }}
+          </Button>
+        </div>
+        <p class="text-xs text-muted-foreground">{{ t('download.pasteHint') }}</p>
+      </div>
 
-        <TabsContent value="youtube" class="space-y-6 mt-6">
-          <div class="space-y-3 rounded-xl border p-4">
-            <Label for="yt-url">{{ t('download.urlLabel') }}</Label>
-            <div class="flex gap-2">
-              <Input
-                id="yt-url"
-                v-model="urlInput"
-                :placeholder="t('download.urlPlaceholder')"
-                class="font-mono text-sm"
-                @keyup.enter="handleResolveManual"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                :disabled="importStore.resolving"
-                @click="handleResolveManual"
-              >
-                {{ importStore.resolving ? t('download.resolving') : t('download.resolve') }}
-              </Button>
-            </div>
-            <p class="text-xs text-muted-foreground">{{ t('download.pasteHint') }}</p>
-          </div>
+      <div v-if="importStore.resolving" class="py-12 text-center text-muted-foreground text-sm">
+        {{ t('download.resolving') }}
+      </div>
 
-          <div v-if="importStore.resolving" class="py-12 text-center text-muted-foreground text-sm">
-            {{ t('download.resolving') }}
-          </div>
+      <template v-else-if="rows.length">
+        <ImportTrackTable
+          v-if="ytPhase === 'form'"
+          v-model:rows="rows"
+          :playlist-title="playlistTitle"
+        />
 
-          <template v-else-if="rows.length">
-            <ImportTrackTable
-              v-if="ytPhase === 'form'"
-              v-model:rows="rows"
-              :playlist-title="playlistTitle"
-            />
+        <ImportProgress
+          v-if="ytPhase === 'running' || ytPhase === 'done'"
+          :status="importStore.jobStatus"
+        />
 
-            <ImportProgress
-              v-if="ytPhase === 'running' || ytPhase === 'done'"
-              :status="importStore.jobStatus"
-            />
+        <div v-if="ytPhase === 'form'" class="flex justify-end gap-2">
+          <Button type="button" :disabled="!canSubmitYoutube" @click="handleStartYoutube">
+            {{ t('download.start', { count: rows.filter((r) => r.selected).length }) }}
+          </Button>
+        </div>
 
-            <div v-if="ytPhase === 'form'" class="flex justify-end gap-2">
-              <Button type="button" :disabled="!canSubmitYoutube" @click="handleStartYoutube">
-                {{ t('download.start', { count: rows.filter((r) => r.selected).length }) }}
-              </Button>
-            </div>
+        <div v-if="ytPhase === 'done'" class="flex gap-2">
+          <Button type="button" variant="outline" as-child>
+            <RouterLink to="/tracks">{{ t('download.goTracks') }}</RouterLink>
+          </Button>
+          <Button type="button" variant="secondary" @click="resetYoutube">
+            {{ t('download.importAnother') }}
+          </Button>
+        </div>
+      </template>
 
-            <div v-if="ytPhase === 'done'" class="flex gap-2">
-              <Button type="button" variant="outline" as-child>
-                <RouterLink to="/tracks">{{ t('download.goTracks') }}</RouterLink>
-              </Button>
-              <Button type="button" variant="secondary" @click="resetYoutube">
-                {{ t('download.importAnother') }}
-              </Button>
-            </div>
-          </template>
-        </TabsContent>
-
-        <TabsContent value="files" class="mt-6">
-          <LocalFileImportPanel ref="localPanel" />
-        </TabsContent>
-      </Tabs>
+      <p class="text-xs text-muted-foreground text-center">
+        {{ t('import.uploadHint') }}
+        <RouterLink to="/upload" class="text-primary underline-offset-4 hover:underline">
+          {{ t('import.uploadLink') }}
+        </RouterLink>
+      </p>
     </template>
   </div>
 </template>

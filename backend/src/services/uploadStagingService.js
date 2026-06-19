@@ -9,11 +9,9 @@ import {
   uniqueDestPath,
   assertInsideTracksRoot,
 } from '../lib/pathSanitize.js';
-import { buildFfmpegMetadataArgs } from '../lib/audioTags.js';
-import { spawnCmd } from '../lib/spawnCmd.js';
+import { writeAudioFileWithTags } from '../lib/writeAudioTags.js';
 import {
   ensureImportTempDir,
-  resolveFfmpegBin,
   TRACKS_PATH,
 } from '../lib/importEnv.js';
 
@@ -137,34 +135,10 @@ export async function stageUploadedFile(fileData) {
 }
 
 async function writeFileWithMetadata(sourcePath, destPath, tags) {
-  const ffmpeg = resolveFfmpegBin();
-  const metaArgs = buildFfmpegMetadataArgs({
-    title: tags.title,
-    artist: tags.artist,
-    album: tags.album,
-    albumArtist: tags.artist,
-  });
-  const tmpPath = `${destPath}.tmp${path.extname(destPath)}`;
+  const ok = await writeAudioFileWithTags(sourcePath, destPath, tags);
+  if (ok) return;
 
-  try {
-    const ffArgs = ['-y', '-i', sourcePath, ...metaArgs, '-codec:a', 'copy', tmpPath];
-    const ff = await spawnCmd(ffmpeg, ffArgs, { timeoutMs: 300_000 });
-    if (ff.code === 0 && fs.existsSync(tmpPath)) {
-      fs.renameSync(tmpPath, destPath);
-      return;
-    }
-  } catch {
-    /* ffmpeg 없음 또는 실패 → 파일만 이동 */
-  }
-
-  if (fs.existsSync(tmpPath)) {
-    try {
-      fs.unlinkSync(tmpPath);
-    } catch {
-      /* ignore */
-    }
-  }
-
+  console.warn('[upload] ffmpeg tag embed failed; copying without tag update — re-save may show old tags until fixed');
   fs.copyFileSync(sourcePath, destPath);
 }
 

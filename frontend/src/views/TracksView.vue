@@ -87,7 +87,7 @@ const handleLoadMore = () => {
 }
 
 const handleCreateTrack = () => {
-  void router.push({ name: 'import', query: { tab: 'files' } })
+  void router.push({ name: 'upload' })
 }
 </script>
 

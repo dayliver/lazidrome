@@ -83,6 +83,15 @@ const router = createRouter({
       name: 'import',
       component: () => import('@/views/ImportView.vue'),
       meta: { requiresAuth: true },
+      beforeEnter: (to) => {
+        if (to.query.tab === 'files') return { name: 'upload', replace: true }
+      },
+    },
+    {
+      path: '/upload',
+      name: 'upload',
+      component: () => import('@/views/UploadView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/download',

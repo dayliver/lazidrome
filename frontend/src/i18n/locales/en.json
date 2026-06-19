@@ -8,6 +8,7 @@
     "artists": "Artists",
     "albums": "Albums",
     "tracks": "Tracks",
+    "upload": "Upload",
     "files": "Files",
     "tags": "Tags",
     "playlists": "Playlists",
@@ -218,11 +219,11 @@
     }
   },
   "import": {
-    "title": "Import",
-    "subtitle": "Add music from YouTube or local audio files to your library.",
+    "title": "Import from YouTube",
+    "subtitle": "Extract audio from a YouTube URL and add it to your library.",
     "authRequired": "Log in from Settings to import.",
-    "tabYoutube": "YouTube",
-    "tabFiles": "Local files",
+    "uploadHint": "For local files, use the",
+    "uploadLink": "upload page",
     "files": {
       "dropTitle": "Drop audio files here",
       "dropHint": "mp3, flac, m4a, etc. · up to 80MB per file · multiple files OK",
@@ -240,6 +241,13 @@
       "clear": "Clear list",
       "importMore": "Import more files"
     }
+  },
+  "upload": {
+    "title": "Upload tracks",
+    "subtitle": "Upload local files, set title · artist · album, then save to your library.",
+    "authRequired": "Log in from Settings to upload.",
+    "youtubeHint": "To import from YouTube, go to",
+    "youtubeLink": "YouTube import"
   },
   "download": {
     "title": "Import from YouTube",
