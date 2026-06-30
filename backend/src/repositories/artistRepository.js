@@ -60,8 +60,29 @@ export function findArtistBio(id, lang = 'en') {
 }
 
 export function updateArtistMeta(id, { name, tags, mbid }) {
-  db.prepare(`UPDATE artists SET name = COALESCE(?, name), tags = ?, mbid = ? WHERE id = ?`)
-    .run(name, tags ? JSON.stringify(tags) : null, mbid || null, id);
+  const fields = [];
+  const values = [];
+
+  if (name !== undefined) {
+    const trimmed = String(name).trim();
+    if (trimmed) {
+      fields.push('name = ?');
+      values.push(trimmed);
+    }
+  }
+  if (tags !== undefined) {
+    fields.push('tags = ?');
+    values.push(tags ? JSON.stringify(tags) : null);
+  }
+  if (mbid !== undefined) {
+    fields.push('mbid = ?');
+    values.push(mbid || null);
+  }
+
+  if (!fields.length) return;
+
+  values.push(id);
+  db.prepare(`UPDATE artists SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 }
 
 export function upsertArtistBio(id, lang, biography) {

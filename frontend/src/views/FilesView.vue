@@ -9,6 +9,7 @@ import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import { formatLocaleDateTime } from '@/lib/localeFormat'
 import { notify } from '@/lib/notify'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -152,7 +153,7 @@ const deleteEntry = async (entry) => {
     notify.success(t('files.deleteDone'))
     entries.value = entries.value.filter((e) => e.name !== entry.name)
     if (entry.inLibrary) {
-      await library.fetchLibrary()
+      await library.fetchLibrary({ force: true })
     }
   } catch (err) {
     console.error(err)
@@ -170,7 +171,7 @@ watch([currentPath, showAuthEmpty], () => {
 </script>
 
 <template>
-  <div class="container py-8 space-y-6 max-w-5xl">
+  <PageLayout>
     <ViewHeader :title="t('files.title')" :description="description" :show-action="false" />
 
     <AuthEmptyState v-if="showAuthEmpty" :message="t('files.authRequired')" />
@@ -312,5 +313,5 @@ watch([currentPath, showAuthEmpty], () => {
 
       <p class="text-xs text-muted-foreground leading-relaxed">{{ t('files.hint') }}</p>
     </template>
-  </div>
+  </PageLayout>
 </template>

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { usePlayerStore } from '@/stores/player'
+import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import MiniPlayer from './MiniPlayer.vue'
 import FullPlayer from './FullPlayer.vue'
 
@@ -9,6 +10,7 @@ const props = defineProps({
 })
 
 const player = usePlayerStore()
+const sync = usePlaybackSyncStore()
 
 const isMobile = ref(false)
 const isReady = ref(false) // 💡 목적지 준비 상태를 체크할 변수 추가
@@ -45,9 +47,9 @@ function onGlobalKeydown (e) {
   if (e.code !== 'Space' && e.key !== ' ') return
   if (e.repeat) return
   if (spaceToggleIgnoredTarget(e.target)) return
-  if (!player.currentTrack) return
+  if (!sync.displayTrack) return
   e.preventDefault()
-  player.togglePlay()
+  sync.remoteTogglePlay()
 }
 
 onMounted(() => {

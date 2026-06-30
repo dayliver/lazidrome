@@ -3,10 +3,13 @@ import { ref, computed, shallowRef, watch } from 'vue'
 import { t } from '@/i18n/t'
 import { useAuthStore } from './auth'
 import { useLibraryStore } from './library'
+import { QueueHlsPlayer, shouldPreferHlsQueue } from '@/lib/queueHlsPlayer.js'
 
 const FADE_BEFORE_END_SEC = 5
 /** 다음 곡 URL을 미리 받아 둘 시점(끝나기 N초 전) */
 const PRELOAD_LEAD_SEC = 45
+/** 재생 시작 시 현재 곡 포함 앞으로 N곡 URL·서명 선캐시 (백그라운드 ended 대비) */
+const AGGRESSIVE_PREFETCH_AHEAD = 20
 const QUEUE_STORAGE_KEY = 'lazidrome.queue.v1'
 
 let queuePersistTimer = null
@@ -37,8 +40,13 @@ let audioListenersBound = false
 let suppressTrackEnded = false
 let preloadedNextId = null
 let playRetryTimer = null
+/** play() 거부 후에도 화면 복귀 시 재시도할지 (pause·성공 재생 전까지 유지) */
+let playRetryActive = false
 /** trackId → 전체 스트림 URL (서명 포함). 백그라운드 곡 전환 시 await 없이 src 교체 */
 const streamUrlByTrackId = new Map()
+let queueHlsPlayer = null
+let hlsQueueMode = false
+let lastHlsTrackIndex = -1
 
 export const usePlayerStore = defineStore('player', () => {
   const auth = useAuthStore()
@@ -155,6 +163,7 @@ export const usePlayerStore = defineStore('player', () => {
   const resetPlaybackBuffers = () => {
     clearPreloadBuffer()
     clearStreamUrlCache()
+    if (!hlsQueueMode) destroyHlsQueue()
   }
 
   const resolveNextIndex = () => {
@@ -192,6 +201,102 @@ export const usePlayerStore = defineStore('player', () => {
 
   const clearStreamUrlCache = () => streamUrlByTrackId.clear()
 
+  const wantsHlsQueue = () =>
+    shouldPreferHlsQueue({
+      queueLength: queue.value.length,
+      isShuffle: isShuffle.value,
+      repeatMode: repeatMode.value,
+    })
+
+  const destroyHlsQueue = () => {
+    hlsQueueMode = false
+    lastHlsTrackIndex = -1
+    if (queueHlsPlayer) queueHlsPlayer.destroy()
+  }
+
+  const composePlaylistApiUrl = (ids) => {
+    const q = `ids=${encodeURIComponent(ids.join(','))}`
+    const base = (auth.serverUrl || '').replace(/\/$/, '')
+    if (base) return `${base}/api/stream/playlist.m3u8?${q}`
+    return `/api/stream/playlist.m3u8?${q}`
+  }
+
+  const handleHlsTrackIndex = (index) => {
+    if (!Number.isFinite(index) || index === lastHlsTrackIndex) return
+    flushPlaySessionToServer()
+    lastHlsTrackIndex = index
+    if (index >= 0 && index < queue.value.length) {
+      currentIndex.value = index
+      const tr = queue.value[index]
+      playSessionTrackId.value = tr?.id ?? null
+      playSessionPeakSec.value = 0
+      syncMediaSession()
+    }
+  }
+
+  const fallbackFromHls = async () => {
+    destroyHlsQueue()
+    await startPlaybackDirect()
+  }
+
+  const ensureQueueHlsPlayer = () => {
+    if (!queueHlsPlayer) {
+      queueHlsPlayer = new QueueHlsPlayer(audio.value, {
+        onTrackIndex: handleHlsTrackIndex,
+        onFatalError: () => {
+          void fallbackFromHls()
+        },
+      })
+    }
+    return queueHlsPlayer
+  }
+
+  const startHlsPlayback = async (fromIndex = currentIndex.value) => {
+    const idx = Math.max(0, Math.min(fromIndex, queue.value.length - 1))
+    currentIndex.value = idx
+    const slice = queue.value.slice(idx, idx + 48)
+    const ids = slice.map((tr) => (tr?.id != null ? String(tr.id) : '')).filter(Boolean)
+    if (ids.length < 2) {
+      destroyHlsQueue()
+      await startPlaybackDirect()
+      return
+    }
+
+    await auth.prefetchStreamSignatures(ids)
+    const playlistUrl = composePlaylistApiUrl(ids)
+    const segmentDurations = slice.map((tr) => {
+      const d = Number(tr?.duration_sec ?? tr?.duration)
+      return Number.isFinite(d) && d > 0 ? d : 1
+    })
+
+    const hls = ensureQueueHlsPlayer()
+    hlsQueueMode = true
+    lastHlsTrackIndex = idx
+    suppressTrackEnded = true
+    try {
+      await hls.load(playlistUrl, {
+        authorization: auth.token ? `Bearer ${auth.token}` : '',
+        startIndex: idx,
+        segmentDurations,
+      })
+    } catch (e) {
+      console.warn('HLS queue unavailable, falling back to direct stream', e)
+      destroyHlsQueue()
+      await startPlaybackDirect()
+      return
+    } finally {
+      suppressTrackEnded = false
+    }
+
+    const tr = queue.value[idx]
+    playSessionPeakSec.value = 0
+    playSessionTrackId.value = tr?.id ?? null
+    syncUserVolumeToAudio()
+    syncMediaSession()
+    await play()
+    preloadUpcomingTrack()
+  }
+
   const buildStreamUrl = async (trackId) => {
     const cached = getCachedStreamUrl(trackId)
     if (cached) return cached
@@ -206,19 +311,44 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   /** 대기열 스트림 서명·URL을 미리 채움 — 모바일 백그라운드 전환용 */
-  const warmStreamUrlCache = async (tracks = queue.value) => {
-    if (!auth.token) return
-    const list = Array.isArray(tracks) ? tracks : queue.value
-    let targets = list
-    if (list.length > 48) {
-      const cur = Math.max(0, currentIndex.value)
-      targets = []
-      for (let i = 0; i < 24; i++) {
-        const t = list[(cur + i) % list.length]
-        if (t) targets.push(t)
+  const collectPrefetchTargets = (list, fromIndex, ahead = AGGRESSIVE_PREFETCH_AHEAD) => {
+    if (!list?.length) return []
+    const targets = []
+    const seen = new Set()
+    const add = (track) => {
+      if (!track?.id) return
+      const id = String(track.id)
+      if (seen.has(id)) return
+      seen.add(id)
+      targets.push(track)
+    }
+
+    const safeStart = Math.max(0, Math.min(fromIndex, list.length - 1))
+    add(list[safeStart])
+
+    for (let i = 1; i <= ahead; i++) {
+      const idx = safeStart + i
+      if (idx < list.length) {
+        add(list[idx])
+        continue
+      }
+      if (repeatMode.value === 'all') {
+        add(list[idx % list.length])
+      } else {
+        break
       }
     }
-    const ids = [...new Set(targets.map((t) => (t?.id != null ? String(t.id) : null)).filter(Boolean))]
+    return targets
+  }
+
+  const warmStreamUrlCache = async (
+    tracks = queue.value,
+    { fromIndex = currentIndex.value, ahead = AGGRESSIVE_PREFETCH_AHEAD } = {},
+  ) => {
+    if (!auth.token) return
+    const list = Array.isArray(tracks) ? tracks : queue.value
+    const targets = collectPrefetchTargets(list, fromIndex, ahead)
+    const ids = targets.map((t) => String(t.id)).slice(0, 48)
     if (!ids.length) return
     await auth.prefetchStreamSignatures(ids)
     for (const id of ids) {
@@ -228,7 +358,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   const playWhenReady = async (el = audio.value) => {
-    if (!el?.src) return
+    if (!el?.src && !hlsQueueMode) return
     if (el.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
       await el.play()
       return
@@ -255,20 +385,43 @@ export const usePlayerStore = defineStore('player', () => {
     await el.play()
   }
 
+  const markPlaybackIntent = () => {
+    playRetryActive = true
+  }
+
+  const clearPlaybackIntent = () => {
+    playRetryActive = false
+    if (playRetryTimer != null) {
+      clearTimeout(playRetryTimer)
+      playRetryTimer = null
+    }
+  }
+
+  const onPlayRejected = () => {
+    isPlaying.value = false
+    if (typeof navigator !== 'undefined' && navigator.mediaSession) {
+      navigator.mediaSession.playbackState = 'paused'
+    }
+    schedulePlayRetry()
+  }
+
   /** 화면 꺼짐·iOS 백그라운드에서 `play()`가 막힐 때 짧게 재시도 */
   const schedulePlayRetry = () => {
     if (playRetryTimer != null) clearTimeout(playRetryTimer)
     let attempts = 0
     const tick = async () => {
-      if (!isPlaying.value || attempts >= 10) return
-      if (!audio.value.paused) return
+      if (!playRetryActive || attempts >= 10) return
+      if (!audio.value.paused) {
+        clearPlaybackIntent()
+        return
+      }
       try {
         await audio.value.play()
       } catch {
         /* ignore */
       }
       attempts += 1
-      if (isPlaying.value && audio.value.paused) {
+      if (playRetryActive && audio.value.paused) {
         playRetryTimer = setTimeout(tick, 400)
       }
     }
@@ -292,22 +445,20 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   const playCurrentImmediate = () => {
-    isPlaying.value = true
-    if (typeof navigator !== 'undefined' && navigator.mediaSession) {
-      navigator.mediaSession.playbackState = 'playing'
-    }
+    markPlaybackIntent()
     try {
       const p = audio.value.play()
-      if (p?.catch) {
-        p.catch(() => schedulePlayRetry())
+      if (p?.then) {
+        p.catch(() => onPlayRejected())
       }
     } catch {
-      schedulePlayRetry()
+      onPlayRejected()
     }
   }
 
   const applyStreamUrlToMainAudio = (track, streamUrl) => {
     if (!track?.id || !streamUrl) return
+    destroyHlsQueue()
     suppressTrackEnded = true
     try {
       playSessionPeakSec.value = 0
@@ -356,6 +507,7 @@ export const usePlayerStore = defineStore('player', () => {
    * 곡 종료·잠금화면 next — await 없이 URL 교체 + play() (모바일 백그라운드)
    */
   const advanceToNextTrackSync = () => {
+    if (hlsQueueMode) return
     flushPlaySessionToServer()
     const ni = resolveNextIndex()
     if (ni == null) {
@@ -385,7 +537,7 @@ export const usePlayerStore = defineStore('player', () => {
     cacheStreamUrl(track.id, streamUrl)
     applyStreamUrlToMainAudio(track, streamUrl)
     playCurrentImmediate()
-    void warmStreamUrlCache()
+    void warmStreamUrlCache(queue.value, { fromIndex: ni })
     preloadUpcomingTrack()
   }
 
@@ -496,6 +648,16 @@ export const usePlayerStore = defineStore('player', () => {
     })
     audio.value.addEventListener('ended', () => {
       if (suppressTrackEnded) return
+      if (hlsQueueMode) {
+        if (repeatMode.value === 'all' && queue.value.length > 1) {
+          flushPlaySessionToServer()
+          void startHlsPlayback(0)
+          return
+        }
+        flushPlaySessionToServer()
+        pause()
+        return
+      }
       if (repeatMode.value === 'one') {
         flushPlaySessionToServer()
         playSessionPeakSec.value = 0
@@ -509,6 +671,7 @@ export const usePlayerStore = defineStore('player', () => {
     })
     audio.value.addEventListener('play', () => {
       isPlaying.value = true
+      clearPlaybackIntent()
     })
     audio.value.addEventListener('pause', () => {
       isPlaying.value = false
@@ -521,8 +684,14 @@ export const usePlayerStore = defineStore('player', () => {
           syncUserVolumeToAudio()
           return
         }
-        if (isPlaying.value && audio.value.paused && audio.value.src) {
-          void playWhenReady(audio.value).catch(() => schedulePlayRetry())
+        if (
+          playRetryActive &&
+          audio.value.paused &&
+          audio.value.src &&
+          currentTrack.value?.id
+        ) {
+          markPlaybackIntent()
+          void playWhenReady(audio.value).catch(() => onPlayRejected())
         }
       })
     }
@@ -554,29 +723,44 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   const play = async () => {
-    if (!audio.value.src) return
+    if (!audio.value.src && !hlsQueueMode) return
+    markPlaybackIntent()
     try {
       await playWhenReady(audio.value)
-      schedulePlayRetry()
+      if (audio.value.paused) schedulePlayRetry()
     } catch (e) {
       if (e?.name !== 'AbortError') {
         console.error('재생 시작 실패:', e)
-        schedulePlayRetry()
+        onPlayRejected()
+      } else {
+        clearPlaybackIntent()
       }
     }
   }
 
-  const startPlayback = async () => {
+  const startPlaybackDirect = async () => {
     const track = currentTrack.value
     if (!track?.id) return
-    await warmStreamUrlCache()
+    await warmStreamUrlCache(queue.value, { fromIndex: currentIndex.value })
     const url = getCachedStreamUrl(track.id) || (await buildStreamUrl(track.id))
     if (!url) return
     applyStreamUrlToMainAudio(track, url)
     await play()
     preloadUpcomingTrack()
   }
-  const pause = () => audio.value.pause()
+
+  const startPlayback = async () => {
+    if (wantsHlsQueue() && auth.token) {
+      await startHlsPlayback(currentIndex.value)
+      return
+    }
+    destroyHlsQueue()
+    await startPlaybackDirect()
+  }
+  const pause = () => {
+    clearPlaybackIntent()
+    audio.value.pause()
+  }
   const togglePlay = async () => {
     if (isPlaying.value) {
       pause()
@@ -604,18 +788,31 @@ export const usePlayerStore = defineStore('player', () => {
       return
     }
     currentIndex.value = ni
-    await startPlayback()
+    if (hlsQueueMode || wantsHlsQueue()) {
+      destroyHlsQueue()
+      if (wantsHlsQueue() && auth.token) {
+        await startHlsPlayback(ni)
+        return
+      }
+    }
+    await startPlaybackDirect()
   }
 
   const prev = async () => {
-    if (currentTime.value > 3) {
+    if (currentTime.value > 3 && !hlsQueueMode) {
       audio.value.currentTime = 0
       return
     }
     flushPlaySessionToServer()
     resetPlaybackBuffers()
-    currentIndex.value = currentIndex.value <= 0 ? queue.value.length - 1 : currentIndex.value - 1
-    await startPlayback()
+    const pi = currentIndex.value <= 0 ? queue.value.length - 1 : currentIndex.value - 1
+    currentIndex.value = pi
+    if (wantsHlsQueue() && auth.token) {
+      destroyHlsQueue()
+      await startHlsPlayback(pi)
+      return
+    }
+    await startPlaybackDirect()
   }
 
   const playNewQueue = async (newQueue, startIndex = 0) => {
@@ -793,6 +990,10 @@ export const usePlayerStore = defineStore('player', () => {
       return null
     }
   }
+
+  watch([isShuffle, repeatMode], () => {
+    if (hlsQueueMode) destroyHlsQueue()
+  })
 
   return {
     queue,

@@ -137,8 +137,18 @@ CREATE TABLE app_settings (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 12. 페이지 방문 기록 (엔티티 상세 — 홈 "자주 찾은 항목")
+CREATE TABLE page_visits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    visited_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 인덱스 최적화
 CREATE INDEX idx_track_path ON track_filedata(path);
 CREATE INDEX idx_history_time ON play_history(played_at);
 CREATE INDEX idx_album_track_lookup ON album_tracks(track_id);
 CREATE INDEX idx_playlist_track_lookup ON playlist_tracks(track_id);
+CREATE INDEX idx_page_visits_time ON page_visits(visited_at);
+CREATE INDEX idx_page_visits_entity ON page_visits(entity_type, entity_id, visited_at);

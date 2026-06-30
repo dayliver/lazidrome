@@ -7,7 +7,6 @@ import { usePlayerStore } from '@/stores/player'
 import { useAuthStore } from '@/stores/auth'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
 
-import { getCoverUrl } from '@/lib/image'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
@@ -61,11 +60,6 @@ const getArtistImageUrl = (id) => {
   return auth.coverSrc('artist', id)
 }
 
-const renderStars = (rating) => {
-  const r = Math.round(rating || 0)
-  return '★'.repeat(r) + '☆'.repeat(5 - r)
-}
-
 const fetchMetadata = (artistId) => {
   if (!artistId) return
   metadataEdit.fetchPreview('artist', artistId)
@@ -78,7 +72,6 @@ const fetchMetadata = (artistId) => {
       <TableRow>
         <TableHead class="w-[250px] md:w-[300px]">{{ t('artistTable.artist') }}</TableHead>
         <TableHead class="hidden md:table-cell w-[100px] text-center">{{ t('artistTable.trackCount') }}</TableHead>
-        <TableHead class="hidden md:table-cell w-[120px] text-center">{{ t('artistTable.avgRating') }}</TableHead>
         <TableHead class="hidden md:table-cell w-[160px]">{{ t('artistTable.topTags') }}</TableHead>
         <TableHead class="hidden lg:table-cell">{{ t('artistTable.topTracks') }}</TableHead>
         <TableHead class="w-[60px] text-right"></TableHead>
@@ -108,7 +101,7 @@ const fetchMetadata = (artistId) => {
             <div class="flex flex-col min-w-0">
               <span class="font-bold text-base md:text-lg truncate group-hover:text-primary transition-colors">{{ artist.name }}</span>
               <span class="md:hidden text-xs font-medium text-muted-foreground mt-0.5">
-                {{ t('common.trackCount', { count: artist.trackCount }) }} • {{ artist.avgRating > 0 ? `★ ${artist.avgRating}` : t('common.noRating') }}
+                {{ t('common.trackCount', { count: artist.trackCount }) }}
               </span>
             </div>
           </div>
@@ -116,14 +109,6 @@ const fetchMetadata = (artistId) => {
 
         <TableCell class="hidden md:table-cell text-center font-medium text-muted-foreground tabular-nums">
           {{ t('common.trackCount', { count: artist.trackCount || 0 }) }}
-        </TableCell>
-
-        <TableCell class="hidden md:table-cell text-center">
-          <div v-if="artist.avgRating > 0" class="flex flex-col items-center">
-            <span class="text-yellow-500 tracking-widest text-sm">{{ renderStars(artist.avgRating) }}</span>
-            <span class="text-[10px] text-muted-foreground font-mono mt-0.5">{{ artist.avgRating }} / 5.0</span>
-          </div>
-          <span v-else class="text-xs text-muted-foreground">-</span>
         </TableCell>
 
         <TableCell class="hidden md:table-cell">

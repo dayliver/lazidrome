@@ -30,6 +30,7 @@ const props = defineProps({
   getArtistList: { type: Function, required: true },
   goToArtist: { type: Function, required: true },
   goToAlbum: { type: Function, required: true },
+  goToTrack: { type: Function, required: true },
   formatTrackTime: { type: Function, required: true },
   renderStars: { type: Function, required: true },
   updateRating: { type: Function, required: true },
@@ -137,7 +138,7 @@ const draggableTracks = computed({
           <TableCell>
             <div class="flex flex-col min-w-0">
               <div class="flex items-center gap-2">
-                <span class="truncate text-[14px] font-semibold" :class="activeNow(item.id) ? 'text-primary' : ''">
+                <span class="truncate text-[14px] font-semibold hover:underline hover:text-primary" :class="activeNow(item.id) ? 'text-primary' : ''" @click.stop="goToTrack(item.id)">
                   {{ splitTrackTitle(item.title).main }}
                   <span v-if="splitTrackTitle(item.title).suffix" class="ml-1 text-[12px] text-muted-foreground/75">
                     {{ ' ' + splitTrackTitle(item.title).suffix }}
@@ -194,6 +195,8 @@ const draggableTracks = computed({
                 </template>
 
                 <DropdownMenuItem @click.stop="openPlaylistModal(item.id)"><ListMusic class="mr-2 h-4 w-4 text-primary" /> {{ t('trackTable.addToPlaylist') }}</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem @click.stop="goToTrack(item.id)"><ListMusic class="mr-2 h-4 w-4" /> {{ t('trackTable.goToTrack') }}</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem v-if="showAlbum" @click.stop="goToAlbum(item.albumId)"><Disc class="mr-2 h-4 w-4" /> {{ t('trackTable.goToAlbum') }}</DropdownMenuItem>
                 <DropdownMenuItem v-if="showArtist" @click.stop="goToArtist(item.artist)"><Users class="mr-2 h-4 w-4" /> {{ t('trackTable.goToArtist') }}</DropdownMenuItem>

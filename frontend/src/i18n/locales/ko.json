@@ -187,8 +187,13 @@
   },
   "charts": {
     "title": "차트",
-    "description": "기간별로 많이 들은 곡 순위입니다. 정렬: 기간 재생 수 → 별점 → 통산 재생 수.",
+    "description": "기간별로 많이 들은 곡·아티스트 순위입니다.",
     "authEmpty": "차트를 보려면 설정에서 로그인하세요.",
+    "tabTracks": "곡",
+    "tabArtists": "아티스트",
+    "artistsHint": "재생 1회마다 그 곡에 참여한 아티스트(곡·대표 앨범)마다 1회 집계합니다. 같은 아티스트는 한 번만 셉니다.",
+    "previewTracks": "곡",
+    "previewArtists": "아티스트",
     "weekly": {
       "title": "주간 차트",
       "short": "주간",
@@ -215,7 +220,8 @@
     "totals": {
       "plays": "총 재생",
       "listen": "청취 시간",
-      "unique": "고유 트랙"
+      "unique": "고유 곡",
+      "uniqueArtists": "고유 아티스트"
     }
   },
   "import": {
@@ -236,6 +242,7 @@
       "commit": "{count}곡 저장",
       "committing": "저장 중…",
       "commitFailed": "저장하지 못했습니다.",
+      "tagEmbedFailed": "파일에 메타데이터를 기록하지 못했습니다. 서버에 ffmpeg가 설치되어 있는지 확인하세요.",
       "partialFailed": "{n}곡 저장 실패",
       "completed": "저장했습니다. 스캐너가 라이브러리에 반영합니다.",
       "clear": "목록 비우기",

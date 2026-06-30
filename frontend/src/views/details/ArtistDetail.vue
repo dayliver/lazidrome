@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
+import { useSyncArtistDetailWithLibrary } from '@/composables/useSyncArtistDetailWithLibrary'
+import { useClientTrackListQuery } from '@/composables/useClientTrackListQuery'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useCoverUrl } from '@/composables/useCoverUrl'
 import { useLibraryStore } from '@/stores/library'
@@ -16,6 +18,7 @@ import DetailLayout from '@/components/layout/DetailLayout.vue'
 import { Button } from '@/components/ui/button'
 
 import TrackListTable from '@/components/shared/TrackListTable.vue'
+import TrackListToolbar from '@/components/shared/TrackListToolbar.vue'
 import AlbumGrid from '@/components/shared/AlbumGrid.vue'
 import SectionHeader from '@/components/shared/SectionHeader.vue'
 const { t } = useI18n()
@@ -29,7 +32,22 @@ const { data: artist, isLoading } = useAsyncResource(
   async (id) => library.getArtistById(id)
 )
 
+useSyncArtistDetailWithLibrary(() => artist.value)
 useSyncTrackListWithLibrary(() => artist.value?.tracks)
+
+const {
+  query: trackQuery,
+  searchInput: trackSearchInput,
+  displayTracks,
+  total: trackTotal,
+  shown: trackShown,
+  sortOptions: trackSortOptions,
+  setSort: setTrackSort,
+  toggleOrder: toggleTrackOrder,
+  toggleStarredFilter: toggleTrackStarredFilter,
+  setMinRating: setTrackMinRating,
+  resetFilters: resetTrackFilters,
+} = useClientTrackListQuery(() => artist.value?.tracks, 'artist')
 
 const imageUrl = useCoverUrl('artist', () => artist.value?.id)
 
@@ -120,7 +138,30 @@ const handleEdit = async () => {
 
     <section v-if="artist.tracks && artist.tracks.length > 0" class="space-y-6">
       <SectionHeader :title="t('pages.details.sectionPopularTracks')" />
-      <TrackListTable :tracks="artist.tracks" :show-artist="false" />
+      <TrackListToolbar
+        :query="trackQuery"
+        :search-input="trackSearchInput"
+        :total="trackTotal"
+        :shown="trackShown"
+        :sort-options="trackSortOptions"
+        @update:search-input="trackSearchInput = $event"
+        @update:sort="setTrackSort"
+        @toggle-order="toggleTrackOrder"
+        @toggle-starred="toggleTrackStarredFilter"
+        @set-min-rating="setTrackMinRating"
+        @reset-filters="resetTrackFilters"
+      />
+      <TrackListTable
+        v-if="displayTracks.length"
+        :tracks="displayTracks"
+        :show-artist="false"
+      />
+      <div
+        v-else
+        class="py-12 text-center text-sm font-medium text-muted-foreground border rounded-xl"
+      >
+        {{ t('trackList.noResults') }}
+      </div>
     </section>
 
     <section class="space-y-6">

@@ -4,6 +4,7 @@ import { useAuthStore } from './auth'
 import { t } from '@/i18n/t'
 import { aggregateGenresFromTracks } from '@/lib/libraryAggregates'
 import { normalizeTracksResponse } from '@/lib/tracksApi'
+import { loadLibraryCache, saveLibraryCache, clearLibraryCache } from '@/lib/libraryCache'
 
 export const useLibraryStore = defineStore('library', () => {
   const auth = useAuthStore()
@@ -13,6 +14,7 @@ export const useLibraryStore = defineStore('library', () => {
   const artists = ref([])
   const albums = ref([])
   const serverSettings = ref(null)
+  const libraryRevision = ref(null)
 
   const isSyncing = ref(false)
   const syncStatusKey = ref('library.syncIdle')
@@ -22,6 +24,8 @@ export const useLibraryStore = defineStore('library', () => {
 
   /** 메타데이터 저장 후 앨범/태그/플레이리스트 등 "별도 배열"에 붙은 트랙 행을 갱신하기 위한 구독자 */
   const trackExternalSyncListeners = new Set()
+  const albumExternalSyncListeners = new Set()
+  const artistExternalSyncListeners = new Set()
 
   const trackCount = computed(() => tracksTotal.value || tracks.value.length)
 
@@ -50,12 +54,27 @@ export const useLibraryStore = defineStore('library', () => {
     return data
   }
 
-  const fetchTracksPage = async ({ offset = 0, limit = 50 } = {}) => {
-    const q = new URLSearchParams({
+  const fetchTracksPage = async ({
+    offset = 0,
+    limit = 50,
+    sorts,
+    q,
+    starred,
+    minRating,
+    genre,
+  } = {}) => {
+    const params = new URLSearchParams({
       offset: String(offset),
       limit: String(limit),
     })
-    const res = await auth.fetchWithAuth(`/api/tracks?${q}`)
+    if (sorts) params.set('sorts', sorts)
+    const trimmedQ = String(q ?? '').trim()
+    if (trimmedQ) params.set('q', trimmedQ)
+    if (starred) params.set('starred', '1')
+    if (minRating != null && minRating >= 1) params.set('minRating', String(minRating))
+    if (genre) params.set('genre', String(genre))
+
+    const res = await auth.fetchWithAuth(`/api/tracks?${params}`)
     if (!res.ok) throw new Error(t('library.tracksFetchFailed'))
     const body = await res.json()
     const page = normalizeTracksResponse(body)
@@ -83,7 +102,48 @@ export const useLibraryStore = defineStore('library', () => {
     return normalizeTracksResponse(body).items
   }
 
-  const fetchLibrary = async () => {
+  const fetchLibraryRevision = async () => {
+    const res = await auth.fetchWithAuth('/api/library/revision')
+    if (!res.ok) throw new Error(t('library.revisionFetchFailed'))
+    return res.json()
+  }
+
+  const applyLibrarySnapshot = ({ revision, artists: nextArtists, albums: nextAlbums, trackCount, settings }) => {
+    if (revision) libraryRevision.value = revision
+    if (Array.isArray(nextArtists)) artists.value = nextArtists
+    if (Array.isArray(nextAlbums)) albums.value = nextAlbums
+    tracks.value = []
+    if (trackCount != null) tracksTotal.value = Number(trackCount) || 0
+    if (settings) serverSettings.value = settings
+  }
+
+  const hydrateLibraryFromCache = (revisionData) => {
+    const cached = loadLibraryCache()
+    if (!cached || cached.revision !== revisionData.revision) return false
+    if (!Array.isArray(cached.artists) || !cached.artists.length) return false
+
+    applyLibrarySnapshot({
+      revision: revisionData.revision,
+      artists: cached.artists,
+      albums: cached.albums ?? [],
+      trackCount: revisionData.trackCount ?? cached.trackCount,
+      settings: cached.serverSettings,
+    })
+    return true
+  }
+
+  const clearLibrarySession = () => {
+    libraryRevision.value = null
+    artists.value = []
+    albums.value = []
+    tracks.value = []
+    tracksTotal.value = 0
+    serverSettings.value = null
+    clearLibraryCache()
+    fetchPromise = null
+  }
+
+  const fetchLibrary = async ({ force = false } = {}) => {
     if (fetchPromise) return fetchPromise
 
     fetchPromise = (async () => {
@@ -91,24 +151,76 @@ export const useLibraryStore = defineStore('library', () => {
       syncStatusKey.value = 'library.syncFetching'
 
       try {
+        const revisionData = await fetchLibraryRevision()
+        const revision = revisionData.revision
+        const sessionHasCatalog = artists.value.length > 0 || albums.value.length > 0
+
+        if (
+          !force &&
+          libraryRevision.value === revision &&
+          sessionHasCatalog
+        ) {
+          if (revisionData.trackCount != null) {
+            tracksTotal.value = Number(revisionData.trackCount) || 0
+          }
+          syncStatusKey.value = 'library.syncDone'
+          return
+        }
+
+        if (!force && hydrateLibraryFromCache(revisionData)) {
+          if (!serverSettings.value) {
+            try {
+              await fetchServerSettings()
+            } catch {
+              /* settings optional for catalog cache */
+            }
+          }
+          saveLibraryCache({
+            revision,
+            artists: artists.value,
+            albums: albums.value,
+            trackCount: tracksTotal.value,
+            serverSettings: serverSettings.value,
+          })
+          syncStatusKey.value = 'library.syncDone'
+          return
+        }
+
         const [artistRes, albumRes, settingsRes] = await Promise.all([
           auth.fetchWithAuth('/api/artists'),
           auth.fetchWithAuth('/api/albums'),
           auth.fetchWithAuth('/api/settings'),
         ])
 
-        artists.value = await artistRes.json()
-        albums.value = await albumRes.json()
-        tracks.value = []
+        if (!artistRes.ok) throw new Error(t('library.artistsFetchFailed'))
+        if (!albumRes.ok) throw new Error(t('library.albumsFetchFailed'))
+
+        const nextArtists = await artistRes.json()
+        const nextAlbums = await albumRes.json()
+        let nextSettings = null
 
         if (settingsRes.ok) {
-          const settings = await settingsRes.json()
-          serverSettings.value = settings
-          tracksTotal.value = Number(settings?.library?.trackCount) || 0
+          nextSettings = await settingsRes.json()
         } else {
           const meta = await fetchTracksPage({ offset: 0, limit: 1 })
-          tracksTotal.value = meta.total
+          revisionData.trackCount = meta.total
         }
+
+        applyLibrarySnapshot({
+          revision,
+          artists: nextArtists,
+          albums: nextAlbums,
+          trackCount: revisionData.trackCount,
+          settings: nextSettings,
+        })
+
+        saveLibraryCache({
+          revision,
+          artists: artists.value,
+          albums: albums.value,
+          trackCount: tracksTotal.value,
+          serverSettings: serverSettings.value,
+        })
 
         syncStatusKey.value = 'library.syncDone'
       } catch (error) {
@@ -200,29 +312,130 @@ export const useLibraryStore = defineStore('library', () => {
     }
   }
 
+  const getTrackById = async (id) => {
+    try {
+      const res = await auth.fetchWithAuth(`/api/tracks/${id}`)
+      if (!res.ok) throw new Error('Track not found')
+      return await res.json()
+    } catch (error) {
+      console.error(`❌ 트랙 정보 로드 실패 (${id}):`, error)
+      return null
+    }
+  }
+
+  const replaceTrackAudio = async (trackId, body) => {
+    const res = await auth.fetchWithAuth(`/api/tracks/${encodeURIComponent(trackId)}/replace-audio`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data?.error || res.statusText)
+    }
+    await fetchLibrary({ force: true })
+    return data.data
+  }
+
   // =====================================================================
   // 💡 [2단계 신규 추가] 국소적 변이 (Local Mutation) 함수들
   // =====================================================================
   
   const updateLocalArtist = (newData) => {
-    const index = artists.value.findIndex(a => a.id === newData.id)
+    const processedData = normalizeArtistServerPayload(newData)
+    if (!processedData) return
+
+    const index = artists.value.findIndex((a) => a.id === processedData.id)
     if (index !== -1) {
-      const parsedTags = typeof newData.tags === 'string' 
-        ? (newData.tags ? JSON.parse(newData.tags).slice(0, 3) : []) 
-        : (newData.tags || []);
-      
-      // 💡 새 객체 생성 대신 기존 객체에 덮어씌우기 (Object.assign)
+      const parsedTags = Array.isArray(processedData.tags)
+        ? processedData.tags.slice(0, 3)
+        : []
       Object.assign(artists.value[index], {
-        ...newData,
-        topTags: parsedTags
-      });
+        ...processedData,
+        topTags: parsedTags,
+      })
+    }
+
+    if ('cover_type' in processedData) {
+      auth.invalidateImageCache('artist', processedData.id)
+    }
+
+    emitArtistExternalSync(processedData)
+  }
+
+  const normalizeArtistServerPayload = (newData) => {
+    if (!newData?.id) return null
+    const processedData = { ...newData }
+    if (typeof newData.tags === 'string') {
+      try {
+        processedData.tags = JSON.parse(newData.tags)
+      } catch {
+        processedData.tags = []
+      }
+    }
+    return processedData
+  }
+
+  const subscribeArtistExternalSync = (listener) => {
+    if (typeof listener !== 'function') return () => {}
+    artistExternalSyncListeners.add(listener)
+    return () => artistExternalSyncListeners.delete(listener)
+  }
+
+  const emitArtistExternalSync = (normalized) => {
+    if (!normalized) return
+    for (const fn of artistExternalSyncListeners) {
+      try {
+        fn(normalized)
+      } catch (e) {
+        console.error(e)
+      }
     }
   }
 
   const updateLocalAlbum = (newData) => {
-    const index = albums.value.findIndex(a => a.id === newData.id)
+    const processedData = normalizeAlbumServerPayload(newData)
+    if (!processedData) return
+
+    const index = albums.value.findIndex((a) => a.id === processedData.id)
     if (index !== -1) {
-      Object.assign(albums.value[index], newData);
+      Object.assign(albums.value[index], processedData)
+    }
+
+    if ('cover_type' in processedData) {
+      auth.invalidateImageCache('album', processedData.id)
+    }
+
+    emitAlbumExternalSync(processedData)
+  }
+
+  const normalizeAlbumServerPayload = (newData) => {
+    if (!newData?.id) return null
+    const processedData = { ...newData }
+    if (typeof newData.tags === 'string') {
+      try {
+        processedData.tags = JSON.parse(newData.tags)
+      } catch {
+        processedData.tags = []
+      }
+    }
+    return processedData
+  }
+
+  const subscribeAlbumExternalSync = (listener) => {
+    if (typeof listener !== 'function') return () => {}
+    albumExternalSyncListeners.add(listener)
+    return () => albumExternalSyncListeners.delete(listener)
+  }
+
+  const emitAlbumExternalSync = (normalized) => {
+    if (!normalized) return
+    for (const fn of albumExternalSyncListeners) {
+      try {
+        fn(normalized)
+      } catch (e) {
+        console.error(e)
+      }
     }
   }
 
@@ -300,6 +513,15 @@ export const useLibraryStore = defineStore('library', () => {
     if (index !== -1) {
       Object.assign(tracks.value[index], processedData)
     }
+
+    if ('custom_cover_type' in processedData) {
+      auth.invalidateImageCache('track', processedData.id)
+    }
+    if ('albumCoverType' in processedData || 'albumId' in processedData) {
+      const albumId = processedData.albumId
+      if (albumId) auth.invalidateImageCache('album', albumId)
+    }
+
     emitTrackExternalSync(processedData)
   }
 
@@ -393,6 +615,7 @@ export const useLibraryStore = defineStore('library', () => {
     getGenres,
     fetchLibrary,
     fetchServerSettings,
+    clearLibrarySession,
     fetchTracksPage,
     fetchTracksByIds,
     searchTracks,
@@ -403,11 +626,15 @@ export const useLibraryStore = defineStore('library', () => {
     toggleTrackStar,
     getArtistById,
     getAlbumById,
+    getTrackById,
+    replaceTrackAudio,
     updateLocalArtist,
     updateLocalAlbum,
     updateLocalTrack,
     recordTrackPlay,
     subscribeTrackExternalSync,
+    subscribeAlbumExternalSync,
+    subscribeArtistExternalSync,
     homeShelves,
     homeShelvesLoading,
     homeShelvesError,

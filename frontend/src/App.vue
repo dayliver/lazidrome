@@ -4,8 +4,11 @@ import { useI18n } from 'vue-i18n'
 import { RouterView, RouterLink } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
+import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import { useAuthStore } from '@/stores/auth'
 import PlayerWrapper from '@/components/player/PlayerWrapper.vue'
+import ConnectedDevicesTrigger from '@/components/player/ConnectedDevicesTrigger.vue'
+import AppLogo from '@/components/shared/AppLogo.vue'
 import { Button } from '@/components/ui/button'
 import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, BarChart2, Trophy, Wrench, FolderOpen, Upload } from 'lucide-vue-next'
 import MetadataEditDialog from '@/components/metadata/MetadataEditDialog.vue'
@@ -18,6 +21,7 @@ const { t } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const auth = useAuthStore()
+const playbackSync = usePlaybackSyncStore()
 
 const isSidebarExpanded = ref(true)
 const isMobileMenuOpen = ref(false)
@@ -43,6 +47,7 @@ onMounted(async () => {
   if (auth.isAuthenticated) {
     await library.fetchLibrary()
     await player.restoreQueueFromStorage()
+    playbackSync.start()
   }
   player.initAudio()
   player.beginPersistingQueue()
@@ -55,6 +60,11 @@ watch(
       await library.fetchLibrary()
       await player.restoreQueueFromStorage()
       player.beginPersistingQueue()
+      playbackSync.start()
+    }
+    if (!t && prev) {
+      library.clearLibrarySession()
+      playbackSync.stop()
     }
   }
 )
@@ -65,13 +75,14 @@ watch(
     
     <aside 
       class="hidden md:flex flex-col border-r bg-card transition-all duration-300 relative z-50"
-      :class="[isSidebarExpanded ? 'w-60' : 'w-20']"
+      :class="[isSidebarExpanded ? 'w-[22.5rem]' : 'w-[7.5rem]']"
     >
-      <div class="p-6 h-16 flex items-center overflow-hidden whitespace-nowrap">
-        <RouterLink to="/" class="flex items-center text-xl font-black tracking-tighter text-primary">
-          <Compass class="w-6 h-6 shrink-0 transition-all" :class="{ 'mr-3': isSidebarExpanded }" />
-          <span v-if="isSidebarExpanded">{{ t('app.name') }}</span>
+      <div class="flex h-16 items-center justify-between gap-2 overflow-hidden whitespace-nowrap px-4 md:px-6">
+        <RouterLink to="/" class="flex min-w-0 items-center text-xl font-black tracking-tighter text-primary">
+          <AppLogo class="w-6 h-6 transition-all" :class="{ 'mr-3': isSidebarExpanded }" />
+          <span v-if="isSidebarExpanded" class="truncate">{{ t('app.name') }}</span>
         </RouterLink>
+        <ConnectedDevicesTrigger popover-side="right" popover-align="end" />
       </div>
 
       <nav class="flex-1 px-3 py-4 space-y-2 overflow-y-auto no-scrollbar">
@@ -93,18 +104,21 @@ watch(
     </aside>
 
     <header class="md:hidden border-b px-4 h-14 flex items-center justify-between bg-card/95 backdrop-blur-md z-50 shrink-0 relative">
-      <RouterLink to="/" class="flex items-center text-lg font-black tracking-tighter text-primary" @click="isMobileMenuOpen = false">
-        <Compass class="w-5 h-5 mr-2" />
-        {{ t('app.name') }}
+      <RouterLink to="/" class="flex min-w-0 items-center text-lg font-black tracking-tighter text-primary" @click="isMobileMenuOpen = false">
+        <AppLogo class="w-5 h-5 mr-2" />
+        <span class="truncate">{{ t('app.name') }}</span>
       </RouterLink>
-      <Button
-        variant="ghost"
-        size="icon"
-        :aria-label="isMobileMenuOpen ? t('nav.menuClose') : t('nav.menuOpen')"
-        @click="isMobileMenuOpen = !isMobileMenuOpen"
-      >
-        <component :is="isMobileMenuOpen ? X : Menu" class="w-6 h-6 transition-transform" />
-      </Button>
+      <div class="flex shrink-0 items-center gap-1">
+        <ConnectedDevicesTrigger popover-side="bottom" popover-align="end" />
+        <Button
+          variant="ghost"
+          size="icon"
+          :aria-label="isMobileMenuOpen ? t('nav.menuClose') : t('nav.menuOpen')"
+          @click="isMobileMenuOpen = !isMobileMenuOpen"
+        >
+          <component :is="isMobileMenuOpen ? X : Menu" class="w-6 h-6 transition-transform" />
+        </Button>
+      </div>
     </header>
 
     <Transition name="slide-down">
@@ -124,7 +138,9 @@ watch(
     </Transition>
 
     <main class="flex-1 overflow-y-auto relative bg-background">
-      <div class="mx-auto max-w-full px-4 md:px-12 py-6 md:py-10">
+      <div
+        class="mx-auto max-w-full px-4 pt-6 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px)+1.25rem)] md:px-12 md:py-10"
+      >
         <RouterView />
       </div>
 

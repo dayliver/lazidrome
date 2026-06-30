@@ -2,17 +2,21 @@
   "pages": {
     "home": {
       "title": "홈",
-      "description": "자주 연 페이지와 최근 일주일 인기 곡만 모았습니다.",
+      "description": "자주 연 페이지와 최근 일주일 인기 곡·아티스트만 모았습니다.",
       "authEmpty": "로그인하면 홈이 채워집니다.",
       "frequentTitle": "자주 찾은 항목",
       "frequentHint": "최근 7일 동안 자주 연 페이지만 표시합니다.",
       "frequentEmpty": "재생목록·앨범·아티스트·태그를 둘러보면 여기에 쌓입니다.",
       "visitMeta": "{kind} · 최근 7일 {count}회",
+      "visitCount": "{count}회",
       "topTitle": "최근 7일 많이 재생된 곡",
       "topHint": "곡을 누르면 같은 순위의 상위 20곡이 대기열에 올라가고, 누른 곡부터 재생됩니다.",
       "topLoading": "불러오는 중…",
       "topError": "순위 데이터를 불러오지 못했습니다.",
       "topEmpty": "아직 기록이 없습니다.",
+      "topArtistsTitle": "최근 7일 자주 들은 아티스트",
+      "topArtistsHint": "아티스트를 누르면 상세 페이지로 이동합니다.",
+      "topArtistsEmpty": "아직 기록이 없습니다.",
       "coverAlt": "{name} 커버",
       "albumArtAlt": "{title} 앨범 아트",
       "playCount": "{count}회"
@@ -20,7 +24,10 @@
     "artists": {
       "title": "아티스트",
       "description": "총 {count}명의 아티스트",
-      "loading": "아티스트 목록을 불러오는 중…"
+      "loading": "아티스트 목록을 불러오는 중…",
+      "empty": "표시할 아티스트가 없습니다.",
+      "coverAlt": "{name} 프로필",
+      "cardNoTags": "태그 없음"
     },
     "albums": {
       "title": "앨범",
@@ -62,6 +69,10 @@
       "playlistNotFoundHint": "삭제되었거나 접근할 수 없는 목록입니다.",
       "artistLoading": "아티스트 정보를 불러오고 있습니다...",
       "artistNotFound": "아티스트 정보를 찾을 수 없습니다.",
+      "trackLoading": "곡 정보를 불러오고 있습니다...",
+      "trackNotFound": "곡 정보를 찾을 수 없습니다.",
+      "trackDuration": "재생 시간",
+      "trackGenre": "장르",
       "artistRatingChart": "별점 분포 (타율 분석)",
       "artistRatingChartLabel": "곡 수",
       "artistComingSoon": "향후 추가될 기능입니다 (MusicBrainz 연동 시 제공)",
@@ -91,11 +102,33 @@
       "artistStatTotalTracks": "참여 곡",
       "artistStatAvgRating": "평균 별점",
       "entityArtist": "아티스트",
+      "entityTrack": "곡",
       "entityTag": "태그",
       "sectionPopularTracks": "인기 곡",
       "sectionAnalytics": "분석",
       "sectionRelatedArtists": "관련 아티스트",
-      "sectionFeaturedArtists": "참여 아티스트"
+      "sectionFeaturedArtists": "참여 아티스트",
+      "sectionAlbums": "수록 앨범",
+      "sectionPlaylists": "포함된 재생목록",
+      "sectionFileLocation": "파일 위치",
+      "openInFiles": "파일 탐색기에서 열기",
+      "replaceAudio": {
+        "title": "음원 교체",
+        "description": "「{title}」의 오디오 파일만 바꿉니다.",
+        "preserveHint": "재생 횟수, 별점, 즐겨찾기, 플레이리스트 연결은 그대로 유지됩니다.",
+        "tabLocal": "로컬 파일",
+        "tabYoutube": "YouTube",
+        "dropTitle": "새 음원 파일을 끌어다 놓거나 선택하세요",
+        "chooseFile": "파일 선택",
+        "stageFailed": "파일을 준비하지 못했습니다.",
+        "youtubeUrl": "YouTube URL",
+        "pickVideo": "교체할 영상 선택",
+        "youtubeFormatHint": "YouTube에서 가져올 때는 MP3로 저장됩니다. 포맷이 바뀔 수 있습니다.",
+        "confirm": "교체",
+        "replacing": "교체 중…",
+        "success": "음원이 교체되었습니다.",
+        "failed": "음원 교체에 실패했습니다."
+      }
     }
   },
   "visit": {
@@ -103,8 +136,10 @@
     "album": "앨범",
     "artist": "아티스트",
     "tag": "태그",
+    "track": "곡",
     "fallbackAlbum": "앨범",
     "fallbackArtist": "아티스트",
-    "fallbackPlaylist": "재생목록"
+    "fallbackPlaylist": "재생목록",
+    "fallbackTrack": "곡"
   }
 }

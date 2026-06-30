@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
+import { useClientTrackListQuery } from '@/composables/useClientTrackListQuery'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useAuthStore } from '@/stores/auth'
 
@@ -13,6 +14,7 @@ import SectionHeader from '@/components/shared/SectionHeader.vue'
 import ArtistListTable from '@/components/shared/ArtistListTable.vue'
 import AlbumGrid from '@/components/shared/AlbumGrid.vue'
 import TrackListTable from '@/components/shared/TrackListTable.vue'
+import TrackListToolbar from '@/components/shared/TrackListToolbar.vue'
 
 import { Users, Disc, Music, Hash, Edit } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -57,6 +59,20 @@ const loadError = computed(() => {
 })
 
 useSyncTrackListWithLibrary(() => tracks.value)
+
+const {
+  query: trackQuery,
+  searchInput: trackSearchInput,
+  displayTracks,
+  total: trackTotal,
+  shown: trackShown,
+  sortOptions: trackSortOptions,
+  setSort: setTrackSort,
+  toggleOrder: toggleTrackOrder,
+  toggleStarredFilter: toggleTrackStarredFilter,
+  setMinRating: setTrackMinRating,
+  resetFilters: resetTrackFilters,
+} = useClientTrackListQuery(() => tracks.value, 'tag')
 
 const editOpen = ref(false)
 const imageBust = ref(0)
@@ -141,8 +157,27 @@ const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
           <Music class="w-6 h-6 text-primary" />
         </template>
       </SectionHeader>
+      <TrackListToolbar
+        :query="trackQuery"
+        :search-input="trackSearchInput"
+        :total="trackTotal"
+        :shown="trackShown"
+        :sort-options="trackSortOptions"
+        @update:search-input="trackSearchInput = $event"
+        @update:sort="setTrackSort"
+        @toggle-order="toggleTrackOrder"
+        @toggle-starred="toggleTrackStarredFilter"
+        @set-min-rating="setTrackMinRating"
+        @reset-filters="resetTrackFilters"
+      />
       <div class="bg-card overflow-hidden border rounded-xl shadow-sm">
-        <TrackListTable :tracks="tracks" />
+        <TrackListTable v-if="displayTracks.length" :tracks="displayTracks" />
+        <div
+          v-else
+          class="py-12 text-center text-sm font-medium text-muted-foreground"
+        >
+          {{ t('trackList.noResults') }}
+        </div>
       </div>
     </section>
 

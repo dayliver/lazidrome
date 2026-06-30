@@ -16,6 +16,9 @@ export function registerVisitRecorder(router: Router) {
       case 'artist-detail':
         if (to.params?.id) recordVisit({ type: 'artist', id: String(to.params.id), name: '' })
         break
+      case 'track-detail':
+        if (to.params?.id) recordVisit({ type: 'track', id: String(to.params.id), name: '' })
+        break
       case 'tag-detail':
         if (to.params?.name)
           recordVisit({ type: 'tag', id: String(to.params.name), name: String(to.params.name) })

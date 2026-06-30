@@ -1,8 +1,9 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Play, Pause, SkipForward, SkipBack, Maximize2 } from 'lucide-vue-next'
+import { Play, Pause, SkipForward, SkipBack, Maximize2, Radio } from 'lucide-vue-next'
 import { usePlayerStore } from '@/stores/player'
+import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
@@ -10,16 +11,28 @@ const props = defineProps({
 })
 
 const player = usePlayerStore()
+const sync = usePlaybackSyncStore()
 const auth = useAuthStore()
 const { t } = useI18n()
-const currentTrack = computed(() => player.currentTrack)
+
+const currentTrack = computed(() => sync.displayTrack)
 
 const coverUrl = computed(() => {
-  if (!currentTrack.value?.id) return ''
-  return auth.coverSrc('track', currentTrack.value.id)
+  const id = currentTrack.value?.id
+  if (!id) return ''
+  return auth.coverSrc('track', id)
 })
 
 const displayArtist = computed(() => currentTrack.value?.artist || t('player.noArtist'))
+
+const isPlaying = computed(() => sync.displayIsPlaying)
+
+const progressPercent = computed(() => sync.displayProgress)
+
+const remoteBadge = computed(() => {
+  if (!sync.isRemoteMode || !sync.masterDeviceName) return ''
+  return t('player.remoteOnDevice', { device: sync.masterDeviceName })
+})
 
 const coverAlt = computed(() => {
   const track = currentTrack.value
@@ -33,148 +46,199 @@ function onPlayerKeydown(e) {
     case ' ':
     case 'k':
       e.preventDefault()
-      player.togglePlay()
+      sync.remoteTogglePlay()
       break
     case 'ArrowRight':
     case 'n':
       e.preventDefault()
-      player.next()
+      sync.remoteNext()
       break
     case 'ArrowLeft':
     case 'p':
       e.preventDefault()
-      player.prev()
+      sync.remotePrev()
       break
     case 'Enter':
     case 'f':
       e.preventDefault()
-      player.toggleExpand()
+      if (currentTrack.value?.id || sync.isRemoteMode) player.toggleExpand()
       break
     default:
       break
   }
 }
 
+function onMiniPlayerClick(e) {
+  if (e.target.closest('[data-mini-player-action]')) return
+  if (currentTrack.value?.id || sync.isRemoteMode) player.toggleExpand()
+}
 </script>
 
 <template>
   <div
-    class="group w-full cursor-pointer"
+    class="mini-player group w-full cursor-pointer"
     :class="[
-      'fixed bottom-0 left-0 h-16 bg-background/95 backdrop-blur-xl border-t z-50',
-      'md:static md:h-20 md:bg-transparent md:border-none',
+      'fixed bottom-0 left-0 z-50 border-t bg-background/95 backdrop-blur-xl',
+      'min-h-[5.75rem]',
+      'md:static md:border-none md:bg-transparent',
+      isSidebarExpanded ? 'md:min-h-[7.25rem]' : 'md:min-h-[5rem]',
     ]"
     role="region"
     :aria-label="t('player.miniPlayer')"
     tabindex="0"
     @keydown="onPlayerKeydown"
-    @click="player.toggleExpand()"
+    @click="onMiniPlayerClick"
   >
     <div
-      class="flex items-center h-full transition-all duration-300 ease-out"
+      class="mini-player__shell relative flex h-full w-full flex-col transition-all duration-300 ease-out"
       :class="[
-        'w-full px-4',
+        isSidebarExpanded ? 'px-3 py-2.5 md:px-3.5 md:py-3' : 'px-3 py-2',
         !isSidebarExpanded
-          ? 'md:absolute md:left-0 md:bottom-0 md:h-20 md:w-20 md:group-hover:w-[320px] md:bg-card md:border md:border-l-0 md:rounded-r-3xl md:shadow-[10px_0_30px_rgba(0,0,0,0.3)] md:z-[100] md:overflow-hidden'
-          : 'md:w-full md:px-4',
+          ? 'md:absolute md:bottom-0 md:left-0 md:h-[7.5rem] md:w-[7.5rem] md:overflow-hidden md:rounded-r-3xl md:border md:border-l-0 md:bg-card md:shadow-[10px_0_30px_rgba(0,0,0,0.3)] md:group-hover:h-auto md:group-hover:min-h-[7.25rem] md:group-hover:w-[min(100%,22.5rem)]'
+          : '',
       ]"
     >
       <div
-        class="absolute -top-[1px] left-0 right-0 h-[2px] bg-muted/30 overflow-hidden z-10"
-        :class="[!isSidebarExpanded ? 'md:group-hover:opacity-100 md:opacity-0 transition-opacity' : '']"
+        class="absolute inset-x-0 top-0 z-10 h-[2px] overflow-hidden bg-muted/30"
+        :class="[!isSidebarExpanded ? 'md:opacity-0 md:group-hover:opacity-100 transition-opacity' : '']"
         aria-hidden="true"
       >
         <div
           class="h-full bg-primary shadow-[0_0_8px_var(--primary)] transition-all duration-300"
-          :style="{ width: player.progress[0] + '%' }"
+          :style="{ width: progressPercent + '%' }"
         />
       </div>
 
+      <!-- collapsed sidebar: cover-only until hover -->
       <div
-        class="shrink-0 flex items-center justify-center w-12 h-12 md:w-[3.2rem] md:h-[3.2rem] relative"
-        :class="[!isSidebarExpanded ? 'md:ml-[0.6rem]' : '']"
+        v-if="!isSidebarExpanded"
+        class="hidden md:flex md:h-full md:w-full md:items-center md:justify-center md:group-hover:hidden"
       >
-        <div class="w-full h-full rounded-lg shadow-sm overflow-hidden bg-muted relative ring-1 ring-border">
+        <div class="relative h-12 w-12 overflow-hidden rounded-lg bg-muted ring-1 ring-border">
           <img
             v-if="coverUrl"
             :src="coverUrl"
             :alt="coverAlt"
             crossorigin="anonymous"
-            class="w-full h-full object-cover"
+            class="h-full w-full object-cover"
             @error="(e) => (e.target.style.display = 'none')"
           />
           <div
             v-else
-            class="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground font-black"
+            class="flex h-full w-full items-center justify-center text-[10px] font-black text-muted-foreground"
             aria-hidden="true"
           >
             {{ t('app.short') }}
-          </div>
-
-          <div
-            v-if="player.isPlaying"
-            class="absolute bottom-1 right-1 bg-black/60 backdrop-blur-md rounded p-1 flex items-end justify-center gap-[2px] w-[18px] h-[18px]"
-            aria-hidden="true"
-          >
-            <div class="w-[2px] bg-white rounded-full animate-eq-1" />
-            <div class="w-[2px] bg-white rounded-full animate-eq-2" />
-            <div class="w-[2px] bg-white rounded-full animate-eq-3" />
           </div>
         </div>
       </div>
 
       <div
-        class="flex items-center flex-1 min-w-0 pr-2 gap-2 transition-opacity duration-300"
-        :class="[!isSidebarExpanded ? 'md:opacity-0 md:group-hover:opacity-100' : '']"
+        class="flex min-h-0 flex-1 flex-col justify-between gap-2"
+        :class="[
+          !isSidebarExpanded
+            ? 'md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto'
+            : '',
+        ]"
       >
-        <div class="flex flex-col min-w-0 flex-1 ml-3 whitespace-nowrap">
-          <span
-            class="text-sm font-bold truncate transition-colors"
-            :class="player.isPlaying ? 'text-primary' : 'text-foreground'"
+        <div class="flex min-w-0 items-start gap-2.5 pt-0.5">
+          <div
+            class="relative shrink-0"
+            :class="isSidebarExpanded ? 'h-11 w-11 md:h-12 md:w-12' : 'h-10 w-10 md:h-11 md:w-11'"
           >
-            {{ currentTrack?.title || t('player.waiting') }}
-          </span>
-          <span class="text-xs text-muted-foreground truncate font-medium">
-            {{ displayArtist }}
-          </span>
+            <div class="h-full w-full overflow-hidden rounded-lg bg-muted ring-1 ring-border">
+              <img
+                v-if="coverUrl"
+                :src="coverUrl"
+                :alt="coverAlt"
+                crossorigin="anonymous"
+                class="h-full w-full object-cover"
+                @error="(e) => (e.target.style.display = 'none')"
+              />
+              <div
+                v-else
+                class="flex h-full w-full items-center justify-center text-[10px] font-black text-muted-foreground"
+                aria-hidden="true"
+              >
+                {{ t('app.short') }}
+              </div>
+            </div>
+            <div
+              v-if="isPlaying"
+              class="absolute bottom-0.5 right-0.5 flex h-4 w-4 items-end justify-center gap-[1px] rounded bg-black/60 p-0.5 backdrop-blur-md"
+              aria-hidden="true"
+            >
+              <div class="w-[2px] rounded-full bg-white animate-eq-1" />
+              <div class="w-[2px] rounded-full bg-white animate-eq-2" />
+              <div class="w-[2px] rounded-full bg-white animate-eq-3" />
+            </div>
+          </div>
+
+          <div class="min-w-0 flex-1 self-center">
+            <p
+              v-if="remoteBadge"
+              class="mb-0.5 flex items-center gap-1 truncate text-[10px] font-semibold uppercase tracking-wide text-primary"
+            >
+              <Radio class="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span class="truncate">{{ remoteBadge }}</span>
+            </p>
+            <p
+              class="truncate text-sm font-bold leading-tight md:text-[0.9rem]"
+              :class="isPlaying ? 'text-primary' : 'text-foreground'"
+            >
+              {{ currentTrack?.title || t('player.waiting') }}
+            </p>
+            <p class="truncate text-xs font-medium text-muted-foreground">
+              {{ displayArtist }}
+            </p>
+          </div>
         </div>
 
-        <div class="flex items-center gap-1 shrink-0 ml-2" role="group" :aria-label="t('player.playControls')">
+        <div
+          class="flex items-center justify-center gap-0.5 pb-0.5"
+          role="group"
+          :aria-label="t('player.playControls')"
+          data-mini-player-action
+        >
           <button
             type="button"
-            class="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-muted transition-colors"
+            data-mini-player-action
+            class="hidden h-8 w-8 items-center justify-center rounded-full hover:bg-muted md:flex"
             :aria-label="t('player.previous')"
-            @click.stop="player.prev()"
+            @click.stop="sync.remotePrev()"
           >
-            <SkipBack class="w-4 h-4 fill-current" aria-hidden="true" />
+            <SkipBack class="h-4 w-4 fill-current" aria-hidden="true" />
           </button>
 
           <button
             type="button"
-            class="w-10 h-10 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all active:scale-95"
-            :aria-label="player.isPlaying ? t('player.pause') : t('player.play')"
-            @click.stop="player.togglePlay()"
+            data-mini-player-action
+            class="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-all hover:bg-primary hover:text-primary-foreground active:scale-95"
+            :aria-label="isPlaying ? t('player.pause') : t('player.play')"
+            @click.stop="sync.remoteTogglePlay()"
           >
-            <component :is="player.isPlaying ? Pause : Play" class="w-5 h-5 fill-current" aria-hidden="true" />
+            <component :is="isPlaying ? Pause : Play" class="h-[1.15rem] w-[1.15rem] fill-current" aria-hidden="true" />
           </button>
 
           <button
             type="button"
-            class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+            data-mini-player-action
+            class="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
             :aria-label="t('player.next')"
-            @click.stop="player.next()"
+            @click.stop="sync.remoteNext()"
           >
-            <SkipForward class="w-4 h-4 fill-current" aria-hidden="true" />
+            <SkipForward class="h-4 w-4 fill-current" aria-hidden="true" />
           </button>
 
           <button
             v-if="!isSidebarExpanded"
             type="button"
-            class="hidden md:flex w-9 h-9 items-center justify-center rounded-full text-muted-foreground hover:text-primary transition-colors ml-1"
+            data-mini-player-action
+            class="ml-1 hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-primary md:flex"
             :aria-label="t('player.fullscreen')"
             @click.stop="player.toggleExpand()"
           >
-            <Maximize2 class="w-4 h-4" aria-hidden="true" />
+            <Maximize2 class="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -196,10 +260,10 @@ function onPlayerKeydown(e) {
 @keyframes eq {
   0%,
   100% {
-    height: 4px;
+    height: 3px;
   }
   50% {
-    height: 10px;
+    height: 8px;
   }
 }
 </style>

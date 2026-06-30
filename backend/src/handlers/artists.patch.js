@@ -1,7 +1,7 @@
 import { replyHttpError } from '../lib/httpErrors.js';
 import { editArtist, formatArtistTags } from '../services/artistService.js';
 import { saveArtistCoverFromUrl, saveArtistCoverFromBuffer } from '../services/artistCoverService.js';
-import { findBasicArtistById } from '../repositories/artistRepository.js';
+import { findBasicArtistById, findArtistBio } from '../repositories/artistRepository.js';
 
 export async function patchArtistHandler(request, reply) {
   const { id } = request.params;
@@ -22,7 +22,15 @@ export async function patchArtistHandler(request, reply) {
           data[part.fieldname] = part.value;
         }
       }
-      if (data.tags) data.tags = JSON.parse(data.tags);
+      if (data.tags) {
+        try {
+          data.tags = JSON.parse(data.tags);
+        } catch {
+          const err = new Error('tags 필드가 유효한 JSON이 아닙니다.');
+          err.statusCode = 400;
+          throw err;
+        }
+      }
     } else {
       data = request.body;
     }
@@ -39,7 +47,12 @@ export async function patchArtistHandler(request, reply) {
 
     // 3. 최신 데이터 파싱 및 반환
     const raw = findBasicArtistById(id);
-    return { success: true, data: formatArtistTags(raw) };
+    const artist = formatArtistTags(raw);
+    const bioRow = findArtistBio(id, 'en');
+    if (artist) {
+      artist.bio = bioRow?.biography ?? '';
+    }
+    return { success: true, data: artist };
   } catch (err) {
     return replyHttpError(request, reply, err, { fallback: '아티스트 수정 중 오류가 발생했습니다.' });
   }

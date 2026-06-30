@@ -9,6 +9,7 @@ import { ROLES } from '../constants/roles.js';
 import { splitArtistNames } from '../lib/artistTags.js';
 import { sha256FileStream } from '../lib/fileHash.js';
 import { cleanupOrphans } from '../lib/orphanCleanup.js';
+import { bumpLibraryRevision } from '../lib/libraryRevision.js';
 
 /** 스캔·감시 제외 폴더명 (경로 어디에든 동일하게 적용) */
 export const SCAN_EXCLUDED_DIR = '_excluded';
@@ -219,6 +220,8 @@ export function startScanner(watchPath) {
         }
       }
 
+      bumpLibraryRevision();
+
     } catch (err) {
       if (err.code !== 'EBUSY' && err.code !== 'ENOENT') {
         console.error(`❌ 스캔 오류 (${filePath}):`, err.message);
@@ -284,6 +287,7 @@ export function startScanner(watchPath) {
       } catch (cleanupErr) {
         console.error('❌ orphan 정리 중 오류:', cleanupErr?.message || cleanupErr);
       }
+      bumpLibraryRevision();
     }).catch((e) => {
       console.error(`❌ 삭제 동기화 오류 (${filePath}):`, e?.message || e);
     });

@@ -3,8 +3,9 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLibraryStore } from '@/stores/library'
 import { useRequiresAuth } from '@/composables/useRequiresAuth'
-import ArtistListTable from '@/components/shared/ArtistListTable.vue'
+import ArtistGrid from '@/components/shared/ArtistGrid.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 
 const { t } = useI18n()
@@ -38,29 +39,29 @@ onMounted(loadArtists)
 watch(showAuthEmpty, () => {
   void loadArtists()
 })
-
-const handleCreateArtist = () => {
-  console.log('create artist')
-}
 </script>
 
 <template>
-  <div class="w-full space-y-6">
+  <PageLayout spacing="10">
     <ViewHeader
       :title="t('pages.artists.title')"
       :description="description"
-      @action="handleCreateArtist"
+      :show-action="false"
     />
 
     <AuthEmptyState v-if="showAuthEmpty" />
 
-    <div v-else class="bg-card rounded-lg overflow-hidden">
-      <div v-if="isLoading" class="p-16 flex flex-col items-center gap-4 text-muted-foreground">
-        <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p>{{ t('pages.artists.loading') }}</p>
+    <template v-else>
+      <div v-if="isLoading" class="flex items-center gap-3 py-6 text-sm text-muted-foreground">
+        <div class="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        {{ t('pages.artists.loading') }}
       </div>
 
-      <ArtistListTable v-else :artists="artistsData" />
-    </div>
-  </div>
+      <p v-else-if="!artistsData.length" class="text-sm text-muted-foreground py-4">
+        {{ t('pages.artists.empty') }}
+      </p>
+
+      <ArtistGrid v-else :artists="artistsData" />
+    </template>
+  </PageLayout>
 </template>

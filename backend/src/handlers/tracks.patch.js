@@ -1,7 +1,7 @@
 import { replyHttpError } from '../lib/httpErrors.js';
-import { editTrack, formatTrack } from '../services/trackService.js';
+import { editTrack, formatTrackDetail } from '../services/trackService.js';
 import { saveCoverFromUrl, saveCoverFromBuffer } from '../services/coverService.js';
-import { findTrackById } from '../repositories/trackRepository.js';
+import { findTrackDetailById } from '../repositories/trackRepository.js';
 
 export async function patchTrackHandler(request, reply) {
   const { id } = request.params;
@@ -35,8 +35,8 @@ export async function patchTrackHandler(request, reply) {
       else if (fileBuffer) await saveCoverFromBuffer(targetAlbumId, fileBuffer);
     }
 
-    const raw = findTrackById(id);
-    return { success: true, data: formatTrack(raw) };
+    const raw = findTrackDetailById(id);
+    return { success: true, data: formatTrackDetail(raw) };
   } catch (err) {
     return replyHttpError(request, reply, err, { fallback: '트랙 수정 중 오류가 발생했습니다.' });
   }

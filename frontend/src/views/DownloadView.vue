@@ -7,6 +7,7 @@ import { useLibraryStore } from '@/stores/library'
 import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 import ImportTrackTable from '@/components/download/ImportTrackTable.vue'
 import ImportProgress from '@/components/download/ImportProgress.vue'
 import { Button } from '@/components/ui/button'
@@ -114,7 +115,7 @@ async function handleStart() {
     await importStore.fetchJobStatus(id)
     await importStore.pollJobUntilDone(id)
     phase.value = 'done'
-    await library.fetchLibrary()
+    await library.fetchLibrary({ force: true })
     notify.success(t('download.completed'))
   } catch (e) {
     phase.value = 'form'
@@ -126,7 +127,7 @@ async function handleStart() {
 </script>
 
 <template>
-  <div class="w-full max-w-4xl mx-auto space-y-6 py-4">
+  <PageLayout>
     <ViewHeader
       :title="t('download.title')"
       :description="t('download.subtitle')"
@@ -190,5 +191,5 @@ async function handleStart() {
         </div>
       </template>
     </template>
-  </div>
+  </PageLayout>
 </template>

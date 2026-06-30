@@ -37,6 +37,8 @@ import {
   formatBuildTime,
   compareBuilds,
 } from '@/lib/buildInfo'
+import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -112,18 +114,18 @@ const handleLogout = () => {
 }
 
 const handleRefresh = async () => {
-  await library.fetchLibrary()
+  await library.fetchLibrary({ force: true })
   await loadServerSettings()
 }
 </script>
 
 <template>
-  <div class="container max-w-2xl py-10 space-y-8">
-
-    <div class="space-y-2">
-      <h1 class="text-3xl font-black tracking-tight">{{ t('settings.title') }}</h1>
-      <p class="text-muted-foreground">{{ t('settings.subtitle') }}</p>
-    </div>
+  <PageLayout spacing="8">
+    <ViewHeader
+      :title="t('settings.title')"
+      :description="t('settings.subtitle')"
+      :show-action="false"
+    />
 
     <Card>
       <CardHeader>
@@ -373,5 +375,5 @@ const handleRefresh = async () => {
       </CardContent>
     </Card>
 
-  </div>
+  </PageLayout>
 </template>

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
+import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import { useAuthStore } from '@/stores/auth'
 import md5 from 'md5'
 import { X } from 'lucide-vue-next'
@@ -9,13 +10,17 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 const player = usePlayerStore()
+const playbackSync = usePlaybackSyncStore()
 const auth = useAuthStore()
 const { t } = useI18n()
 
 // 대기열 곡 클릭 시 재생
 const playFromQueue = (index) => {
-  player.currentIndex = index
-  player.playNewQueue(player.queue, index)
+  if (playbackSync.shouldControlRemote()) {
+    playbackSync.remotePlayAtIndex(index)
+    return
+  }
+  void playbackSync.playTracks(player.queue, index)
 }
 
 // 💡 실제 커버 이미지를 불러오기 위한 인증 토큰 

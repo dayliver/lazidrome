@@ -7,39 +7,55 @@ import {
 import { 
   findAlbumByName, 
   createAlbum, 
-  updateAlbumTrack, 
+  setPrimaryAlbumForTrack,
+  findOrCreateAlbumByNameAndArtists,
   findOrCreateArtist 
 } from '../repositories/albumRepository.js';
 import { saveCoverFromUrl, saveCoverFromBuffer } from './coverService.js';
+import { bumpLibraryRevisionNow } from '../lib/libraryRevision.js';
 
 const db = getDB();
 
 export function editTrack(id, data, fileBuffer) {
   const { title, year, genre, tags, artists, albumId, albumName, newCoverUrl } = data;
-  let targetAlbumId = albumId;
+  let targetAlbumId = null;
+  let resolvedArtistIds = null;
 
-  // 트랜잭션: DB 쓰기만
   db.transaction(() => {
     updateTrackMeta(id, { title, genre, tags });
 
-    if (!targetAlbumId && albumName) {
-      const existing = findAlbumByName(albumName);
-      targetAlbumId = existing ? existing.id : createAlbum(albumName, year);
-    }
-
-    if (targetAlbumId) updateAlbumTrack(id, targetAlbumId);
-
     if (Array.isArray(artists)) {
-      const resolved = artists.map(a => ({
+      const resolved = artists.map((a) => ({
         artistId: findOrCreateArtist(a),
         role_mask: a.role_mask,
       }));
       replaceTrackArtists(id, resolved);
+      resolvedArtistIds = resolved.map((a) => a.artistId);
     }
+
+    const trimmedAlbum = albumName != null ? String(albumName).trim() : '';
+    if (trimmedAlbum) {
+      const artistIds =
+        resolvedArtistIds ??
+        db
+          .prepare('SELECT artist_id FROM track_artists WHERE track_id = ?')
+          .all(id)
+          .map((r) => r.artist_id);
+
+      if (artistIds.length > 0) {
+        targetAlbumId = findOrCreateAlbumByNameAndArtists(trimmedAlbum, artistIds, year);
+      } else {
+        const existing = findAlbumByName(trimmedAlbum);
+        targetAlbumId = existing ? existing.id : createAlbum(trimmedAlbum, year);
+      }
+    } else if (albumId) {
+      targetAlbumId = albumId;
+    }
+
+    if (targetAlbumId) setPrimaryAlbumForTrack(id, targetAlbumId);
   })();
 
-  // 트랜잭션 밖: 파일 IO (비동기)
-  // 반환해서 핸들러가 await 하게 함
+  bumpLibraryRevisionNow();
   return { targetAlbumId, newCoverUrl, fileBuffer };
 }
 
@@ -53,4 +69,27 @@ export function formatTrack(raw) {
   raw.artist = JSON.parse(raw.artists_json || '[]').map(a => a.name).join(', ');
   delete raw.artists_json;
   return raw;
+}
+
+function parseJsonArray(raw, fallback = []) {
+  try {
+    const parsed = JSON.parse(raw || '[]');
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function formatTrackDetail(raw) {
+  if (!raw) return null;
+  const result = { ...raw };
+  result.tags = parseJsonArray(raw.tags, []);
+  result.artists = parseJsonArray(raw.artists_json);
+  result.albums = parseJsonArray(raw.albums_json);
+  result.playlists = parseJsonArray(raw.playlists_json);
+  delete result.artists_json;
+  delete result.albums_json;
+  delete result.playlists_json;
+  result.artist = result.artists.map((a) => a.name).join(', ');
+  return result;
 }

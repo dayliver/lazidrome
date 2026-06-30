@@ -376,10 +376,11 @@ export function getTopTracksByPlayEvents(range, limit = 20, timezoneRaw) {
  */
 export function getChartTotals(range, timezoneRaw) {
   if (!CHART_RANGES.has(range) && !RANGES.has(range)) {
-    return { totalPlays: 0, totalListenSec: 0, uniqueTrackCount: 0 };
+    return { totalPlays: 0, totalListenSec: 0, uniqueTrackCount: 0, uniqueArtistCount: 0 };
   }
   const statsZone = resolveStatsTimezone(timezoneRaw);
   const periodEv = filterEventsByRange(getPlayHistoryEvents(), range, statsZone);
+  const periodCounts = countPlaysByTrack(periodEv);
   let totalListenSec = 0;
   const uniqueTracks = new Set();
   for (const ev of periodEv) {
@@ -390,7 +391,127 @@ export function getChartTotals(range, timezoneRaw) {
     totalPlays: periodEv.length,
     totalListenSec,
     uniqueTrackCount: uniqueTracks.size,
+    uniqueArtistCount: countUniqueArtistsInPeriod(periodCounts),
   };
+}
+
+/**
+ * 트랙별 참여 아티스트 ID (곡 `track_artists` ∪ 대표 앨범 `album_artists`, 중복 제거).
+ * @param {string[]} trackIds
+ * @returns {Map<string, Set<string>>}
+ */
+function buildUniqueArtistIdsByTrack(trackIds) {
+  const map = new Map();
+  if (!trackIds.length) return map;
+
+  const ensure = (trackId) => {
+    const key = String(trackId);
+    if (!map.has(key)) map.set(key, new Set());
+    return map.get(key);
+  };
+
+  const placeholders = trackIds.map(() => '?').join(',');
+
+  const trackArtistRows = db
+    .prepare(
+      `
+    SELECT track_id, artist_id
+    FROM track_artists
+    WHERE track_id IN (${placeholders})
+  `
+    )
+    .all(...trackIds);
+
+  for (const row of trackArtistRows) {
+    if (row.artist_id) ensure(row.track_id).add(String(row.artist_id));
+  }
+
+  const albumArtistRows = db
+    .prepare(
+      `
+    SELECT at.track_id AS track_id, aa.artist_id AS artist_id
+    FROM album_tracks at
+    JOIN album_artists aa ON aa.album_id = at.album_id
+    WHERE at.track_id IN (${placeholders}) AND at.is_primary = 1
+  `
+    )
+    .all(...trackIds);
+
+  for (const row of albumArtistRows) {
+    if (row.artist_id) ensure(row.track_id).add(String(row.artist_id));
+  }
+
+  return map;
+}
+
+/** 기간 내 재생이 1회 이상 잡힌 고유 아티스트 수 */
+function countUniqueArtistsInPeriod(periodCounts) {
+  if (!periodCounts?.size) return 0;
+  const trackIds = [...periodCounts.keys()];
+  const byTrack = buildUniqueArtistIdsByTrack(trackIds);
+  const unique = new Set();
+  for (const ids of byTrack.values()) {
+    for (const id of ids) unique.add(id);
+  }
+  return unique.size;
+}
+
+/**
+ * 기간 내 play_history: 재생 1회마다 해당 곡에 참여한 아티스트(곡+대표앨범 합집합)마다 +1.
+ * 동일 아티스트가 곡·앨범 양쪽에 있어도 그 재생에서는 1회만 집계.
+ */
+export function getTopArtistsByPlayEvents(range, limit = 20, timezoneRaw) {
+  if (!CHART_RANGES.has(range) && !RANGES.has(range)) return [];
+  const statsZone = resolveStatsTimezone(timezoneRaw);
+  const periodEv = filterEventsByRange(getPlayHistoryEvents(), range, statsZone);
+  const periodCounts = countPlaysByTrack(periodEv);
+  if (!periodCounts.size) return [];
+
+  const trackIds = [...periodCounts.keys()];
+  const artistsByTrack = buildUniqueArtistIdsByTrack(trackIds);
+
+  const artistPlays = new Map();
+  for (const [trackId, playCount] of periodCounts) {
+    const artistIds = artistsByTrack.get(String(trackId));
+    if (!artistIds?.size) continue;
+    for (const artistId of artistIds) {
+      artistPlays.set(artistId, (artistPlays.get(artistId) || 0) + playCount);
+    }
+  }
+
+  if (!artistPlays.size) return [];
+
+  const sortedArtistIds = [...artistPlays.entries()]
+    .sort(
+      (a, b) =>
+        b[1] - a[1] ||
+        String(a[0]).localeCompare(String(b[0]), undefined, { sensitivity: 'base' })
+    )
+    .slice(0, limit)
+    .map(([id]) => id);
+
+  const artPlaceholders = sortedArtistIds.map(() => '?').join(',');
+  const rows = db
+    .prepare(
+      `
+    SELECT id, name, cover_type
+    FROM artists
+    WHERE id IN (${artPlaceholders})
+  `
+    )
+    .all(...sortedArtistIds);
+  const byId = Object.fromEntries(rows.map((a) => [String(a.id), a]));
+
+  return sortedArtistIds
+    .map((id) => {
+      const row = byId[id];
+      if (!row) return null;
+      return {
+        ...row,
+        period_plays: artistPlays.get(id) || 0,
+      };
+    })
+    .filter(Boolean);
 }
 
 /** 대표 앨범 기준으로 롤업 */

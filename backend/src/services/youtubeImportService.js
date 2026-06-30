@@ -127,7 +127,7 @@ function uniqueDestPath(destPath) {
  * @returns {Promise<{ destPath: string, title: string }>}
  */
 export async function downloadOne(opts) {
-  const { videoId, webpageUrl, sourceUrl, tags, destDir: destDirOverride } = opts;
+  const { videoId, webpageUrl, sourceUrl, tags, destDir: destDirOverride, destPath: destPathOverride } = opts;
   const ytDlp = resolveYtDlpBin();
   const ffmpeg = resolveFfmpegBin();
   const tempRoot = ensureImportTempDir();
@@ -135,16 +135,25 @@ export async function downloadOne(opts) {
   fs.mkdirSync(workDir, { recursive: true });
 
   const watchUrl = webpageUrl || sourceUrl || `https://www.youtube.com/watch?v=${videoId}`;
-  const destDir = destDirOverride || buildDestDir(TRACKS_PATH, {
-    artist: tags.artist,
-    album: tags.album,
-  });
-  fs.mkdirSync(destDir, { recursive: true });
+
+  let destPath;
+  if (destPathOverride) {
+    destPath = path.resolve(destPathOverride);
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+  } else {
+    const destDir = destDirOverride || buildDestDir(TRACKS_PATH, {
+      artist: tags.artist,
+      album: tags.album,
+    });
+    fs.mkdirSync(destDir, { recursive: true });
+
+    const title = sanitizePathSegment(tags.title, 'track');
+    destPath = buildDestFilePath(destDir, title);
+    destPath = assertInsideTracksRoot(TRACKS_PATH, destPath);
+    destPath = uniqueDestPath(destPath);
+  }
 
   const title = sanitizePathSegment(tags.title, 'track');
-  let destPath = buildDestFilePath(destDir, title);
-  destPath = assertInsideTracksRoot(TRACKS_PATH, destPath);
-  destPath = uniqueDestPath(destPath);
 
   const tempOut = path.join(workDir, 'audio.%(ext)s');
 

@@ -7,6 +7,7 @@ import { useLibraryStore } from '@/stores/library'
 import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 import ImportTrackTable from '@/components/download/ImportTrackTable.vue'
 import ImportProgress from '@/components/download/ImportProgress.vue'
 import { Button } from '@/components/ui/button'
@@ -114,7 +115,7 @@ async function handleStartYoutube() {
     await importStore.fetchJobStatus(id)
     await importStore.pollJobUntilDone(id)
     ytPhase.value = 'done'
-    await library.fetchLibrary()
+    await library.fetchLibrary({ force: true })
     notify.success(t('download.completed'))
   } catch (e) {
     ytPhase.value = 'form'
@@ -133,7 +134,7 @@ function resetYoutube() {
 </script>
 
 <template>
-  <div class="w-full max-w-4xl mx-auto space-y-6 py-4">
+  <PageLayout>
     <ViewHeader
       :title="t('import.title')"
       :description="t('import.subtitle')"
@@ -204,5 +205,5 @@ function resetYoutube() {
         </RouterLink>
       </p>
     </template>
-  </div>
+  </PageLayout>
 </template>

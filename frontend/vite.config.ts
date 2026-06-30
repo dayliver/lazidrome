@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons.svg', 'pwa-192.png', 'pwa-512.png'],
+      includeAssets: ['app-icon.svg', 'apple-touch-icon.png', 'pwa-192.png', 'pwa-512.png', 'icons.svg'],
       manifest: {
         name: 'Lazidrome',
         short_name: 'Lazidrome',
@@ -41,6 +41,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5294',
         changeOrigin: true,
+        ws: true,
       },
     },
   },

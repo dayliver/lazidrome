@@ -25,11 +25,14 @@ import searchRoutes from './routes/search.js';
 import imagesRoutes from './routes/images.js';
 import playlistsRoutes from './routes/playlists.js';
 import homeRoutes from './routes/home.js';
+import visitsRoutes from './routes/visits.js';
 import statsRoutes from './routes/stats.js';
 import settingsRoutes from './routes/settings.js';
+import libraryRoutes from './routes/library.js';
 import adminRoutes from './routes/admin.js';
 import importRoutes from './routes/import.js';
 import filesRoutes from './routes/files.js';
+import playbackRoutes from './routes/playback.js';
 
 dotenv.config();
 
@@ -186,11 +189,14 @@ fastify.register(searchRoutes);
 fastify.register(imagesRoutes);
 fastify.register(playlistsRoutes);
 fastify.register(homeRoutes);
+fastify.register(visitsRoutes);
 fastify.register(statsRoutes);
 fastify.register(settingsRoutes);
+fastify.register(libraryRoutes);
 fastify.register(adminRoutes);
 fastify.register(importRoutes);
 fastify.register(filesRoutes);
+fastify.register(playbackRoutes);
 
 const start = async () => {
   try {

@@ -1,5 +1,6 @@
 import { getDB } from '../db.js';
 import { updateArtistMeta, upsertArtistBio, deleteArtistBio } from '../repositories/artistRepository.js';
+import { bumpLibraryRevisionNow } from '../lib/libraryRevision.js';
 
 export function mergeTags(localTags, externalTags, mode) {
   if (mode === 'force') return externalTags;
@@ -14,9 +15,15 @@ export function editArtist(id, data) {
   const db = getDB();
   const { title, biography, tags, mbid } = data;
 
+  const meta = {};
+  if (title !== undefined) meta.name = title;
+  if (tags !== undefined) meta.tags = tags;
+  if (mbid !== undefined) meta.mbid = mbid;
+
   db.transaction(() => {
-    // 프론트에서 artist.name을 title이라는 키로 보내고 있습니다.
-    updateArtistMeta(id, { name: title, tags, mbid });
+    if (Object.keys(meta).length) {
+      updateArtistMeta(id, meta);
+    }
 
     if (biography !== undefined) {
       if (biography && biography.trim() !== '') {
@@ -26,6 +33,8 @@ export function editArtist(id, data) {
       }
     }
   })();
+
+  bumpLibraryRevisionNow();
 }
 
 // 💡 [버그 방지] DB의 태그 문자열을 안전하게 배열로 변환

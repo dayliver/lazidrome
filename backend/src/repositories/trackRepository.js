@@ -1,4 +1,9 @@
 import { getDB } from '../db.js';
+import {
+  parseTrackListFilters,
+  buildTrackListWhere,
+  buildTrackListOrder,
+} from '../lib/trackListQuery.js';
 
 const db = getDB();
 
@@ -13,38 +18,61 @@ const TRACK_LIST_FROM = `
 const TRACK_LIST_SELECT = `
     SELECT 
       t.id, t.title, t.rating, t.starred, t.year, t.tags, t.play_count, t.last_played,
-      t.custom_cover_type, f.duration, f.format, f.bitrate,
+      t.custom_cover_type, f.duration, f.format, f.bitrate, f.scanned_at,
       alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType, 
       GROUP_CONCAT(a.name, ', ') as artist
     ${TRACK_LIST_FROM}`;
 
-const TRACK_LIST_GROUP_ORDER = `GROUP BY t.id ORDER BY f.scanned_at DESC`;
-
 export function countTracks() {
   return db.prepare(`SELECT COUNT(*) AS total FROM track_metadata`).get().total;
+}
+
+const TRACK_LIST_GROUP_ORDER = `GROUP BY t.id ORDER BY f.scanned_at DESC`;
+
+export function countTracksFiltered(query = {}) {
+  const filters = parseTrackListFilters(query);
+  const { where, params } = buildTrackListWhere(filters);
+  return db
+    .prepare(`
+      SELECT COUNT(*) AS total
+      FROM track_metadata t
+      JOIN track_filedata f ON t.file_id = f.id
+      ${where}
+    `)
+    .get(...params).total;
 }
 
 export function findAllTracks() {
   return db.prepare(`${TRACK_LIST_SELECT} ${TRACK_LIST_GROUP_ORDER}`).all();
 }
 
-export function findTracksPage(offset, limit) {
+export function findTracksPage(offset, limit, query = {}) {
+  const filters = parseTrackListFilters(query);
+  const { where, params } = buildTrackListWhere(filters);
+  const orderClause = buildTrackListOrder(filters.sorts);
+
   return db
-    .prepare(`${TRACK_LIST_SELECT} ${TRACK_LIST_GROUP_ORDER} LIMIT ? OFFSET ?`)
-    .all(limit, offset);
+    .prepare(`
+      ${TRACK_LIST_SELECT}
+      ${where}
+      GROUP BY t.id
+      ${orderClause}
+      LIMIT ? OFFSET ?
+    `)
+    .all(...params, limit, offset);
 }
 
 export function findTracksByIds(ids) {
-  const numericIds = [...new Set(ids.map((id) => Number(id)).filter((n) => Number.isFinite(n) && n > 0))];
-  if (numericIds.length === 0) return [];
+  const idList = [...new Set(ids.map((id) => String(id).trim()).filter(Boolean))];
+  if (idList.length === 0) return [];
 
-  const placeholders = numericIds.map(() => '?').join(',');
+  const placeholders = idList.map(() => '?').join(',');
   const rows = db
     .prepare(`${TRACK_LIST_SELECT} WHERE t.id IN (${placeholders}) ${TRACK_LIST_GROUP_ORDER}`)
-    .all(...numericIds);
+    .all(...idList);
 
-  const byId = new Map(rows.map((r) => [r.id, r]));
-  return numericIds.map((id) => byId.get(id)).filter(Boolean);
+  const byId = new Map(rows.map((r) => [String(r.id), r]));
+  return idList.map((id) => byId.get(id)).filter(Boolean);
 }
 
 export function searchTracks(query, limit = 10) {
@@ -75,6 +103,28 @@ export function findTrackById(id) {
       f.duration, alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
       (SELECT json_group_array(json_object('id', a.id, 'name', a.name))
         FROM track_artists ta JOIN artists a ON ta.artist_id = a.id WHERE ta.track_id = t.id) as artists_json
+    FROM track_metadata t
+    JOIN track_filedata f ON t.file_id = f.id
+    LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
+    LEFT JOIN albums alb ON at.album_id = alb.id
+    WHERE t.id = ?
+  `).get(id);
+}
+
+export function findTrackDetailById(id) {
+  return db.prepare(`
+    SELECT
+      t.id, t.title, t.rating, t.starred, t.tags, t.genre, t.year, t.play_count, t.last_played, t.custom_cover_type,
+      f.duration, f.format, f.bitrate, f.path AS filePath, f.size AS fileSize,
+      alb.id AS albumId, alb.name AS albumName, alb.cover_type AS albumCoverType,
+      (SELECT json_group_array(json_object('id', a.id, 'name', a.name, 'role_mask', ta.role_mask))
+        FROM track_artists ta JOIN artists a ON ta.artist_id = a.id WHERE ta.track_id = t.id) AS artists_json,
+      (SELECT json_group_array(json_object(
+        'id', al.id, 'name', al.name, 'year', al.year, 'cover_type', al.cover_type,
+        'is_primary', at2.is_primary, 'disc_number', at2.disc_number, 'track_number', at2.track_number))
+        FROM album_tracks at2 JOIN albums al ON at2.album_id = al.id WHERE at2.track_id = t.id) AS albums_json,
+      (SELECT json_group_array(json_object('id', p.id, 'name', p.name, 'cover_type', p.cover_type, 'type', p.type))
+        FROM playlist_tracks pt JOIN playlists p ON pt.playlist_id = p.id WHERE pt.track_id = t.id) AS playlists_json
     FROM track_metadata t
     JOIN track_filedata f ON t.file_id = f.id
     LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
@@ -221,4 +271,61 @@ export function replaceTrackArtists(trackId, artists) {
         .run(trackId, a.artistId, a.role_mask || 1);
     }
   }
+}
+
+export function findTrackFileForReplace(trackId) {
+  return db.prepare(`
+    SELECT
+      t.id AS trackId, t.title, t.file_id AS fileId,
+      f.path, f.format, f.size, f.duration, f.bitrate
+    FROM track_metadata t
+    JOIN track_filedata f ON t.file_id = f.id
+    WHERE t.id = ?
+  `).get(trackId);
+}
+
+export function findTrackEmbedTags(trackId) {
+  return db.prepare(`
+    SELECT
+      t.title,
+      (SELECT GROUP_CONCAT(a.name, ', ') FROM track_artists ta JOIN artists a ON ta.artist_id = a.id WHERE ta.track_id = t.id) AS artist,
+      (SELECT al.name FROM album_tracks at JOIN albums al ON at.album_id = al.id WHERE at.track_id = t.id AND at.is_primary = 1 LIMIT 1) AS album
+    FROM track_metadata t
+    WHERE t.id = ?
+  `).get(trackId);
+}
+
+export function findOtherTrackByFileId(fileId, excludeTrackId) {
+  return db.prepare(`
+    SELECT id FROM track_metadata WHERE file_id = ? AND id != ? LIMIT 1
+  `).get(fileId, excludeTrackId);
+}
+
+/**
+ * @param {string} trackId
+ * @param {string} oldFileId
+ * @param {{ id: string, path: string, size: number, duration: number, bitrate: number | null, format: string | null }} fileRow
+ */
+export function swapTrackFileRecord(trackId, oldFileId, fileRow) {
+  db.transaction(() => {
+    const existing = db.prepare('SELECT id FROM track_filedata WHERE id = ?').get(fileRow.id);
+    if (existing) {
+      db.prepare(`
+        UPDATE track_filedata
+        SET path = ?, size = ?, duration = ?, bitrate = ?, format = ?, source = 'replace', scanned_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(fileRow.path, fileRow.size, fileRow.duration, fileRow.bitrate, fileRow.format, fileRow.id);
+    } else {
+      db.prepare(`
+        INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source)
+        VALUES (?, ?, ?, ?, ?, ?, 'replace')
+      `).run(fileRow.id, fileRow.path, fileRow.size, fileRow.duration, fileRow.bitrate, fileRow.format);
+    }
+
+    db.prepare('UPDATE track_metadata SET file_id = ? WHERE id = ?').run(fileRow.id, trackId);
+
+    if (oldFileId && oldFileId !== fileRow.id) {
+      db.prepare('DELETE FROM track_filedata WHERE id = ?').run(oldFileId);
+    }
+  })();
 }

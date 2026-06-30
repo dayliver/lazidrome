@@ -1,154 +1,107 @@
-const KEY = 'lazidrome.frequentVisits.v2'
-const LEGACY_KEY = 'lazidrome.frequentVisits.v1'
-const MAX = 24
-/** 홈 "자주 찾은 항목" 집계 기간 — 통산 누적 방지 */
+// @ts-nocheck — Pinia auth store is JS; visit helpers call fetch at runtime only.
+import { useAuthStore } from '@/stores/auth'
+
+const LEGACY_STORAGE_KEY = 'lazidrome.frequentVisits.v2'
+const LEGACY_STORAGE_KEY_V1 = 'lazidrome.frequentVisits.v1'
+/** @deprecated 자동 import 마이그레이션 플래그 — 폐기 후 DB clear 트리거용 */
+const OLD_IMPORTED_FLAG = 'lazidrome.frequentVisits.dbMigrated.v1'
+const DISCARDED_KEY = 'lazidrome.frequentVisits.discardedLocal.v1'
+
+/** 홈 "자주 찾은 항목" 집계 기간 — 서버와 동일 (7일) */
 export const VISIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 
-export type VisitKind = 'playlist' | 'album' | 'artist' | 'tag'
+export type VisitKind = 'playlist' | 'album' | 'artist' | 'tag' | 'track'
 
 export interface VisitEntry {
   type: VisitKind
   id: string
   name: string
-  /** 최근 7일 내 방문 시각(ms) */
-  hits: number[]
-  /** readFrequentVisits에서 계산 */
   count: number
   at: number
 }
 
-type StoredEntry = {
-  type: VisitKind
-  id: string
-  name: string
-  hits?: number[]
-  at?: number
-  count?: number
-}
-
-function pruneHits(hits: number[], now: number): number[] {
-  const cutoff = now - VISIT_WINDOW_MS
-  return hits.filter((t) => Number.isFinite(t) && t >= cutoff)
-}
-
-function migrateLegacyEntry(raw: { type?: string; id?: string; name?: string; hits?: number[]; at?: number; count?: number }, now: number): StoredEntry | null {
-  const type = raw?.type
-  if (!type || type === 'track') return null
-  if (!type || raw.id == null || raw.id === '') return null
-  if (!['playlist', 'album', 'artist', 'tag'].includes(type)) return null
-
-  let hits = Array.isArray(raw.hits) ? raw.hits : []
-  if (!hits.length) {
-    const at = Number(raw.at) || 0
-    const legacyCount = Math.max(1, Number(raw.count) || 1)
-    if (at && now - at <= VISIT_WINDOW_MS) {
-      hits = Array.from({ length: Math.min(legacyCount, 8) }, () => at)
-    }
-  }
-  hits = pruneHits(hits, now)
-  if (!hits.length) return null
-  return {
-    type: type as VisitKind,
-    id: String(raw.id),
-    name: typeof raw.name === 'string' ? raw.name : '',
-    hits,
-  }
-}
-
-function loadRawList(): StoredEntry[] {
-  if (typeof localStorage === 'undefined') return []
+function clearLocalVisitStorage(): void {
+  if (typeof localStorage === 'undefined') return
   try {
-    const raw = localStorage.getItem(KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      return Array.isArray(parsed) ? parsed : []
-    }
-    const legacy = localStorage.getItem(LEGACY_KEY)
-    if (!legacy) return []
-    const parsed = JSON.parse(legacy)
-    const arr = Array.isArray(parsed) ? parsed : []
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
+    localStorage.removeItem(LEGACY_STORAGE_KEY_V1)
+    localStorage.removeItem(OLD_IMPORTED_FLAG)
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * localStorage 방문 기록은 DB로 가져오지 않고 폐기합니다.
+ * 예전 자동 import(dbMigrated.v1)로 DB에 들어간 데이터는 1회 DELETE합니다.
+ */
+export async function ensureLegacyVisitsDiscarded(): Promise<void> {
+  if (typeof localStorage === 'undefined') return
+
+  const auth = useAuthStore()
+  const hadAutoImport = localStorage.getItem(OLD_IMPORTED_FLAG) === '1'
+  const alreadyDiscarded = localStorage.getItem(DISCARDED_KEY) === '1'
+
+  if (!alreadyDiscarded && auth.token && hadAutoImport) {
     try {
-      localStorage.removeItem(LEGACY_KEY)
+      const res = await auth.fetchWithAuth('/api/visits/clear', { method: 'POST' })
+      if (!res.ok) return
     } catch {
-      /* ignore */
+      return
     }
-    return arr
-  } catch {
-    return []
+  }
+
+  clearLocalVisitStorage()
+  if (!alreadyDiscarded) {
+    localStorage.setItem(DISCARDED_KEY, '1')
   }
 }
 
-function saveList(list: StoredEntry[]): void {
-  if (typeof localStorage === 'undefined') return
-  try {
-    localStorage.setItem(KEY, JSON.stringify(list))
-  } catch {
-    /* quota */
-  }
-}
+/** @deprecated ensureLegacyVisitsDiscarded 사용 */
+export const ensureVisitsMigrated = ensureLegacyVisitsDiscarded
 
+/** 상세 페이지 방문 기록 (best-effort, 서버 30초 디바운스) */
 export function recordVisit(entry: { type: VisitKind; id: string | number; name?: string }): void {
-  if (typeof localStorage === 'undefined') return
+  void postVisit(entry)
+}
+
+async function postVisit(entry: { type: VisitKind; id: string | number }): Promise<void> {
   const type = entry?.type
   const id = entry?.id
   if (!type || id == null || id === '') return
-  const sid = String(id)
-  const name = typeof entry.name === 'string' ? entry.name : ''
 
-  const now = Date.now()
-  let list = loadRawList()
+  const auth = useAuthStore()
+  if (!auth.token) return
 
-  const idx = list.findIndex((e) => e && e.type === type && String(e.id) === sid)
-  if (idx >= 0) {
-    const cur = list[idx]
-    const hits = pruneHits([...(Array.isArray(cur.hits) ? cur.hits : []), now], now)
-    if (!hits.length) {
-      list.splice(idx, 1)
-    } else {
-      list[idx] = { type, id: sid, name: name || cur.name || '', hits }
-    }
-  } else {
-    list.unshift({ type, id: sid, name, hits: [now] })
+  try {
+    await auth.fetchWithAuth('/api/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, id: String(id) }),
+    })
+  } catch {
+    /* offline 등 — 무시 */
   }
-
-  list.sort((a, b) => {
-    const ca = (a.hits?.length ?? 0)
-    const cb = (b.hits?.length ?? 0)
-    if (cb !== ca) return cb - ca
-    const la = Math.max(0, ...(a.hits ?? []))
-    const lb = Math.max(0, ...(b.hits ?? []))
-    return lb - la
-  })
-  if (list.length > MAX) list = list.slice(0, MAX)
-
-  saveList(list)
 }
 
-export function readFrequentVisits(): VisitEntry[] {
-  if (typeof localStorage === 'undefined') return []
-  const now = Date.now()
+/** 홈 "자주 찾은 항목" (최근 7일, 서버 집계) */
+export async function fetchFrequentVisits(limit = 24): Promise<VisitEntry[]> {
+  const auth = useAuthStore()
+  if (!auth.token) return []
+
   try {
-    const rawList = loadRawList()
-    const out: VisitEntry[] = []
-    for (const raw of rawList) {
-      const norm = migrateLegacyEntry(raw as { type?: string; id?: string; name?: string; hits?: number[]; at?: number; count?: number }, now)
-      if (!norm?.hits?.length) continue
-      const hits = pruneHits(norm.hits, now)
-      if (!hits.length) continue
-      out.push({
-        type: norm.type,
-        id: norm.id,
-        name: norm.name,
-        hits,
-        count: hits.length,
-        at: Math.max(...hits),
-      })
-    }
-    out.sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count
-      return b.at - a.at
-    })
-    return out.slice(0, MAX)
+    const q = new URLSearchParams({ limit: String(limit) })
+    const res = await auth.fetchWithAuth(`/api/visits/frequent?${q}`)
+    if (!res.ok) return []
+    const body = await res.json()
+    const rows = Array.isArray(body?.data) ? body.data : []
+    return rows.map((row: VisitEntry) => ({
+      type: row.type,
+      id: String(row.id),
+      name: typeof row.name === 'string' ? row.name : '',
+      count: Number(row.count) || 0,
+      at: Number(row.at) || 0,
+    }))
   } catch {
     return []
   }

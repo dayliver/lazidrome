@@ -3,6 +3,7 @@ import {
   getHabitStatsPayload,
   getTopTracksByPlayEvents,
   getTopAlbumsByPlayEvents,
+  getTopArtistsByPlayEvents,
   getChartTotals,
   RANGES,
   CHART_RANGES,
@@ -39,8 +40,9 @@ export async function getStatsTopHandler(request, reply) {
     const timezone = request.query?.timezone;
     const tracks = parseTagsRows(getTopTracksByPlayEvents(range, limit, timezone));
     const albums = getTopAlbumsByPlayEvents(range, limit, timezone);
+    const artists = getTopArtistsByPlayEvents(range, limit, timezone);
     const totals = getChartTotals(range, timezone);
-    return { success: true, data: { range, limit, tracks, albums, totals } };
+    return { success: true, data: { range, limit, tracks, albums, artists, totals } };
   } catch (err) {
     request.log.error(err);
     return reply.code(500).send({ success: false, error: '통계 상위 목록 조회 중 오류가 발생했습니다.' });

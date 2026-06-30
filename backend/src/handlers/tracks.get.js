@@ -1,5 +1,5 @@
 import {
-  countTracks,
+  countTracksFiltered,
   findAllTracks,
   findTracksPage,
   findTracksByIds,
@@ -38,20 +38,11 @@ export async function getTracksHandler(request, reply) {
       return { items, total: items.length, offset: 0, limit: items.length, hasMore: false };
     }
 
-    if (typeof q === 'string' && q.trim()) {
-      const searchLimit = Math.min(
-        50,
-        Math.max(1, parseInt(String(request.query.limit ?? '10'), 10) || 10)
-      );
-      const items = searchTracks(q.trim(), searchLimit).map(mapTrackRow);
-      return { items, total: items.length, offset: 0, limit: searchLimit, hasMore: false };
-    }
-
     const page = parsePageQuery(request.query ?? {});
     if (page) {
       const { offset, limit } = page;
-      const total = countTracks();
-      const rows = findTracksPage(offset, limit);
+      const total = countTracksFiltered(request.query ?? {});
+      const rows = findTracksPage(offset, limit, request.query ?? {});
       const items = rows.map(mapTrackRow);
       return {
         items,
@@ -60,6 +51,15 @@ export async function getTracksHandler(request, reply) {
         limit,
         hasMore: offset + items.length < total,
       };
+    }
+
+    if (typeof q === 'string' && q.trim()) {
+      const searchLimit = Math.min(
+        50,
+        Math.max(1, parseInt(String(request.query.limit ?? '10'), 10) || 10)
+      );
+      const items = searchTracks(q.trim(), searchLimit).map(mapTrackRow);
+      return { items, total: items.length, offset: 0, limit: searchLimit, hasMore: false };
     }
 
     // 레거시: 쿼리 없으면 전체 배열 (기존 클라이언트 호환)

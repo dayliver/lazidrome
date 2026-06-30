@@ -6,6 +6,7 @@ import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import PlaylistListTable from '@/components/playlist/PlaylistListTable.vue'
 import PlaylistDialog from '@/components/playlist/PlaylistDialog.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 
 const { t } = useI18n()
@@ -49,7 +50,7 @@ watch(showAuthEmpty, () => {
 </script>
 
 <template>
-  <div class="w-full space-y-6 animate-in fade-in duration-500">
+  <PageLayout>
     <ViewHeader
       :title="t('pages.playlists.title')"
       :description="description"
@@ -78,5 +79,5 @@ watch(showAuthEmpty, () => {
       :edit-target="selectedPlaylist"
       @success="playlistStore.fetchPlaylists()"
     />
-  </div>
+  </PageLayout>
 </template>

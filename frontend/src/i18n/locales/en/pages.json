@@ -2,17 +2,21 @@
   "pages": {
     "home": {
       "title": "Home",
-      "description": "Frequently visited pages and top tracks from the last 7 days.",
+      "description": "Frequently visited pages and top tracks and artists from the last 7 days.",
       "authEmpty": "Log in to fill your home screen.",
       "frequentTitle": "Frequently visited",
       "frequentHint": "Only pages you opened often in the last 7 days.",
       "frequentEmpty": "Browse playlists, albums, artists, and tags to see them here.",
       "visitMeta": "{kind} · {count} visits in 7 days",
+      "visitCount": "{count} visits",
       "topTitle": "Most played (7 days)",
       "topHint": "Tap a track to queue the top 20 from that rank and play from it.",
       "topLoading": "Loading…",
       "topError": "Could not load rankings.",
       "topEmpty": "No plays recorded yet.",
+      "topArtistsTitle": "Most played artists (7 days)",
+      "topArtistsHint": "Tap an artist to open their page.",
+      "topArtistsEmpty": "No plays recorded yet.",
       "coverAlt": "{name} cover",
       "albumArtAlt": "{title} album art",
       "playCount": "{count} plays"
@@ -20,7 +24,10 @@
     "artists": {
       "title": "Artists",
       "description": "{count} artists total",
-      "loading": "Loading artists…"
+      "loading": "Loading artists…",
+      "empty": "No artists to show.",
+      "coverAlt": "{name} profile",
+      "cardNoTags": "No tags"
     },
     "albums": {
       "title": "Albums",
@@ -62,6 +69,10 @@
       "playlistNotFoundHint": "It may have been deleted or is inaccessible.",
       "artistLoading": "Loading artist…",
       "artistNotFound": "Artist not found.",
+      "trackLoading": "Loading track…",
+      "trackNotFound": "Track not found.",
+      "trackDuration": "Duration",
+      "trackGenre": "Genre",
       "artistRatingChart": "Rating distribution",
       "artistRatingChartLabel": "Tracks",
       "artistComingSoon": "Coming soon (MusicBrainz integration)",
@@ -91,11 +102,33 @@
       "artistStatTotalTracks": "Total tracks",
       "artistStatAvgRating": "Avg. rating",
       "entityArtist": "Artist",
+      "entityTrack": "Track",
       "entityTag": "Tag",
       "sectionPopularTracks": "Popular tracks",
       "sectionAnalytics": "Analytics",
       "sectionRelatedArtists": "Related artists",
-      "sectionFeaturedArtists": "Featured artists"
+      "sectionFeaturedArtists": "Featured artists",
+      "sectionAlbums": "Albums",
+      "sectionPlaylists": "Playlists",
+      "sectionFileLocation": "File location",
+      "openInFiles": "Open in file browser",
+      "replaceAudio": {
+        "title": "Replace audio",
+        "description": "Replace only the audio file for “{title}”.",
+        "preserveHint": "Play count, rating, favorites, and playlist links are preserved.",
+        "tabLocal": "Local file",
+        "tabYoutube": "YouTube",
+        "dropTitle": "Drop a new audio file or choose one",
+        "chooseFile": "Choose file",
+        "stageFailed": "Could not prepare the file.",
+        "youtubeUrl": "YouTube URL",
+        "pickVideo": "Choose a video",
+        "youtubeFormatHint": "Imports from YouTube are saved as MP3. The format may change.",
+        "confirm": "Replace",
+        "replacing": "Replacing…",
+        "success": "Audio replaced.",
+        "failed": "Could not replace audio."
+      }
     }
   },
   "visit": {
@@ -103,8 +136,10 @@
     "album": "Album",
     "artist": "Artist",
     "tag": "Tag",
+    "track": "Track",
     "fallbackAlbum": "Album",
     "fallbackArtist": "Artist",
-    "fallbackPlaylist": "Playlist"
+    "fallbackPlaylist": "Playlist",
+    "fallbackTrack": "Track"
   }
 }

@@ -18,8 +18,63 @@ export function createAlbum(name, year) {
 }
 
 export function updateAlbumTrack(trackId, albumId) {
-  db.prepare('UPDATE album_tracks SET album_id = ? WHERE track_id = ? AND is_primary = 1')
-    .run(albumId, trackId);
+  setPrimaryAlbumForTrack(trackId, albumId);
+}
+
+/** 트랙의 primary 앨범 링크를 설정 (없으면 생성) */
+export function setPrimaryAlbumForTrack(trackId, albumId) {
+  const primary = db
+    .prepare('SELECT id FROM album_tracks WHERE track_id = ? AND is_primary = 1')
+    .get(trackId);
+
+  if (primary) {
+    db.prepare('UPDATE album_tracks SET album_id = ? WHERE id = ?').run(albumId, primary.id);
+    return;
+  }
+
+  const anyLink = db.prepare('SELECT id FROM album_tracks WHERE track_id = ? LIMIT 1').get(trackId);
+  if (anyLink) {
+    db.prepare('UPDATE album_tracks SET album_id = ?, is_primary = 1 WHERE id = ?').run(albumId, anyLink.id);
+    return;
+  }
+
+  db.prepare(`
+    INSERT INTO album_tracks (id, album_id, track_id, is_primary, disc_number, track_number)
+    VALUES (?, ?, ?, 1, 1, NULL)
+  `).run(ulid(), albumId, trackId);
+}
+
+/**
+ * 스캐너와 동일: 앨범명 + 아티스트 집합으로 기존 앨범을 찾거나 새로 만든다.
+ * @param {string[]} artistIds
+ */
+export function findOrCreateAlbumByNameAndArtists(albumName, artistIds, year) {
+  const safeAlbumName = (albumName && String(albumName).trim()) || 'Unknown Album';
+  const ids = [...new Set((artistIds || []).filter(Boolean))];
+  const sortedArtistKey = [...ids].sort().join(',');
+
+  const candidateAlbums = db.prepare('SELECT id FROM albums WHERE name = ?').all(safeAlbumName);
+  for (const row of candidateAlbums) {
+    const existingArtists = db
+      .prepare('SELECT artist_id FROM album_artists WHERE album_id = ?')
+      .all(row.id)
+      .map((a) => a.artist_id);
+    if ([...existingArtists].sort().join(',') === sortedArtistKey) {
+      return row.id;
+    }
+  }
+
+  const id = ulid();
+  db.prepare('INSERT INTO albums (id, name, year) VALUES (?, ?, ?)').run(id, safeAlbumName, year ?? null);
+  if (ids.length) {
+    const insertAlbumArtist = db.prepare(
+      'INSERT INTO album_artists (album_id, artist_id) VALUES (?, ?)',
+    );
+    for (const aId of ids) {
+      insertAlbumArtist.run(id, aId);
+    }
+  }
+  return id;
 }
 
 export function updateAlbumCoverType(albumId, ext) {
@@ -109,7 +164,7 @@ export function updateAlbumMeta(id, { title, year, mbid, tags, description }) {
   if (!cur) return;
   const name = title !== undefined ? title : cur.name;
   const y = year !== undefined ? year : cur.year;
-  const m = mbid !== undefined ? mbid : cur.mbid;
+  const m = mbid !== undefined ? (mbid || null) : cur.mbid;
   const tagsStr =
     tags !== undefined ? (Array.isArray(tags) ? JSON.stringify(tags) : null) : cur.tags;
   const desc = description !== undefined ? description : cur.description;
@@ -127,13 +182,25 @@ export function replaceAlbumArtists(albumId, artists) {
 }
 
 export function replaceAlbumTracks(albumId, tracks) {
+  const valid = (tracks || [])
+    .map((t) => (t ? { ...t, track_id: t.track_id || t.id } : null))
+    .filter((t) => t && t.track_id);
+  if (!valid.length) return;
+
   db.prepare('DELETE FROM album_tracks WHERE album_id = ?').run(albumId);
   const insertStmt = db.prepare(`
     INSERT INTO album_tracks (id, album_id, track_id, is_primary, disc_number, track_number)
     VALUES (?, ?, ?, ?, ?, ?)
   `);
-  for (const t of tracks) {
-    insertStmt.run(ulid(), albumId, t.track_id, t.is_primary ? 1 : 0, t.disc_number || 1, t.track_number || null);
+  for (const t of valid) {
+    insertStmt.run(
+      ulid(),
+      albumId,
+      t.track_id,
+      t.is_primary ? 1 : 0,
+      t.disc_number || 1,
+      t.track_number || null,
+    );
   }
 }
 

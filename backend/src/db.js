@@ -49,6 +49,8 @@ export function initDB() {
     console.log('✔ 데이터베이스가 이미 준비되어 있습니다.');
   }
   ensureAlbumDescriptionColumn();
+  normalizeEmptyMbids();
+  ensurePageVisitsTable();
 }
 
 /** 기존 DB에 albums.description 컬럼이 없으면 추가 (스키마 v2.1+) */
@@ -60,6 +62,42 @@ function ensureAlbumDescriptionColumn() {
     console.log('📌 albums.description 컬럼 추가됨 (마이그레이션)');
   } catch (err) {
     console.error('❌ albums.description 마이그레이션 실패:', err.message);
+  }
+}
+
+/** 빈 mbid('')는 UNIQUE 충돌을 일으키므로 NULL로 정규화 */
+function normalizeEmptyMbids() {
+  try {
+    const albumN = db.prepare("UPDATE albums SET mbid = NULL WHERE mbid = ''").run().changes;
+    const artistN = db.prepare("UPDATE artists SET mbid = NULL WHERE mbid = ''").run().changes;
+    if (albumN || artistN) {
+      console.log(`📌 빈 MBID 정규화: albums ${albumN}, artists ${artistN}`);
+    }
+  } catch (err) {
+    console.error('❌ MBID 정규화 실패:', err.message);
+  }
+}
+
+/** page_visits 테이블 (기존 DB 마이그레이션) */
+function ensurePageVisitsTable() {
+  const exists = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='page_visits'")
+    .get();
+  if (exists) return;
+  try {
+    db.exec(`
+      CREATE TABLE page_visits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        visited_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX idx_page_visits_time ON page_visits(visited_at);
+      CREATE INDEX idx_page_visits_entity ON page_visits(entity_type, entity_id, visited_at);
+    `);
+    console.log('📌 page_visits 테이블 추가됨 (마이그레이션)');
+  } catch (err) {
+    console.error('❌ page_visits 마이그레이션 실패:', err.message);
   }
 }
 

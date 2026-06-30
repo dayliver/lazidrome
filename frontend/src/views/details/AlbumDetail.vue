@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
+import { useSyncAlbumDetailWithLibrary } from '@/composables/useSyncAlbumDetailWithLibrary'
+import { useClientTrackListQuery } from '@/composables/useClientTrackListQuery'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useLibraryStore } from '@/stores/library'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
@@ -16,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import DetailLayout from '@/components/layout/DetailLayout.vue'
 
 import TrackListTable from '@/components/shared/TrackListTable.vue'
+import TrackListToolbar from '@/components/shared/TrackListToolbar.vue'
 import ArtistListTable from '@/components/shared/ArtistListTable.vue'
 import SectionHeader from '@/components/shared/SectionHeader.vue'
 const { t } = useI18n()
@@ -39,7 +42,22 @@ const { data, isLoading } = useAsyncResource(
 const album = computed(() => data.value?.album ?? null)
 const allArtists = computed(() => data.value?.allArtists ?? [])
 
+useSyncAlbumDetailWithLibrary(() => data.value?.album ?? null)
 useSyncTrackListWithLibrary(() => album.value?.tracks)
+
+const {
+  query: trackQuery,
+  searchInput: trackSearchInput,
+  displayTracks,
+  total: trackTotal,
+  shown: trackShown,
+  sortOptions: trackSortOptions,
+  setSort: setTrackSort,
+  toggleOrder: toggleTrackOrder,
+  toggleStarredFilter: toggleTrackStarredFilter,
+  setMinRating: setTrackMinRating,
+  resetFilters: resetTrackFilters,
+} = useClientTrackListQuery(() => album.value?.tracks, 'album')
 
 /** AlbumGrid와 동일: `cover_type`이 있을 때만 이미지 URL 부여 (불필요한 404·@error 방지) */
 const getAlbumImageUrl = (id) => auth.coverSrc('album', id)
@@ -65,15 +83,15 @@ const albumArtists = computed(() => {
 })
 
 const playSequential = () => {
-  if (album.value?.tracks?.length > 0) {
-    player.playNewQueue(album.value.tracks, 0)
+  if (displayTracks.value.length > 0) {
+    player.playNewQueue(displayTracks.value, 0)
   }
 }
 
 const playShuffle = () => {
-  if (album.value?.tracks?.length > 0) {
+  if (displayTracks.value.length > 0) {
     player.isShuffle = true
-    player.playNewQueue(album.value.tracks, Math.floor(Math.random() * album.value.tracks.length))
+    player.playNewQueue(displayTracks.value, Math.floor(Math.random() * displayTracks.value.length))
   }
 }
 
@@ -130,9 +148,33 @@ const handleEdit = async () => {
       </span>
     </div>
 
-    <section class="space-y-4">
+    <section v-if="album.tracks?.length" class="space-y-4">
+      <TrackListToolbar
+        :query="trackQuery"
+        :search-input="trackSearchInput"
+        :total="trackTotal"
+        :shown="trackShown"
+        :sort-options="trackSortOptions"
+        @update:search-input="trackSearchInput = $event"
+        @update:sort="setTrackSort"
+        @toggle-order="toggleTrackOrder"
+        @toggle-starred="toggleTrackStarredFilter"
+        @set-min-rating="setTrackMinRating"
+        @reset-filters="resetTrackFilters"
+      />
       <div class="bg-card overflow-hidden">
-        <TrackListTable :tracks="album.tracks" :show-album="false" :show-cover="false" />
+        <TrackListTable
+          v-if="displayTracks.length"
+          :tracks="displayTracks"
+          :show-album="false"
+          :show-cover="false"
+        />
+        <div
+          v-else
+          class="py-12 text-center text-sm font-medium text-muted-foreground border-t"
+        >
+          {{ t('trackList.noResults') }}
+        </div>
       </div>
       <div v-if="album.tracks?.length > 0" class="px-2 text-[10px] text-muted-foreground opacity-50 text-right">
         {{ t('pages.details.albumTrackSummary', { count: album.tracks.length, duration: durationLabel(album.totalDuration) }) }}

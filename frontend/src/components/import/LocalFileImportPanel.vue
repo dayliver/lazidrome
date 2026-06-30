@@ -102,12 +102,17 @@ async function handleCommit() {
   try {
     const body = await importStore.commitLocalUploads(items)
     if (body.failed > 0) {
-      notify.error(t('import.files.partialFailed', { n: body.failed }))
+      const tagFail = body.results?.find((r) => !r.ok && /메타데이터|metadata|ffmpeg/i.test(r.error || ''))
+      if (tagFail) {
+        notify.error(tagFail.error || t('import.files.tagEmbedFailed'))
+      } else {
+        notify.error(t('import.files.partialFailed', { n: body.failed }))
+      }
     } else {
       notify.success(t('import.files.completed'))
     }
     phase.value = 'done'
-    await library.fetchLibrary()
+    await waitForLibraryScan()
     emit('done')
   } catch (e) {
     notify.error(e?.message || t('import.files.commitFailed'))
@@ -117,6 +122,17 @@ async function handleCommit() {
 function resetAll() {
   rows.value = []
   phase.value = 'pick'
+}
+
+async function waitForLibraryScan(maxMs = 8000) {
+  const before = library.trackCount
+  const started = Date.now()
+  while (Date.now() - started < maxMs) {
+    await library.fetchLibrary({ force: true })
+    if (library.trackCount > before) return
+    await new Promise((r) => setTimeout(r, 600))
+  }
+  await library.fetchLibrary({ force: true })
 }
 
 defineExpose({ resetAll })

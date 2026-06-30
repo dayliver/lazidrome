@@ -138,8 +138,12 @@ async function writeFileWithMetadata(sourcePath, destPath, tags) {
   const ok = await writeAudioFileWithTags(sourcePath, destPath, tags);
   if (ok) return;
 
-  console.warn('[upload] ffmpeg tag embed failed; copying without tag update — re-save may show old tags until fixed');
-  fs.copyFileSync(sourcePath, destPath);
+  const err = new Error(
+    '오디오 파일에 메타데이터를 기록하지 못했습니다. ffmpeg 설치 및 PATH 설정을 확인하세요.',
+  );
+  err.statusCode = 422;
+  err.code = 'TAG_EMBED_FAILED';
+  throw err;
 }
 
 /**
@@ -184,6 +188,24 @@ export async function commitStagedUpload(item) {
 
   const relativePath = path.relative(path.resolve(TRACKS_PATH), destPath).replace(/\\/g, '/');
   return { stagingId, relativePath, fileName: path.basename(destPath) };
+}
+
+/** @returns {{ sourcePath: string, manifest: object, workDir: string }} */
+export function resolveStagedSource(stagingId) {
+  if (!stagingId) {
+    const err = new Error('stagingId required');
+    err.statusCode = 400;
+    throw err;
+  }
+  const workDir = workDirFor(stagingId);
+  const manifest = readManifest(workDir);
+  const sourcePath = stagedSourcePath(workDir, manifest.ext);
+  if (!fs.existsSync(sourcePath)) {
+    const err = new Error('Staged file missing');
+    err.statusCode = 404;
+    throw err;
+  }
+  return { sourcePath, manifest, workDir };
 }
 
 export function cancelStagedUpload(stagingId) {

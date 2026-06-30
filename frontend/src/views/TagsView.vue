@@ -9,6 +9,7 @@ import SafeImage from '@/components/shared/SafeImage.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import { Search, Hash, Tags } from 'lucide-vue-next'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -68,7 +69,7 @@ const handleCreate = () => {
 </script>
 
 <template>
-  <div class="w-full space-y-8 animate-in fade-in duration-500">
+  <PageLayout spacing="8" class="animate-in fade-in duration-500">
     <ViewHeader
       :title="t('pages.tags.title')"
       :description="description"
@@ -152,5 +153,5 @@ const handleCreate = () => {
         </div>
       </section>
     </template>
-  </div>
+  </PageLayout>
 </template>

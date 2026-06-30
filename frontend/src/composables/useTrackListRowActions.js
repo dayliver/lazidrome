@@ -1,14 +1,14 @@
 import { useRouter } from 'vue-router'
 import { t } from '@/i18n/t'
 import { useLibraryStore } from '@/stores/library'
-import { usePlayerStore } from '@/stores/player'
+import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import { useAuthStore } from '@/stores/auth'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
 import { getCoverUrl } from '@/lib/image'
 export function useTrackListRowActions(localTracks) {
   const router = useRouter()
   const library = useLibraryStore()
-  const player = usePlayerStore()
+  const playbackSync = usePlaybackSyncStore()
   const auth = useAuthStore()
   const metadataEdit = useMetadataEditStore()
 
@@ -21,8 +21,7 @@ export function useTrackListRowActions(localTracks) {
   }
 
   const playTrack = (index) => {
-    if (player.playList) player.playList(localTracks.value, index)
-    else player.playNewQueue(localTracks.value, index)
+    void playbackSync.playTracks(localTracks.value, index)
   }
 
   const goToArtist = async (artistName) => {
@@ -35,6 +34,11 @@ export function useTrackListRowActions(localTracks) {
   const goToAlbum = (albumId) => {
     if (!albumId) return
     router.push({ name: 'album-detail', params: { id: albumId } })
+  }
+
+  const goToTrack = (trackId) => {
+    if (!trackId) return
+    router.push({ name: 'track-detail', params: { id: trackId } })
   }
 
   const toggleStar = async (track) => {
@@ -66,6 +70,7 @@ export function useTrackListRowActions(localTracks) {
     playTrack,
     goToArtist,
     goToAlbum,
+    goToTrack,
     toggleStar,
     updateRating,
     fetchMetadata,

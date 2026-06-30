@@ -6,6 +6,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 import { Wrench, Disc, Users, RefreshCw, Trash2, ShieldAlert } from 'lucide-vue-next'
 
 const { t } = useI18n()
@@ -54,7 +56,7 @@ const runCleanup = async () => {
     )
     await fetchOrphans()
     // 라이브러리 목록 동기화 (앨범/아티스트 사라졌을 수 있음).
-    await library.fetchLibrary()
+    await library.fetchLibrary({ force: true })
   } catch (err) {
     console.error(err)
     notify.error(t('admin.cleanupFailed'))
@@ -69,15 +71,16 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container max-w-3xl py-10 space-y-8">
-
-    <div class="space-y-2">
-      <h1 class="text-3xl font-black tracking-tight flex items-center gap-3">
-        <Wrench class="w-7 h-7 text-primary" />
-        {{ t('admin.title') }}
-      </h1>
-      <p class="text-muted-foreground">{{ t('admin.subtitle') }}</p>
-    </div>
+  <PageLayout spacing="8">
+    <ViewHeader
+      :title="t('admin.title')"
+      :description="t('admin.subtitle')"
+      :show-action="false"
+    >
+      <template #title-prefix>
+        <Wrench class="inline w-8 h-8 text-primary mr-3" />
+      </template>
+    </ViewHeader>
 
     <div
       v-if="!auth.isAuthenticated"
@@ -187,5 +190,5 @@ onMounted(() => {
       </div>
     </template>
 
-  </div>
+  </PageLayout>
 </template>

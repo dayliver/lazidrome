@@ -187,8 +187,13 @@
   },
   "charts": {
     "title": "Charts",
-    "description": "Most played tracks by period. Sort: period plays → rating → all-time plays.",
+    "description": "Top tracks and artists by plays in each period.",
     "authEmpty": "Log in under Settings to view charts.",
+    "tabTracks": "Tracks",
+    "tabArtists": "Artists",
+    "artistsHint": "Each play counts once per participating artist (track + primary album). Duplicates on the same play count once.",
+    "previewTracks": "Tracks",
+    "previewArtists": "Artists",
     "weekly": {
       "title": "Weekly chart",
       "short": "Weekly",
@@ -215,7 +220,8 @@
     "totals": {
       "plays": "Total plays",
       "listen": "Listen time",
-      "unique": "Unique tracks"
+      "unique": "Unique tracks",
+      "uniqueArtists": "Unique artists"
     }
   },
   "import": {
@@ -236,6 +242,7 @@
       "commit": "Save {count} track(s)",
       "committing": "Saving…",
       "commitFailed": "Could not save.",
+      "tagEmbedFailed": "Could not write metadata to the file. Ensure ffmpeg is installed on the server.",
       "partialFailed": "{n} track(s) failed to save",
       "completed": "Saved. The scanner will update the library.",
       "clear": "Clear list",

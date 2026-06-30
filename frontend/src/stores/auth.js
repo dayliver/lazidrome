@@ -263,6 +263,14 @@ export const useAuthStore = defineStore('auth', () => {
     return getCoverUrl(serverUrl.value ?? '', type, id, q)
   }
 
+  function invalidateImageCache(type, id) {
+    if (!id) return
+    const key = imageResourceKey(type, id)
+    signatureCache.delete(key)
+    pendingResources.delete(key)
+    mediaCacheVersion.value++
+  }
+
   return {
     serverUrl,
     token,
@@ -279,6 +287,7 @@ export const useAuthStore = defineStore('auth', () => {
     prefetchStreamSignatures,
     prefetchImageSignatures,
     getImageMediaQuerySync,
+    invalidateImageCache,
     coverSrc,
   }
 })

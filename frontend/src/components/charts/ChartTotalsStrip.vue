@@ -16,27 +16,40 @@ const props = defineProps({
 
 const { t } = useI18n()
 
-const cells = computed(() => [
-  {
-    key: 'plays',
-    label: t('charts.totals.plays'),
-    value: (props.totals?.totalPlays ?? 0).toLocaleString(),
-  },
-  {
-    key: 'listen',
-    label: t('charts.totals.listen'),
-    value: formatListenSeconds(props.totals?.totalListenSec ?? 0),
-  },
-  {
-    key: 'unique',
-    label: t('charts.totals.unique'),
-    value: (props.totals?.uniqueTrackCount ?? 0).toLocaleString(),
-  },
-])
+const cells = computed(() => {
+  const items = [
+    {
+      key: 'plays',
+      label: t('charts.totals.plays'),
+      value: (props.totals?.totalPlays ?? 0).toLocaleString(),
+    },
+    {
+      key: 'listen',
+      label: t('charts.totals.listen'),
+      value: formatListenSeconds(props.totals?.totalListenSec ?? 0),
+    },
+    {
+      key: 'unique',
+      label: t('charts.totals.unique'),
+      value: (props.totals?.uniqueTrackCount ?? 0).toLocaleString(),
+    },
+  ]
+  if (props.totals?.uniqueArtistCount != null) {
+    items.push({
+      key: 'artists',
+      label: t('charts.totals.uniqueArtists'),
+      value: (props.totals.uniqueArtistCount ?? 0).toLocaleString(),
+    })
+  }
+  return items
+})
 </script>
 
 <template>
-  <div class="grid grid-cols-3 gap-2 sm:gap-4 rounded-2xl border bg-card/60 p-3 sm:p-4">
+  <div
+    class="grid gap-2 sm:gap-4 rounded-2xl border bg-card/60 p-3 sm:p-4"
+    :class="cells.length > 3 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'"
+  >
     <div
       v-for="cell in cells"
       :key="cell.key"

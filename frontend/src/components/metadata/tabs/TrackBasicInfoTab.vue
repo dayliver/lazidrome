@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Search, Calendar, Tag as TagIcon, Check, Image as ImageIcon } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
@@ -62,9 +62,36 @@ const selectAlbum = (album) => {
   isAlbumFocused.value = false
 }
 
+const useTypedAlbumName = () => {
+  const name = props.modelValue.albumName.trim()
+  if (!name) return
+  emit('update:modelValue', {
+    ...props.modelValue,
+    albumName: name,
+    albumId: '',
+  })
+  albumSearchResults.value = []
+  isAlbumFocused.value = false
+}
+
+const updateAlbumName = (value) => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    albumName: value,
+    albumId: '',
+  })
+  handleAlbumSearch()
+}
+
 const updateField = (field, value) => {
   emit('update:modelValue', { ...props.modelValue, [field]: value })
 }
+
+const showUseTypedAlbum = computed(() => {
+  const q = props.modelValue.albumName.trim().toLowerCase()
+  if (!q || !isAlbumFocused.value) return false
+  return !allAlbums.value.some((a) => a.name.toLowerCase() === q)
+})
 </script>
 
 <template>
@@ -123,13 +150,13 @@ const updateField = (field, value) => {
             <Label class="text-[11px] font-black text-muted-foreground uppercase">{{ t('external.albumName') }}</Label>
             <Input 
               :model-value="modelValue.albumName" 
-              @input="e => { updateField('albumName', e.target.value); handleAlbumSearch(); }"
+              @input="e => updateAlbumName(e.target.value)"
               @focus="isAlbumFocused = true"
               @blur="handleAlbumBlur"
               class="bg-background font-bold h-11"
             />
             
-            <div v-if="isAlbumFocused && albumSearchResults.length > 0" 
+            <div v-if="isAlbumFocused && (albumSearchResults.length > 0 || showUseTypedAlbum)" 
                  class="absolute top-full left-0 right-0 z-50 mt-1 bg-card border-2 shadow-2xl rounded-xl overflow-hidden">
               <button 
                 v-for="album in albumSearchResults" :key="album.id"
@@ -144,6 +171,14 @@ const updateField = (field, value) => {
                    <span class="text-[10px] font-bold text-muted-foreground">{{ album.year }}</span>
                    <Check class="w-4 h-4 text-primary" />
                 </div>
+              </button>
+              <button
+                v-if="showUseTypedAlbum"
+                type="button"
+                class="w-full text-left px-4 py-3 hover:bg-primary/10 text-primary font-bold text-sm border-t"
+                @mousedown.prevent="useTypedAlbumName"
+              >
+                {{ t('metadata.useTypedAlbum', { name: modelValue.albumName.trim() }) }}
               </button>
             </div>
           </div>

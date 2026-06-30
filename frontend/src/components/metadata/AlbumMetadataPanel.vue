@@ -24,6 +24,18 @@ const localData = ref({
   newCoverUrl: null
 })
 
+const relationSnapshot = ref({ albumArtists: '', albumTracks: '' })
+
+const serializeTracks = (tracks) =>
+  JSON.stringify(
+    (tracks || []).map((t) => ({
+      track_id: t.track_id || t.id,
+      disc_number: t.disc_number ?? 1,
+      track_number: t.track_number ?? null,
+      is_primary: t.is_primary ? 1 : 0,
+    })),
+  )
+
 // 초기 데이터 바인딩
 watch(() => props.item, (newItem) => {
   if (newItem?.local) {
@@ -38,11 +50,25 @@ watch(() => props.item, (newItem) => {
       newCoverFile: null,
       newCoverUrl: null
     }
+    relationSnapshot.value = {
+      albumArtists: JSON.stringify(localData.value.albumArtists),
+      albumTracks: serializeTracks(localData.value.albumTracks),
+    }
   }
 }, { immediate: true })
 
 // 다이얼로그(부모)가 호출할 "페이로드 조립" 함수를 공개합니다.
-const getPayload = () => localData.value
+const getPayload = () => {
+  const payload = { ...localData.value }
+  if (JSON.stringify(payload.albumArtists) === relationSnapshot.value.albumArtists) {
+    delete payload.albumArtists
+  }
+  if (serializeTracks(payload.albumTracks) === relationSnapshot.value.albumTracks) {
+    delete payload.albumTracks
+  }
+  if (!payload.mbid) payload.mbid = null
+  return payload
+}
 defineExpose({ getPayload })
 </script>
 

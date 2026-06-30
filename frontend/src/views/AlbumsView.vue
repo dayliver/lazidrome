@@ -7,6 +7,7 @@ import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import { Disc } from 'lucide-vue-next'
 import AlbumGrid from '@/components/shared/AlbumGrid.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 
 const { t } = useI18n()
@@ -54,7 +55,7 @@ const handleCreateAlbum = () => {
 </script>
 
 <template>
-  <div class="w-full space-y-6">
+  <PageLayout>
     <ViewHeader
       :title="t('pages.albums.title')"
       :description="description"
@@ -74,5 +75,5 @@ const handleCreateAlbum = () => {
     </div>
 
     <AlbumGrid v-else :albums="albumsData" />
-  </div>
+  </PageLayout>
 </template>

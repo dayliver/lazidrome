@@ -1,4 +1,5 @@
 import { cleanupOrphans } from '../lib/orphanCleanup.js';
+import { bumpLibraryRevisionNow } from '../lib/libraryRevision.js';
 
 /**
  * POST /api/admin/db/cleanup
@@ -7,6 +8,7 @@ import { cleanupOrphans } from '../lib/orphanCleanup.js';
 export async function postAdminDbCleanupHandler(_request, reply) {
   try {
     const result = cleanupOrphans();
+    bumpLibraryRevisionNow();
     return {
       success: true,
       ...result,

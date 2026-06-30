@@ -3,6 +3,7 @@ import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import HabitBarChart from '@/components/charts/HabitBarChart.vue'
 import { Button } from '@/components/ui/button'
@@ -70,7 +71,7 @@ const totalListenLabel = computed(() => formatListenSeconds(payload.value?.total
 </script>
 
 <template>
-  <div class="w-full space-y-8">
+  <PageLayout spacing="8">
     <ViewHeader
       :title="t('stats.title')"
       :description="t('stats.description')"
@@ -159,5 +160,5 @@ const totalListenLabel = computed(() => formatListenSeconds(payload.value?.total
         </Button>
       </div>
     </template>
-  </div>
+  </PageLayout>
 </template>

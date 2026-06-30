@@ -3,8 +3,9 @@ import { useRoute } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
+import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import { usePlaylistStore } from '@/stores/playlist'
-import { readFrequentVisits } from '@/lib/visitHistory'
+import { fetchFrequentVisits, ensureLegacyVisitsDiscarded } from '@/lib/visitHistory'
 import {
   useHorizontalDragScroll,
   isHorizontalDragInteractiveTarget,
@@ -21,16 +22,26 @@ export function useHomePage() {
   const library = useLibraryStore()
   const auth = useAuthStore()
   const player = usePlayerStore()
+  const playbackSync = usePlaybackSyncStore()
   const playlistStore = usePlaylistStore()
   const route = useRoute()
 
   const visits = ref([])
   const top20 = ref([])
+  const topArtists = ref([])
   const topLoading = ref(false)
   const topError = ref(null)
 
-  const refreshVisits = () => {
-    visits.value = readFrequentVisits()
+  const refreshVisits = async () => {
+    if (!auth.isAuthenticated) {
+      visits.value = []
+      return
+    }
+    try {
+      visits.value = await fetchFrequentVisits()
+    } catch {
+      visits.value = []
+    }
   }
 
   function visitTo(v) {
@@ -43,8 +54,10 @@ export function useHomePage() {
         return { name: 'artist-detail', params: { id: v.id } }
     case 'tag':
       return { name: 'tag-detail', params: { name: v.id } }
+    case 'track':
+      return { name: 'track-detail', params: { id: v.id } }
     default:
-      return null // 곡(track)은 상세 페이지 없음 — 기록·표시 안 함
+      return null
     }
   }
 
@@ -62,7 +75,11 @@ export function useHomePage() {
       const p = playlistStore.playlists.find((x) => String(x.id) === String(v.id))
       return p?.name || t('visit.fallbackPlaylist')
     }
-  if (v.type === 'tag') return v.id
+    if (v.type === 'track') {
+      const tr = library.tracks.find((x) => String(x.id) === String(v.id))
+      return tr?.title || v.name || v.id
+    }
+    if (v.type === 'tag') return v.id
     return v.id
   }
 
@@ -70,13 +87,15 @@ export function useHomePage() {
     if (!auth.token) return ''
     if (v.type === 'album') return auth.coverSrc('album', v.id)
     if (v.type === 'artist') return auth.coverSrc('artist', v.id)
-  if (v.type === 'playlist') return auth.coverSrc('playlist', v.id)
+    if (v.type === 'playlist') return auth.coverSrc('playlist', v.id)
+    if (v.type === 'track') return auth.coverSrc('track', v.id)
     return ''
   }
 
   function visitImageType(v) {
     if (v.type === 'artist') return 'artist'
     if (v.type === 'album' || v.type === 'playlist') return 'album'
+    if (v.type === 'track') return 'track'
     return 'track'
   }
 
@@ -94,6 +113,7 @@ export function useHomePage() {
   const loadTop20 = async () => {
     if (!auth.isAuthenticated) {
       top20.value = []
+      topArtists.value = []
       return
     }
     topLoading.value = true
@@ -101,10 +121,12 @@ export function useHomePage() {
     try {
       const data = await library.fetchStatsTop('7d', 20)
       top20.value = Array.isArray(data?.tracks) ? data.tracks : []
+      topArtists.value = Array.isArray(data?.artists) ? data.artists : []
     } catch (e) {
       console.error(e)
       topError.value = e
       top20.value = []
+      topArtists.value = []
     } finally {
       topLoading.value = false
     }
@@ -112,9 +134,9 @@ export function useHomePage() {
 
   const loadHome = async () => {
     if (!auth.isAuthenticated) return
-    await library.fetchLibrary()
+    await ensureLegacyVisitsDiscarded()
     await playlistStore.fetchPlaylists()
-    refreshVisits()
+    await refreshVisits()
     await loadTop20()
   }
 
@@ -125,7 +147,7 @@ export function useHomePage() {
   watch(
     () => route.name,
     (n) => {
-      if (n === 'home') refreshVisits()
+      if (n === 'home') void refreshVisits()
     }
   )
 
@@ -136,24 +158,19 @@ export function useHomePage() {
       else {
         visits.value = []
         top20.value = []
+        topArtists.value = []
       }
     }
   )
 
   const playTopFromIndex = (indexInTop20) => {
     if (!top20.value.length || indexInTop20 < 0 || indexInTop20 >= top20.value.length) return
-    void player.playList(top20.value, indexInTop20)
+    void playbackSync.playTracks(top20.value, indexInTop20)
   }
 
-  const playVisitTrack = (id) => {
-    const t = library.tracks.find((x) => String(x.id) === String(id))
-    if (t) void player.playNewQueue([t], 0)
-  }
-
-  const visitRowClass =
-    'flex w-full items-center gap-3 rounded-xl border border-border bg-card/60 px-3 py-2.5 transition-colors hover:bg-muted/50'
-
+  const { elRef: visitStripRef, stripHandlers: visitStripDrag } = useHorizontalDragScroll()
   const { elRef: topStripRef, stripHandlers: topStripDrag } = useHorizontalDragScroll()
+  const { elRef: topArtistsStripRef, stripHandlers: topArtistsStripDrag } = useHorizontalDragScroll()
 
   const reduceMotionQuery =
     typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null
@@ -283,6 +300,14 @@ export function useHomePage() {
     }, AUTO_RESUME_MS)
   }
 
+  const visitStripBind = {
+    ...visitStripDrag,
+  }
+
+  const topArtistsStripBind = {
+    ...topArtistsStripDrag,
+  }
+
   const topStripBind = {
     ...topStripDrag,
     onPointerdown: stripPointerDown,
@@ -340,11 +365,15 @@ export function useHomePage() {
     auth,
     visitItems,
     top20,
+    topArtists,
     topLoading,
     topError,
-    visitRowClass,
+    visitStripRef,
+    visitStripBind,
     topStripRef,
     topStripBind,
+    topArtistsStripRef,
+    topArtistsStripBind,
     onStripMouseEnter,
     onStripMouseLeave,
     playTopFromIndex,

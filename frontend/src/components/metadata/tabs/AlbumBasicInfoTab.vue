@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { Image as ImageIcon } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -88,7 +89,7 @@ const updateField = (field, value) => {
           class="w-56 h-56 bg-muted rounded-2xl border-2 shadow-sm overflow-hidden relative group cursor-pointer ring-offset-background transition-all hover:ring-4 ring-primary ring-offset-4"
         >
           <img 
-            v-if="item.local.id"
+            v-if="item.local.id && item.local.cover_type"
             :src="auth.coverSrc('album', item.local.id)"
             crossorigin="anonymous"
             class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 

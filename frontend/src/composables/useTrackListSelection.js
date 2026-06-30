@@ -37,6 +37,10 @@ export function useTrackListSelection(localTracks, props) {
     selectedTrackIds.value = []
   }
 
+  const clearSelection = () => {
+    selectedTrackIds.value = []
+  }
+
   const removeTrackFromPlaylist = async (playlistTrackId, trackTitle) => {
     if (!props.playlistId || !playlistTrackId) return
     if (confirm(t('trackTable.removeFromPlaylistConfirm', { title: trackTitle }))) {
@@ -67,6 +71,7 @@ export function useTrackListSelection(localTracks, props) {
     toggleSelect,
     openPlaylistModal,
     onPlaylistAddSuccess,
+    clearSelection,
     removeTrackFromPlaylist,
     removeSelectedFromPlaylist
   }

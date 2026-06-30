@@ -2,6 +2,7 @@ import { isClientSafeErrorMessage } from '../lib/httpErrors.js';
 import { renameTagEverywhere } from '../repositories/tagRepository.js';
 import { clearTagCache } from '../services/tagService.js';
 import { renameTagCoverFile } from '../services/tagCoverService.js';
+import { bumpLibraryRevisionNow } from '../lib/libraryRevision.js';
 
 function assertTagLabel(name, label) {
   const s = String(name || '').trim();
@@ -32,6 +33,7 @@ export async function patchTagRenameHandler(request, reply) {
     }
 
     clearTagCache();
+    bumpLibraryRevisionNow();
     return { success: true, data: { ...stats, newName: newTrim } };
   } catch (err) {
     request.log.error(err);

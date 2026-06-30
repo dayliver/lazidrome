@@ -103,7 +103,7 @@ export const useMetadataEditStore = defineStore('metadataEdit', () => {
       } else {
         payload = {
           title: formData.title,
-          mbid: formData.mbid,
+          mbid: formData.mbid || null,
           year: formData.year ? parseInt(formData.year, 10) : null,
           newCoverUrl: formData.newCoverUrl
         }
@@ -125,18 +125,20 @@ export const useMetadataEditStore = defineStore('metadataEdit', () => {
 
   const _attachTrackData = (payload, formData, isMultipart) => {
     const safeTags = Array.isArray(formData.tags) ? formData.tags : []
+    const albumName = formData.albumName != null ? String(formData.albumName).trim() : ''
+    const includeAlbumId = albumName ? '' : (formData.albumId || '')
     if (isMultipart) {
       payload.append('tags', JSON.stringify(safeTags))
       payload.append('genre', formData.genre || '')
       payload.append('artists', JSON.stringify(formData.artists || []))
-      if (formData.albumId) payload.append('albumId', formData.albumId)
-      if (formData.albumName) payload.append('albumName', formData.albumName)
+      if (includeAlbumId) payload.append('albumId', includeAlbumId)
+      if (albumName) payload.append('albumName', albumName)
     } else {
       payload.tags = safeTags
       payload.genre = formData.genre
       payload.artists = formData.artists || []
-      payload.albumId = formData.albumId
-      payload.albumName = formData.albumName
+      if (includeAlbumId) payload.albumId = includeAlbumId
+      if (albumName) payload.albumName = albumName
     }
   }
 
@@ -144,14 +146,22 @@ export const useMetadataEditStore = defineStore('metadataEdit', () => {
     const safeTags = Array.isArray(formData.tags) ? formData.tags : []
     if (isMultipart) {
       payload.append('tags', JSON.stringify(safeTags))
-      payload.append('albumArtists', JSON.stringify(formData.albumArtists || []))
-      payload.append('albumTracks', JSON.stringify(formData.albumTracks || []))
       payload.append('description', formData.description ?? '')
+      if (formData.albumArtists) {
+        payload.append('albumArtists', JSON.stringify(formData.albumArtists))
+      }
+      if (formData.albumTracks) {
+        payload.append('albumTracks', JSON.stringify(formData.albumTracks))
+      }
     } else {
       payload.tags = safeTags
-      payload.albumArtists = formData.albumArtists || []
-      payload.albumTracks = formData.albumTracks || []
       payload.description = formData.description ?? ''
+      if (formData.albumArtists) {
+        payload.albumArtists = formData.albumArtists
+      }
+      if (formData.albumTracks) {
+        payload.albumTracks = formData.albumTracks
+      }
     }
   }
 

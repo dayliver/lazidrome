@@ -116,6 +116,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/track/:id',
+      name: 'track-detail',
+      component: () => import('@/views/details/TrackDetail.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/playlist/:id',
       name: 'playlist-detail',
       component: () => import('@/views/details/PlaylistDetail.vue'),

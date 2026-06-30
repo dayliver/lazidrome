@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 import LocalFileImportPanel from '@/components/import/LocalFileImportPanel.vue'
 
 const { t } = useI18n()
@@ -11,7 +12,7 @@ const { showAuthEmpty } = useRequiresAuth()
 </script>
 
 <template>
-  <div class="w-full max-w-4xl mx-auto space-y-6 py-4">
+  <PageLayout>
     <ViewHeader
       :title="t('upload.title')"
       :description="t('upload.subtitle')"
@@ -30,5 +31,5 @@ const { showAuthEmpty } = useRequiresAuth()
         </RouterLink>
       </p>
     </template>
-  </div>
+  </PageLayout>
 </template>

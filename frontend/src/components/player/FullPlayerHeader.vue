@@ -1,22 +1,38 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronDown, MoreVertical, Heart, Star } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { splitTrailingParentheticals } from '@/lib/titleParts'
+import { usePlayerPresentation } from '@/composables/usePlayerPresentation.js'
 
-const props = defineProps({
-  player: { type: Object, required: true },
-  currentTrack: { type: Object, default: null },
-  showMenu: { type: Boolean, required: true },
-  toggleFavorite: { type: Function, required: true },
-  changeRating: { type: Function, required: true }
-})
+const {
+  currentTrack,
+  isQueueView,
+  canEditTrackMeta,
+  library,
+} = usePlayerPresentation()
 
 const { t } = useI18n()
-const albumTitleParts = computed(() => splitTrailingParentheticals(props.currentTrack?.albumName))
+const showMenu = ref(false)
 
-defineEmits(['close', 'toggle-menu'])
+const albumTitleParts = computed(() =>
+  splitTrailingParentheticals(currentTrack.value?.album || currentTrack.value?.albumName),
+)
+
+defineEmits(['close'])
+
+async function toggleFavorite() {
+  const tr = currentTrack.value
+  if (tr?.id) await library.toggleTrackStar(tr.id, !tr.starred)
+  showMenu.value = false
+}
+
+async function changeRating(rate) {
+  const tr = currentTrack.value
+  if (tr?.id) await library.updateTrackRating(tr.id, rate)
+  showMenu.value = false
+}
 </script>
 
 <template>
@@ -26,18 +42,18 @@ defineEmits(['close', 'toggle-menu'])
     </Button>
     <div class="flex flex-col items-center flex-1 px-4 text-center">
       <span class="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-1">
-        {{ player.isQueueView ? t('player.queue') : t('player.nowPlaying') }}
+        {{ isQueueView ? t('player.queue') : t('player.nowPlaying') }}
       </span>
       <span class="text-sm font-bold truncate max-w-[250px]">
         <template v-if="albumTitleParts.suffix">
           {{ albumTitleParts.main }}<span class="ms-1.5 font-semibold text-muted-foreground/90">{{ albumTitleParts.suffix }}</span>
         </template>
-        <template v-else>{{ currentTrack?.albumName || t('app.name') }}</template>
+        <template v-else>{{ currentTrack?.album || currentTrack?.albumName || t('app.name') }}</template>
       </span>
     </div>
 
-    <div class="relative">
-      <Button variant="ghost" size="icon" class="rounded-full h-12 w-12" @click="$emit('toggle-menu')">
+    <div v-if="canEditTrackMeta" class="relative">
+      <Button variant="ghost" size="icon" class="rounded-full h-12 w-12" @click="showMenu = !showMenu">
         <MoreVertical class="w-6 h-6" />
       </Button>
       <div v-if="showMenu" class="absolute right-0 top-full mt-2 w-56 bg-card border rounded-2xl shadow-2xl overflow-hidden z-[130]">
@@ -55,5 +71,6 @@ defineEmits(['close', 'toggle-menu'])
         </div>
       </div>
     </div>
+    <div v-else class="w-12 h-12 shrink-0" aria-hidden="true" />
   </header>
 </template>

@@ -26,7 +26,18 @@ const searchResults = ref([])
 const isFocused = ref(false)
 const isSearching = ref(false)
 
-const getTrackImageUrl = (id) => auth.coverSrc('track', id)
+const hasTrackCover = (track) =>
+  !!(track?.custom_cover_type || track?.albumCoverType || props.item?.local?.cover_type)
+
+const getTrackImageUrl = (track) => {
+  const id = track?.track_id || track?.id
+  if (!id) return ''
+  if (track?.custom_cover_type) return auth.coverSrc('track', id)
+  if (props.item?.local?.id && (track?.albumCoverType || props.item?.local?.cover_type)) {
+    return auth.coverSrc('album', props.item.local.id)
+  }
+  return ''
+}
 
 const updateTracks = (newTracks) => {
   emit('update:modelValue', { ...props.modelValue, albumTracks: newTracks })
@@ -131,7 +142,12 @@ const sortedTracks = computed(() => {
           >
             <div class="shrink-0 relative w-8 h-8 rounded-md overflow-hidden bg-secondary border flex items-center justify-center mr-3">
               <Disc class="w-4 h-4 opacity-20 absolute" />
-              <SafeImage :src="getTrackImageUrl(res.id)" type="track" class="w-full h-full object-cover relative z-10" />
+              <SafeImage
+                v-if="hasTrackCover(res)"
+                :src="getTrackImageUrl(res)"
+                type="track"
+                class="w-full h-full object-cover relative z-10"
+              />
             </div>
 
             <div class="flex flex-col min-w-0 flex-1 pr-4">
@@ -156,11 +172,11 @@ const sortedTracks = computed(() => {
     <div class="space-y-2 relative z-10 pb-8">
       
       <div class="flex items-center justify-between px-2 mb-4">
-        <span class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{{ t('metadata.tracksList', { count: modelValue.length }) }}</span>
+        <span class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{{ t('metadata.tracksList', { count: (modelValue.albumTracks || []).length }) }}</span>
         <span class="text-[10px] font-bold text-muted-foreground">{{ t('metadata.tracksListHint') }}</span>
       </div>
 
-      <div v-if="modelValue.length === 0" class="p-10 text-center text-muted-foreground border-2 border-dashed rounded-xl bg-muted/5">
+      <div v-if="!(modelValue.albumTracks || []).length" class="p-10 text-center text-muted-foreground border-2 border-dashed rounded-xl bg-muted/5">
         <Disc class="w-10 h-10 mx-auto mb-3 opacity-20" />
         {{ t('metadata.tracksEmpty') }}
       </div>
@@ -184,7 +200,12 @@ const sortedTracks = computed(() => {
 
           <div class="shrink-0 relative w-10 h-10 rounded-md overflow-hidden bg-secondary border flex items-center justify-center">
             <Disc class="w-5 h-5 opacity-20 absolute" />
-            <SafeImage :src="getTrackImageUrl(track.track_id)" type="track" class="w-full h-full object-cover relative z-10" />
+            <SafeImage
+              v-if="hasTrackCover(track)"
+              :src="getTrackImageUrl(track)"
+              type="track"
+              class="w-full h-full object-cover relative z-10"
+            />
           </div>
 
           <div class="flex-1 min-w-0 flex flex-col justify-center">

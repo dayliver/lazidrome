@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { ref, watch, toValue } from 'vue'
 import { usePlaylistStore } from '@/stores/playlist'
 
 export function useTrackListLocalState(props) {
@@ -6,7 +6,7 @@ export function useTrackListLocalState(props) {
   const localTracks = ref([])
 
   watch(
-    () => props.tracks,
+    () => toValue(props).tracks,
     (newVal) => {
       localTracks.value = [...(newVal || [])]
     },
@@ -14,14 +14,14 @@ export function useTrackListLocalState(props) {
   )
 
   const onDragEnd = async () => {
-    if (!props.playlistId) return
+    if (!toValue(props).playlistId) return
 
     const reorderedItems = localTracks.value.map((track, index) => ({
       playlistTrackId: track.playlist_track_id,
       position: (index + 1) * 10
     }))
 
-    await playlistStore.reorderTracks(props.playlistId, reorderedItems)
+    await playlistStore.reorderTracks(toValue(props).playlistId, reorderedItems)
   }
 
   return { localTracks, onDragEnd }

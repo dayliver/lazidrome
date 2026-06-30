@@ -42,11 +42,11 @@ function trigger(rank) {
         :src="auth.coverSrc('track', second.id)"
         type="track"
         :alt="t('common.coverAlt', { name: second.title })"
-        class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl ring-1 ring-border"
+        class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl ring-1 ring-border object-cover"
       />
       <div class="text-center min-w-0 w-full">
         <p class="truncate text-sm font-semibold">{{ second.title }}</p>
-        <p class="truncate text-[11px] text-muted-foreground">{{ second.artist || '—' }}</p>
+        <p class="truncate text-[11px] text-muted-foreground min-h-[1rem]">{{ second.artist || '—' }}</p>
         <p class="text-[10px] text-muted-foreground tabular-nums mt-1">
           {{ t('chartsRow.playsShort', { count: second.period_plays ?? 0 }) }}
         </p>
@@ -64,11 +64,11 @@ function trigger(rank) {
         :src="auth.coverSrc('track', first.id)"
         type="track"
         :alt="t('common.coverAlt', { name: first.title })"
-        class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl ring-2 ring-primary/30"
+        class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl ring-2 ring-primary/30 object-cover"
       />
       <div class="text-center min-w-0 w-full">
         <p class="truncate text-sm font-bold">{{ first.title }}</p>
-        <p class="truncate text-xs text-muted-foreground">{{ first.artist || '—' }}</p>
+        <p class="truncate text-xs text-muted-foreground min-h-[1rem]">{{ first.artist || '—' }}</p>
         <p class="text-[11px] text-primary tabular-nums mt-1 font-semibold">
           {{ t('chartsRow.playsShort', { count: first.period_plays ?? 0 }) }}
           <span v-if="first.rating"> · ★{{ first.rating }}</span>
@@ -87,11 +87,11 @@ function trigger(rank) {
         :src="auth.coverSrc('track', third.id)"
         type="track"
         :alt="t('common.coverAlt', { name: third.title })"
-        class="w-14 h-14 sm:w-16 sm:h-16 rounded-xl ring-1 ring-border"
+        class="w-14 h-14 sm:w-16 sm:h-16 rounded-xl ring-1 ring-border object-cover"
       />
       <div class="text-center min-w-0 w-full">
         <p class="truncate text-sm font-semibold">{{ third.title }}</p>
-        <p class="truncate text-[11px] text-muted-foreground">{{ third.artist || '—' }}</p>
+        <p class="truncate text-[11px] text-muted-foreground min-h-[1rem]">{{ third.artist || '—' }}</p>
         <p class="text-[10px] text-muted-foreground tabular-nums mt-1">
           {{ t('chartsRow.playsShort', { count: third.period_plays ?? 0 }) }}
         </p>

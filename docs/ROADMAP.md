@@ -52,6 +52,7 @@
 | 2.2 | `/api/tracks` 등 **페이지네이션** + 프론트 점진 로드 | ✅ P1 — `limit`/`offset`/`q`/`ids` + TracksView·검색 |
 | 2.3 | 스캐너·업로드 **스트리밍 해시** (`readFileSync` 제거) | ✅ P1 — `lib/fileHash.js` |
 | 2.3a | **모바일 재생** — 재생횟수 이중 집계 방지, 다음 곡 프리로드·백그라운드 `play()` 재시도 | ✅ P0 모바일 |
+| 2.3b | **모바일 HLS 큐** — `playlist.m3u8` + hls.js/네이티브 HLS (화면 꺼짐 시 다음 곡) | 🚧 [MOBILE-BACKGROUND-PLAYBACK.md](./MOBILE-BACKGROUND-PLAYBACK.md) |
 | 2.4 | 태그 rename 배치/쿼리 최적화 | ✅ P2 — `json_each` EXISTS 대상 행만 UPDATE |
 | 2.5 | 플레이리스트 smart-mix `LIMIT` 상한 | ✅ P2 — 최대 200, `LIMIT ?` 파라미터 |
 | 2.6 | 에러 응답에서 내부 `err.message` 노출 축소 | ✅ P2 — `lib/httpErrors.js` |

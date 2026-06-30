@@ -34,6 +34,7 @@ const {
   playTrack,
   goToArtist,
   goToAlbum,
+  goToTrack,
   toggleStar,
   updateRating,
   fetchMetadata,
@@ -73,6 +74,7 @@ const togglePlayerPlay = () => player.togglePlay()
       :get-artist-list="getArtistList"
       :go-to-artist="goToArtist"
       :go-to-album="goToAlbum"
+      :go-to-track="goToTrack"
       :format-track-time="formatTrackTime"
       :render-stars="renderStars"
       :update-rating="updateRating"
@@ -104,6 +106,7 @@ const togglePlayerPlay = () => player.togglePlay()
       :get-artist-list="getArtistList"
       :go-to-artist="goToArtist"
       :go-to-album="goToAlbum"
+      :go-to-track="goToTrack"
       :format-track-time="formatTrackTime"
       :render-stars="renderStars"
       :update-rating="updateRating"

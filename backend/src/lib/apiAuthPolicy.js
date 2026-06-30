@@ -15,5 +15,8 @@ export function isPublicApiRoute(method, routerPath) {
   // 이미지: 핸들러·라우트 훅에서 exp/sig 또는 JWT 검증
   if (method === 'GET' && routerPath?.startsWith('/api/images')) return true;
 
+  // WebSocket: 쿼리 token으로 핸들러에서 JWT 검증
+  if (routerPath === '/api/playback/ws') return true;
+
   return false;
 }

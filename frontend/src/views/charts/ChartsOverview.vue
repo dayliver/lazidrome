@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import ChartRankPreview from '@/components/charts/ChartRankPreview.vue'
 import { useRequiresAuth } from '@/composables/useRequiresAuth'
@@ -42,7 +43,7 @@ function onPlay({ tracks, index }) {
 </script>
 
 <template>
-  <div class="w-full space-y-8">
+  <PageLayout spacing="8">
     <ViewHeader
       :title="t('charts.title')"
       :description="t('charts.description')"
@@ -63,5 +64,5 @@ function onPlay({ tracks, index }) {
         @play-track="onPlay"
       />
     </template>
-  </div>
+  </PageLayout>
 </template>
