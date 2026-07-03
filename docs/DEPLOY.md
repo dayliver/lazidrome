@@ -27,6 +27,19 @@ npm run deploy:restart
 | API | nginx `location /api/` → `http://127.0.0.1:5294` |
 | 백엔드 소스 | `/projects/lazidrome/backend` |
 
+nginx SPA 설정 시 **`/assets/`는 반드시 404**로 두세요. 없는 JS에 `index.html`을 내려주면(200 + `text/html`) 배포 직후 lazy route가 깨지고 Cloudflare가 잘못된 응답을 캐시할 수 있습니다.
+
+```nginx
+location /assets/ {
+  try_files $uri =404;
+  add_header Cache-Control "public, max-age=31536000, immutable";
+}
+
+location / {
+  try_files $uri $uri/ /index.html;
+}
+```
+
 환경 변수(선택):
 
 | 변수 | 기본값 |
@@ -39,6 +52,18 @@ npm run deploy:restart
 - 브라우저: https://lazidrome.hwaryong.com  
 - **Settings → 배포 · 버전** — 프론트·백엔드 빌드 시각 일치 여부  
 - 선택: `npm run smoke:phase1:prod` ([`docs/PHASE1_SMOKE.md`](PHASE1_SMOKE.md))
+
+## lazy route / MIME type 오류
+
+배포 직후 `Failed to load module script … MIME type "text/html"` 이 `/albums` 등에서 나오면:
+
+1. 브라우저가 **이전 빌드 JS**(`AlbumsView-*.js` 등)를 요청하는데, 서버에는 **새 해시 파일만** 있음  
+2. nginx가 없는 `/assets/*.js`에 **`index.html`을 200으로 반환** → 브라우저가 HTML을 JS로 파싱하려다 실패  
+3. PWA·Cloudflare가 그 잘못된 응답을 캐시하면 같은 URL이 한동안 계속 깨짐  
+
+**즉시 복구:** 강력 새로고침(Ctrl+Shift+R) 또는 사이트 데이터 삭제. Cloudflare 사용 시 `/assets/*` 캐시 퍼지.
+
+**재발 방지:** 위 nginx `/assets/` 블록, 프론트의 stale chunk 자동 reload(`main.ts`), 배포 후 `npm run deploy`로 dist 전체 동기화.
 
 ## 502 Bad Gateway
 

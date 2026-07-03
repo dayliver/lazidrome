@@ -603,6 +603,20 @@ export const useLibraryStore = defineStore('library', () => {
     return body?.data ?? null
   }
 
+  const fetchPlayHistory = async ({ limit = 50, offset = 0 } = {}) => {
+    const q = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    })
+    const res = await auth.fetchWithAuth(`/api/play-history?${q}`)
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || res.statusText)
+    }
+    const body = await res.json()
+    return body?.data ?? null
+  }
+
   return {
     tracks,
     tracksTotal,
@@ -642,5 +656,6 @@ export const useLibraryStore = defineStore('library', () => {
     fetchStatsPlays,
     fetchStatsHabits,
     fetchStatsTop,
+    fetchPlayHistory,
   }
 })

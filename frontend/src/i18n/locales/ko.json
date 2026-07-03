@@ -13,6 +13,7 @@
     "tags": "태그",
     "playlists": "재생목록",
     "charts": "차트",
+    "history": "청취 기록",
     "stats": "통계",
     "admin": "라이브러리 관리",
     "settings": "설정",
@@ -184,6 +185,20 @@
       "h21": "21시",
       "night": "22시 이후"
     }
+  },
+  "history": {
+    "title": "청취 기록",
+    "description": "곡을 절반 이상 재생했을 때 기록됩니다.",
+    "authEmpty": "청취 기록을 보려면 설정에서 로그인하세요.",
+    "loading": "청취 기록을 불러오는 중…",
+    "loadingMore": "더 불러오는 중…",
+    "error": "청취 기록을 불러오지 못했습니다.",
+    "empty": "아직 청취 기록이 없습니다.",
+    "emptyHint": "곡을 재생하면 여기에 쌓입니다.",
+    "shown": "{shown} / {total}건",
+    "loadMore": "50건 더 불러오기",
+    "allLoaded": "모든 기록을 불러왔습니다.",
+    "scrobbled": "Last.fm"
   },
   "charts": {
     "title": "차트",

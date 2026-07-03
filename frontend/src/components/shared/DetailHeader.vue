@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { ChevronLeft, User, Disc } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
+import SharePageButton from '@/components/shared/SharePageButton.vue'
 import { splitTrailingParentheticals } from '@/lib/titleParts'
 
 const props = defineProps({
@@ -15,10 +16,17 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  /** 앨범/히어로 제목: 끝의 괄호 구간은 제거하고 덜 강조된 텍스트로 표시 (Full Player 트랙 제목과 동일 규칙) */
   splitParentheticalTitle: {
     type: Boolean,
     default: false
+  },
+  shareMarkdownLabel: {
+    type: String,
+    default: ''
+  },
+  showShare: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -34,7 +42,11 @@ const titleParts = computed(() => splitTrailingParentheticals(props.title))
       <ChevronLeft class="w-8 h-8" />
     </Button>
 
-    <div class="absolute top-0 right-0">
+    <div class="absolute top-0 right-0 flex items-center gap-1">
+      <SharePageButton
+        v-if="showShare && shareMarkdownLabel?.trim()"
+        :markdown-label="shareMarkdownLabel"
+      />
       <slot name="actions" />
     </div>
 

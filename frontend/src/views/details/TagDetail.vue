@@ -5,6 +5,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import { useClientTrackListQuery } from '@/composables/useClientTrackListQuery'
 import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
+import { formatTagDocumentTitle } from '@/lib/documentTitle'
 import { useAuthStore } from '@/stores/auth'
 
 import { getCoverUrl } from '@/lib/image'
@@ -28,6 +30,13 @@ const auth = useAuthStore()
 const tagName = computed(() => {
   const raw = route.params.name
   return typeof raw === 'string' ? raw : ''
+})
+
+useDocumentTitle(computed(() => (tagName.value ? formatTagDocumentTitle(tagName.value) : null)))
+
+const shareMarkdownLabel = computed(() => {
+  if (!tagName.value) return ''
+  return t('share.tagLabel', { name: tagName.value })
 })
 
 const { data: tagDetail, error: fetchError, isLoading, reload: loadTag } = useAsyncResource(
@@ -119,6 +128,7 @@ const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
   <DetailLayout
     v-else
     :title="tagName"
+    :share-markdown-label="shareMarkdownLabel"
     :subtitle="t('pages.details.entityTag')"
     :is-round-image="false"
     :image-url="imageUrl"

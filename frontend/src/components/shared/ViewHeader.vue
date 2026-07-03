@@ -1,6 +1,7 @@
 <script setup>
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-vue-next'
+import SharePageButton from '@/components/shared/SharePageButton.vue'
 
 defineProps({
   title: {
@@ -12,6 +13,10 @@ defineProps({
     default: ''
   },
   showAction: {
+    type: Boolean,
+    default: true
+  },
+  showShare: {
     type: Boolean,
     default: true
   }
@@ -32,16 +37,19 @@ defineEmits(['action'])
       </p>
     </div>
 
-    <Button
-      v-if="showAction"
-      variant="outline"
-      size="icon"
-      class="rounded-full"
-      @click="$emit('action')"
-    >
-      <slot name="action">
-        <Plus class="w-5 h-5" />
-      </slot>
-    </Button>
+    <div v-if="showShare || showAction" class="flex items-center gap-1 shrink-0">
+      <SharePageButton v-if="showShare" :markdown-label="title" />
+      <Button
+        v-if="showAction"
+        variant="outline"
+        size="icon"
+        class="rounded-full"
+        @click="$emit('action')"
+      >
+        <slot name="action">
+          <Plus class="w-5 h-5" />
+        </slot>
+      </Button>
+    </div>
   </div>
 </template>

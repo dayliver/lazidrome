@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import { useSyncArtistDetailWithLibrary } from '@/composables/useSyncArtistDetailWithLibrary'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
+import { formatArtistDocumentTitle } from '@/lib/documentTitle'
 import { useClientTrackListQuery } from '@/composables/useClientTrackListQuery'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useCoverUrl } from '@/composables/useCoverUrl'
@@ -31,6 +33,14 @@ const { data: artist, isLoading } = useAsyncResource(
   () => route.params.id,
   async (id) => library.getArtistById(id)
 )
+
+useDocumentTitle(computed(() => (artist.value?.name ? formatArtistDocumentTitle(artist.value.name) : null)))
+
+const shareMarkdownLabel = computed(() => {
+  const name = artist.value?.name
+  if (!name) return ''
+  return t('share.artistLabel', { name })
+})
 
 useSyncArtistDetailWithLibrary(() => artist.value)
 useSyncTrackListWithLibrary(() => artist.value?.tracks)
@@ -113,6 +123,7 @@ const handleEdit = async () => {
   <DetailLayout
     v-else-if="artist"
     :title="artist.name"
+    :share-markdown-label="shareMarkdownLabel"
     :subtitle="t('pages.details.entityArtist')"
     :image-url="imageUrl"
     :stats="artistStats"

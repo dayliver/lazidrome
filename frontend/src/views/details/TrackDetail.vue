@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useSyncTrackDetailWithLibrary } from '@/composables/useSyncTrackDetailWithLibrary'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
+import { formatTrackDocumentTitle } from '@/lib/documentTitle'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useLibraryStore } from '@/stores/library'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
@@ -49,6 +51,23 @@ const { data, isLoading, reload } = useAsyncResource(
 
 const track = computed(() => data.value?.track ?? null)
 const allArtists = computed(() => data.value?.allArtists ?? [])
+
+useDocumentTitle(
+  computed(() => {
+    const tr = track.value
+    if (!tr) return null
+    return formatTrackDocumentTitle(tr.title, tr.artist || t('common.unknownArtist'))
+  }),
+)
+
+const shareMarkdownLabel = computed(() => {
+  const tr = track.value
+  if (!tr) return ''
+  return t('share.trackLabel', {
+    artist: tr.artist || t('common.unknownArtist'),
+    title: tr.title,
+  })
+})
 
 useSyncTrackDetailWithLibrary(() => data.value?.track ?? null)
 
@@ -157,6 +176,7 @@ const onAudioReplaced = async () => {
   <DetailLayout
     v-else-if="track"
     :title="track.title"
+    :share-markdown-label="shareMarkdownLabel"
     split-parenthetical-title
     :subtitle="track.artist || t('common.unknownArtist')"
     :is-round-image="false"

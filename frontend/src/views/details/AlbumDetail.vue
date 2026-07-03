@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import { useSyncAlbumDetailWithLibrary } from '@/composables/useSyncAlbumDetailWithLibrary'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
+import { formatTrackDocumentTitle } from '@/lib/documentTitle'
 import { useClientTrackListQuery } from '@/composables/useClientTrackListQuery'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useLibraryStore } from '@/stores/library'
@@ -41,6 +43,23 @@ const { data, isLoading } = useAsyncResource(
 
 const album = computed(() => data.value?.album ?? null)
 const allArtists = computed(() => data.value?.allArtists ?? [])
+
+useDocumentTitle(
+  computed(() => {
+    const a = album.value
+    if (!a) return null
+    return formatTrackDocumentTitle(a.name, a.displayArtist || t('common.unknownArtist'))
+  }),
+)
+
+const shareMarkdownLabel = computed(() => {
+  const a = album.value
+  if (!a) return ''
+  return t('share.albumLabel', {
+    artist: a.displayArtist || t('common.unknownArtist'),
+    title: a.name,
+  })
+})
 
 useSyncAlbumDetailWithLibrary(() => data.value?.album ?? null)
 useSyncTrackListWithLibrary(() => album.value?.tracks)
@@ -111,6 +130,7 @@ const handleEdit = async () => {
   <DetailLayout
     v-else-if="album"
     :title="album.name"
+    :share-markdown-label="shareMarkdownLabel"
     split-parenthetical-title
     :subtitle="album.displayArtist || t('common.unknownArtist')"
     :is-round-image="false"

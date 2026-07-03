@@ -33,6 +33,7 @@ import adminRoutes from './routes/admin.js';
 import importRoutes from './routes/import.js';
 import filesRoutes from './routes/files.js';
 import playbackRoutes from './routes/playback.js';
+import playHistoryRoutes from './routes/playHistory.js';
 
 dotenv.config();
 
@@ -191,6 +192,7 @@ fastify.register(playlistsRoutes);
 fastify.register(homeRoutes);
 fastify.register(visitsRoutes);
 fastify.register(statsRoutes);
+fastify.register(playHistoryRoutes);
 fastify.register(settingsRoutes);
 fastify.register(libraryRoutes);
 fastify.register(adminRoutes);

@@ -13,6 +13,7 @@
     "tags": "Tags",
     "playlists": "Playlists",
     "charts": "Charts",
+    "history": "History",
     "stats": "Stats",
     "admin": "Library tools",
     "settings": "Settings",
@@ -184,6 +185,20 @@
       "h21": "21:00",
       "night": "After 22"
     }
+  },
+  "history": {
+    "title": "Listening history",
+    "description": "Logged when you play at least half of a track.",
+    "authEmpty": "Log in under Settings to view listening history.",
+    "loading": "Loading history…",
+    "loadingMore": "Loading more…",
+    "error": "Could not load listening history.",
+    "empty": "No listening history yet.",
+    "emptyHint": "Play some tracks and they will appear here.",
+    "shown": "{shown} / {total}",
+    "loadMore": "Load 50 more",
+    "allLoaded": "All entries loaded.",
+    "scrobbled": "Last.fm"
   },
   "charts": {
     "title": "Charts",

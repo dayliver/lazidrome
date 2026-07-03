@@ -10,7 +10,7 @@ import PlayerWrapper from '@/components/player/PlayerWrapper.vue'
 import ConnectedDevicesTrigger from '@/components/player/ConnectedDevicesTrigger.vue'
 import AppLogo from '@/components/shared/AppLogo.vue'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, BarChart2, Trophy, Wrench, FolderOpen, Upload } from 'lucide-vue-next'
+import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, BarChart2, Trophy, Wrench, FolderOpen, Upload, History } from 'lucide-vue-next'
 import MetadataEditDialog from '@/components/metadata/MetadataEditDialog.vue'
 import { useYoutubePaste } from '@/composables/useYoutubePaste'
 
@@ -38,6 +38,7 @@ const navItems = computed(() => [
   { name: t('nav.tags'), path: '/tags', icon: Hash },
   { name: t('nav.playlists'), path: '/playlists', icon: List },
   { name: t('nav.charts'), path: '/charts', icon: Trophy },
+  { name: t('nav.history'), path: '/history', icon: History },
   { name: t('nav.stats'), path: '/stats', icon: BarChart2 },
   { name: t('nav.admin'), path: '/admin', icon: Wrench },
   { name: t('nav.settings'), path: '/settings', icon: Settings },

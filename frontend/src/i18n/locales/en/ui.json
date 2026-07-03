@@ -27,6 +27,20 @@
     "backToList": "Back to list",
     "close": "Close"
   },
+  "share": {
+    "button": "Share",
+    "menuTitle": "Copy link",
+    "copyUrl": "Copy URL only",
+    "copyMarkdown": "Copy as Markdown",
+    "copiedUrl": "URL copied.",
+    "copiedMarkdown": "Markdown copied.",
+    "failed": "Could not copy to clipboard.",
+    "trackLabel": "{title} by {artist}",
+    "albumLabel": "{title} by {artist}",
+    "playlistLabel": "{title}",
+    "artistLabel": "{name}",
+    "tagLabel": "#{name}"
+  },
   "safeImage": {
     "artist": "Artist image",
     "album": "Album cover",

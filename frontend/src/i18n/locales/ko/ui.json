@@ -27,6 +27,20 @@
     "backToList": "목록으로",
     "close": "닫기"
   },
+  "share": {
+    "button": "공유",
+    "menuTitle": "링크 복사",
+    "copyUrl": "URL만 복사",
+    "copyMarkdown": "마크다운으로 복사",
+    "copiedUrl": "URL을 복사했습니다.",
+    "copiedMarkdown": "마크다운을 복사했습니다.",
+    "failed": "클립보드에 복사하지 못했습니다.",
+    "trackLabel": "{artist}의 {title}",
+    "albumLabel": "{artist}의 {title}",
+    "playlistLabel": "{title}",
+    "artistLabel": "{name}",
+    "tagLabel": "#{name}"
+  },
   "safeImage": {
     "artist": "아티스트 이미지",
     "album": "앨범 커버",

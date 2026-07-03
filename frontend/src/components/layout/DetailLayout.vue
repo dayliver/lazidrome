@@ -7,7 +7,9 @@ defineProps({
   imageUrl: String,
   stats: Array,
   isRoundImage: { type: Boolean, default: false },
-  splitParentheticalTitle: { type: Boolean, default: false }
+  splitParentheticalTitle: { type: Boolean, default: false },
+  shareMarkdownLabel: { type: String, default: '' },
+  showShare: { type: Boolean, default: true },
 })
 </script>
 
@@ -21,6 +23,8 @@ defineProps({
       :stats="stats"
       :is-round-image="isRoundImage"
       :split-parenthetical-title="splitParentheticalTitle"
+      :share-markdown-label="shareMarkdownLabel"
+      :show-share="showShare"
     >
       <template #actions>
         <slot name="actions" />

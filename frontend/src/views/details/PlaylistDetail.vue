@@ -5,6 +5,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import { useClientTrackListQuery } from '@/composables/useClientTrackListQuery'
 import { useMixSnapshot } from '@/composables/useMixSnapshot'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
+import { formatPlaylistDocumentTitle } from '@/lib/documentTitle'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useCoverUrl } from '@/composables/useCoverUrl'
 import { usePlaylistStore } from '@/stores/playlist'
@@ -35,6 +37,14 @@ const { data: playlist, isLoading, reload: reloadPlaylist } = useAsyncResource(
   () => route.params.id,
   async (id) => playlistStore.fetchPlaylistDetails(id),
 )
+
+useDocumentTitle(computed(() => (playlist.value?.name ? formatPlaylistDocumentTitle(playlist.value.name) : null)))
+
+const shareMarkdownLabel = computed(() => {
+  const name = playlist.value?.name
+  if (!name) return ''
+  return t('share.playlistLabel', { title: name })
+})
 
 const {
   isResolving: isMixResolving,
@@ -146,6 +156,7 @@ const handleEdit = () => {
   <DetailLayout
     v-else-if="playlist"
     :title="playlist.name"
+    :share-markdown-label="shareMarkdownLabel"
     :subtitle="subtitleText"
     :is-round-image="false"
     :image-url="imageUrl"
