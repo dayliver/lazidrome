@@ -18,7 +18,13 @@
     "admin": "라이브러리 관리",
     "settings": "설정",
     "menuOpen": "메뉴 열기",
-    "menuClose": "메뉴 닫기"
+    "menuClose": "메뉴 닫기",
+    "more": "더 보기",
+    "searchPlaceholder": "아티스트, 앨범, 곡 검색…",
+    "searchShort": "검색",
+    "searchLoading": "검색 중…",
+    "searchEmpty": "결과가 없습니다.",
+    "searchResults": "검색 결과"
   },
   "admin": {
     "title": "라이브러리 관리",
@@ -75,6 +81,15 @@
       "description": "메뉴와 설명에 사용할 언어를 선택합니다.",
       "en": "English",
       "ko": "한국어"
+    },
+    "navPin": {
+      "title": "사이드바 메뉴",
+      "description": "자주 쓰는 메뉴는 사이드바에 고정하고, 나머지는 「더 보기」에서 엽니다.",
+      "reset": "기본값으로",
+      "locked": "홈은 항상 표시됩니다.",
+      "pinnedHeading": "사이드바에 표시",
+      "overflowHeading": "더 보기 메뉴",
+      "dragHint": "드래그하여 순서를 바꿀 수 있습니다."
     },
     "timezone": {
       "title": "통계 시간대",
@@ -198,31 +213,32 @@
     "shown": "{shown} / {total}건",
     "loadMore": "50건 더 불러오기",
     "allLoaded": "모든 기록을 불러왔습니다.",
-    "scrobbled": "Last.fm"
+    "scrobbled": "Last.fm",
+    "playNumber": "{n}번째"
   },
   "charts": {
     "title": "차트",
-    "description": "기간별로 많이 들은 곡·아티스트 순위입니다.",
+    "description": "기간별 청취 시간이 많은 곡·아티스트 순위입니다.",
     "authEmpty": "차트를 보려면 설정에서 로그인하세요.",
     "tabTracks": "곡",
     "tabArtists": "아티스트",
-    "artistsHint": "재생 1회마다 그 곡에 참여한 아티스트(곡·대표 앨범)마다 1회 집계합니다. 같은 아티스트는 한 번만 셉니다.",
+    "artistsHint": "재생 1회의 청취 시간을 그 곡에 참여한 아티스트(곡·대표 앨범)마다 합산합니다. 같은 아티스트는 한 번만 셉니다.",
     "previewTracks": "곡",
     "previewArtists": "아티스트",
     "weekly": {
       "title": "주간 차트",
       "short": "주간",
-      "description": "최근 7일 재생 기준 · 별점 · 통산 재생 순"
+      "description": "최근 7일 청취 시간 · 별점 · 통산 청취 시간"
     },
     "monthly": {
       "title": "월간 차트",
       "short": "월간",
-      "description": "최근 30일 재생 기준 · 별점 · 통산 재생 순"
+      "description": "최근 30일 청취 시간 · 별점 · 통산 청취 시간"
     },
     "alltime": {
       "title": "통산 차트",
       "short": "통산",
-      "description": "전체 기간 재생 기준 · 별점 · 통산 재생 순"
+      "description": "전체 기간 청취 시간 · 별점 · 통산 청취 시간"
     },
     "backToList": "← 차트 목록",
     "viewMore": "자세히 보기",
@@ -231,7 +247,7 @@
     "noPlaysYet": "이 기간에 기록된 재생이 아직 없습니다. 곡을 한 번 들어보세요.",
     "loadError": "차트를 불러오지 못했습니다.",
     "restHeading": "{from}~{to}위",
-    "totalsBadge": "{plays}회 · 곡 {unique}",
+    "totalsBadge": "{detail} · 곡 {unique}",
     "totals": {
       "plays": "총 재생",
       "listen": "청취 시간",
@@ -261,7 +277,8 @@
       "partialFailed": "{n}곡 저장 실패",
       "completed": "저장했습니다. 스캐너가 라이브러리에 반영합니다.",
       "clear": "목록 비우기",
-      "importMore": "다른 파일 가져오기"
+      "importMore": "다른 파일 가져오기",
+      "useTypedValue": "「{value}」 직접 사용"
     }
   },
   "upload": {

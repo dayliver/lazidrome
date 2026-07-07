@@ -16,6 +16,9 @@
     "listenZero": "0 min",
     "listenHours": "{h}h {m}m",
     "listenMinutes": "{m} min",
+    "listenHms": "{h}h {m}m {s}s",
+    "listenMs": "{m}m {s}s",
+    "listenSecOnly": "{s}s",
     "coverAlt": "{name} cover",
     "albumCoverAlt": "{name} album cover",
     "loadingTitle": "Loading…",
@@ -55,6 +58,7 @@
     "revisionFetchFailed": "Failed to load library revision",
     "artistsFetchFailed": "Failed to load artists",
     "albumsFetchFailed": "Failed to load albums",
+    "albumCreateFailed": "Failed to create album",
     "tracksFetchFailed": "Failed to load tracks",
     "trackFetchFailed": "Failed to load track",
     "searchFailed": "Track search failed",
@@ -414,8 +418,8 @@
     "loading": "Loading…"
   },
   "chartsRow": {
-    "periodPlays": "Period {count}",
-    "allTimePlays": " · All-time {count}",
+    "periodListen": "Period {detail}",
+    "allTimeListen": " · All-time {detail}",
     "playsShort": "{count} plays"
   }
 }

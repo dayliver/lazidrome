@@ -105,6 +105,7 @@ CREATE TABLE play_history (
     track_id TEXT NOT NULL,
     played_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     scrobbled INTEGER DEFAULT 0,
+    listened_sec INTEGER,
     FOREIGN KEY (track_id) REFERENCES track_metadata(id) ON DELETE CASCADE
 );
 

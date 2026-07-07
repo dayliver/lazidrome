@@ -30,6 +30,7 @@ import {
   Package,
   Languages,
   Globe,
+  Menu,
 } from 'lucide-vue-next'
 import {
   fetchFrontendBuildInfo,
@@ -39,12 +40,31 @@ import {
 } from '@/lib/buildInfo'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
+import { Checkbox } from '@/components/ui/checkbox'
+import { useNavItems } from '@/composables/useNavItems'
+import { VueDraggable } from 'vue-draggable-plus'
+import { GripVertical } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const auth = useAuthStore()
 const library = useLibraryStore()
 const theme = useThemeStore()
 const prefs = usePreferencesStore()
+const { pinnedPinOptions, unpinnedPinOptions, setPinned, reorderPinned, resetPinned } = useNavItems()
+
+const dragPinned = ref([])
+
+watch(
+  pinnedPinOptions,
+  (items) => {
+    dragPinned.value = items.map((item) => ({ ...item }))
+  },
+  { immediate: true },
+)
+
+function onPinnedDragEnd() {
+  reorderPinned(dragPinned.value.map((item) => item.id))
+}
 
 const adminPassword = ref('')
 const settingsLoading = ref(false)
@@ -155,6 +175,78 @@ const handleRefresh = async () => {
           </Button>
         </div>
       </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2">
+          <Menu class="w-5 h-5 text-primary" />
+          {{ t('settings.navPin.title') }}
+        </CardTitle>
+        <CardDescription>{{ t('settings.navPin.description') }}</CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="space-y-2">
+          <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
+            {{ t('settings.navPin.pinnedHeading') }}
+          </p>
+          <p class="text-xs text-muted-foreground px-1">{{ t('settings.navPin.dragHint') }}</p>
+          <VueDraggable
+            v-model="dragPinned"
+            handle=".nav-drag-handle"
+            :animation="180"
+            class="space-y-2"
+            @end="onPinnedDragEnd"
+          >
+            <div
+              v-for="opt in dragPinned"
+              :key="opt.id"
+              class="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2.5 bg-card"
+              :class="opt.locked ? 'opacity-80' : ''"
+            >
+              <button
+                type="button"
+                class="nav-drag-handle shrink-0 cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing"
+                :class="opt.locked ? 'opacity-30 pointer-events-none' : ''"
+                :aria-label="t('settings.navPin.dragHint')"
+              >
+                <GripVertical class="h-4 w-4" />
+              </button>
+              <span class="flex-1 text-sm font-medium">{{ opt.label }}</span>
+              <Checkbox
+                :model-value="true"
+                :disabled="opt.locked"
+                @update:model-value="(v) => setPinned(opt.id, !!v)"
+              />
+            </div>
+          </VueDraggable>
+        </div>
+
+        <div v-if="unpinnedPinOptions.length" class="space-y-2 pt-2 border-t">
+          <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
+            {{ t('settings.navPin.overflowHeading') }}
+          </p>
+          <label
+            v-for="opt in unpinnedPinOptions"
+            :key="opt.id"
+            class="flex items-center gap-3 rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-muted/40"
+          >
+            <span class="w-4" />
+            <span class="flex-1 text-sm font-medium">{{ opt.label }}</span>
+            <Checkbox
+              :model-value="false"
+              @update:model-value="(v) => setPinned(opt.id, !!v)"
+            />
+          </label>
+        </div>
+
+        <p class="text-xs text-muted-foreground">{{ t('settings.navPin.locked') }}</p>
+      </CardContent>
+      <CardFooter>
+        <Button variant="outline" size="sm" @click="resetPinned">
+          {{ t('settings.navPin.reset') }}
+        </Button>
+      </CardFooter>
     </Card>
 
     <Card>

@@ -18,7 +18,11 @@ const HISTORY_SELECT = `
      FROM album_tracks at
      JOIN albums alb ON alb.id = at.album_id
      WHERE at.track_id = t.id AND at.is_primary = 1
-     LIMIT 1) AS album_cover_type
+     LIMIT 1) AS album_cover_type,
+    ROW_NUMBER() OVER (
+      PARTITION BY h.track_id
+      ORDER BY h.played_at ASC, h.id ASC
+    ) AS play_number
   FROM play_history h
   JOIN track_metadata t ON t.id = h.track_id
 `;

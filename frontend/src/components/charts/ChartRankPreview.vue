@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { usePreferencesStore } from '@/stores/preferences'
+import { formatChartListenWithPlays } from '@/lib/listenTime'
 import ChartRankRow from '@/components/charts/ChartRankRow.vue'
 import ChartArtistRankRow from '@/components/charts/ChartArtistRankRow.vue'
 import ChartDualPanel from '@/components/charts/ChartDualPanel.vue'
@@ -65,10 +66,13 @@ function onPlay(idx) {
         <div class="flex items-center gap-2">
           <h2 class="text-sm font-semibold">{{ title }}</h2>
           <span
-            v-if="totals && totals.totalPlays > 0"
+            v-if="totals && totals.totalListenSec > 0"
             class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary"
           >
-            {{ t('charts.totalsBadge', { plays: totals.totalPlays, unique: totals.uniqueTrackCount }) }}
+            {{ t('charts.totalsBadge', {
+              detail: formatChartListenWithPlays(totals.totalListenSec, totals.totalPlays),
+              unique: totals.uniqueTrackCount,
+            }) }}
           </span>
         </div>
         <p v-if="description" class="text-xs text-muted-foreground">{{ description }}</p>

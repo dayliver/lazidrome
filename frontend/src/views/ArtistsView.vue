@@ -42,7 +42,7 @@ watch(showAuthEmpty, () => {
 </script>
 
 <template>
-  <PageLayout spacing="10">
+  <PageLayout>
     <ViewHeader
       :title="t('pages.artists.title')"
       :description="description"

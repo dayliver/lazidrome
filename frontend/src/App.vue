@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch, computed } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, RouterLink } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
@@ -7,12 +7,16 @@ import { usePlayerStore } from '@/stores/player'
 import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import { useAuthStore } from '@/stores/auth'
 import PlayerWrapper from '@/components/player/PlayerWrapper.vue'
-import ConnectedDevicesTrigger from '@/components/player/ConnectedDevicesTrigger.vue'
+import AppSidebarNav from '@/components/layout/AppSidebarNav.vue'
+import AppGlobalSearch from '@/components/layout/AppGlobalSearch.vue'
+import AppSearchPanel from '@/components/layout/AppSearchPanel.vue'
 import AppLogo from '@/components/shared/AppLogo.vue'
+import ConnectedDevicesTrigger from '@/components/player/ConnectedDevicesTrigger.vue'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Compass, Users, Disc, Music, Hash, Settings, List, BarChart2, Trophy, Wrench, FolderOpen, Upload, History } from 'lucide-vue-next'
+import { Menu, X } from 'lucide-vue-next'
 import MetadataEditDialog from '@/components/metadata/MetadataEditDialog.vue'
 import { useYoutubePaste } from '@/composables/useYoutubePaste'
+import { useNavItems } from '@/composables/useNavItems'
 
 import 'vue-sonner/style.css'
 import { Toaster } from '@/components/ui/sonner'
@@ -22,27 +26,16 @@ const library = useLibraryStore()
 const player = usePlayerStore()
 const auth = useAuthStore()
 const playbackSync = usePlaybackSyncStore()
+const { pinnedItems, overflowItems } = useNavItems()
 
 const isSidebarExpanded = ref(true)
 const isMobileMenuOpen = ref(false)
 
 useYoutubePaste()
 
-const navItems = computed(() => [
-  { name: t('nav.home'), path: '/', icon: Compass },
-  { name: t('nav.artists'), path: '/artists', icon: Users },
-  { name: t('nav.albums'), path: '/albums', icon: Disc },
-  { name: t('nav.tracks'), path: '/tracks', icon: Music },
-  { name: t('nav.upload'), path: '/upload', icon: Upload },
-  { name: t('nav.files'), path: '/files', icon: FolderOpen },
-  { name: t('nav.tags'), path: '/tags', icon: Hash },
-  { name: t('nav.playlists'), path: '/playlists', icon: List },
-  { name: t('nav.charts'), path: '/charts', icon: Trophy },
-  { name: t('nav.history'), path: '/history', icon: History },
-  { name: t('nav.stats'), path: '/stats', icon: BarChart2 },
-  { name: t('nav.admin'), path: '/admin', icon: Wrench },
-  { name: t('nav.settings'), path: '/settings', icon: Settings },
-])
+const closeMobileMenu = () => {
+  isMobileMenuOpen.value = false
+}
 
 onMounted(async () => {
   if (auth.isAuthenticated) {
@@ -73,31 +66,11 @@ watch(
 
 <template>
   <div class="flex flex-col md:flex-row h-screen w-full bg-background text-foreground overflow-hidden relative">
-    
-    <aside 
+    <aside
       class="hidden md:flex flex-col border-r bg-card transition-all duration-300 relative z-50"
-      :class="[isSidebarExpanded ? 'w-[22.5rem]' : 'w-[7.5rem]']"
+      :class="[isSidebarExpanded ? 'w-[17rem]' : 'w-[5.5rem]']"
     >
-      <div class="flex h-16 items-center justify-between gap-2 overflow-hidden whitespace-nowrap px-4 md:px-6">
-        <RouterLink to="/" class="flex min-w-0 items-center text-xl font-black tracking-tighter text-primary">
-          <AppLogo class="w-6 h-6 transition-all" :class="{ 'mr-3': isSidebarExpanded }" />
-          <span v-if="isSidebarExpanded" class="truncate">{{ t('app.name') }}</span>
-        </RouterLink>
-        <ConnectedDevicesTrigger popover-side="right" popover-align="end" />
-      </div>
-
-      <nav class="flex-1 px-3 py-4 space-y-2 overflow-y-auto no-scrollbar">
-        <RouterLink 
-          v-for="item in navItems" 
-          :key="item.path"
-          :to="item.path"
-          class="flex items-center p-3 rounded-lg hover:bg-muted transition-colors group text-muted-foreground hover:text-foreground"
-          active-class="bg-primary/10 text-primary hover:text-primary font-bold"
-        >
-          <component :is="item.icon" class="w-5 h-5 shrink-0 transition-all" :class="{ 'mr-4': isSidebarExpanded, 'mx-auto': !isSidebarExpanded }" />
-          <span v-if="isSidebarExpanded" class="font-bold text-sm">{{ item.name }}</span>
-        </RouterLink>
-      </nav>
+      <AppSidebarNav :expanded="isSidebarExpanded" />
 
       <div class="shrink-0 border-t bg-card/50 backdrop-blur-md">
         <div id="desktop-player-portal"></div>
@@ -105,7 +78,11 @@ watch(
     </aside>
 
     <header class="md:hidden border-b px-4 h-14 flex items-center justify-between bg-card/95 backdrop-blur-md z-50 shrink-0 relative">
-      <RouterLink to="/" class="flex min-w-0 items-center text-lg font-black tracking-tighter text-primary" @click="isMobileMenuOpen = false">
+      <RouterLink
+        to="/"
+        class="flex min-w-0 items-center text-lg font-black tracking-tighter text-primary"
+        @click="closeMobileMenu"
+      >
         <AppLogo class="w-5 h-5 mr-2" />
         <span class="truncate">{{ t('app.name') }}</span>
       </RouterLink>
@@ -123,22 +100,45 @@ watch(
     </header>
 
     <Transition name="slide-down">
-      <nav v-if="isMobileMenuOpen" class="md:hidden absolute top-14 left-0 w-full bg-card/95 backdrop-blur-xl border-b z-40 px-4 py-4 shadow-2xl flex flex-col gap-2">
-        <RouterLink 
-          v-for="item in navItems" 
-          :key="item.path" 
-          :to="item.path" 
+      <nav
+        v-if="isMobileMenuOpen"
+        class="md:hidden absolute top-14 left-0 w-full max-h-[calc(100vh-3.5rem)] overflow-y-auto bg-card/95 backdrop-blur-xl border-b z-40 px-4 py-4 shadow-2xl flex flex-col gap-2"
+      >
+        <AppGlobalSearch expanded @navigate="closeMobileMenu" />
+
+        <RouterLink
+          v-for="item in pinnedItems"
+          :key="item.path"
+          :to="item.path"
           class="flex items-center p-4 rounded-xl text-muted-foreground hover:bg-muted transition-colors font-bold"
           active-class="bg-primary/10 text-primary"
-          @click="isMobileMenuOpen = false"
+          @click="closeMobileMenu"
         >
           <component :is="item.icon" class="w-6 h-6 mr-4 shrink-0" />
           {{ item.name }}
         </RouterLink>
+
+        <template v-if="overflowItems.length">
+          <p class="px-2 pt-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            {{ t('nav.more') }}
+          </p>
+          <RouterLink
+            v-for="item in overflowItems"
+            :key="item.path"
+            :to="item.path"
+            class="flex items-center p-4 rounded-xl text-muted-foreground hover:bg-muted transition-colors font-bold"
+            active-class="bg-primary/10 text-primary"
+            @click="closeMobileMenu"
+          >
+            <component :is="item.icon" class="w-6 h-6 mr-4 shrink-0" />
+            {{ item.name }}
+          </RouterLink>
+        </template>
       </nav>
     </Transition>
 
     <main class="flex-1 overflow-y-auto relative bg-background">
+      <AppSearchPanel @navigate="closeMobileMenu" />
       <div
         class="mx-auto max-w-full px-4 pt-6 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px)+1.25rem)] md:px-12 md:py-10"
       >
@@ -146,10 +146,11 @@ watch(
       </div>
 
       <Transition name="fade">
-        <div v-if="isMobileMenuOpen" 
-             class="md:hidden absolute inset-0 z-30 bg-background/60 backdrop-blur-sm"
-             @click="isMobileMenuOpen = false">
-        </div>
+        <div
+          v-if="isMobileMenuOpen"
+          class="md:hidden absolute inset-0 z-30 bg-background/60 backdrop-blur-sm"
+          @click="closeMobileMenu"
+        />
       </Transition>
     </main>
 
@@ -158,7 +159,6 @@ watch(
     <MetadataEditDialog />
 
     <Toaster />
-
   </div>
 </template>
 

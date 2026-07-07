@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import SafeImage from '@/components/shared/SafeImage.vue'
+import { formatChartListenWithPlays } from '@/lib/listenTime'
 import { Crown, Medal, Award } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -44,7 +45,7 @@ function goTo(artist) {
         <p class="truncate text-sm font-semibold">{{ second.name }}</p>
         <p class="truncate text-[11px] text-muted-foreground min-h-[1rem]">&nbsp;</p>
         <p class="text-[10px] text-muted-foreground tabular-nums mt-1">
-          {{ t('chartsRow.playsShort', { count: second.period_plays ?? 0 }) }}
+          {{ formatChartListenWithPlays(second.period_listen_sec ?? 0, second.period_plays ?? 0) }}
         </p>
       </div>
     </button>
@@ -66,7 +67,7 @@ function goTo(artist) {
         <p class="truncate text-sm font-bold">{{ first.name }}</p>
         <p class="truncate text-xs text-muted-foreground min-h-[1rem]">&nbsp;</p>
         <p class="text-[11px] text-primary tabular-nums mt-1 font-semibold">
-          {{ t('chartsRow.playsShort', { count: first.period_plays ?? 0 }) }}
+          {{ formatChartListenWithPlays(first.period_listen_sec ?? 0, first.period_plays ?? 0) }}
         </p>
       </div>
     </button>
@@ -88,7 +89,7 @@ function goTo(artist) {
         <p class="truncate text-sm font-semibold">{{ third.name }}</p>
         <p class="truncate text-[11px] text-muted-foreground min-h-[1rem]">&nbsp;</p>
         <p class="text-[10px] text-muted-foreground tabular-nums mt-1">
-          {{ t('chartsRow.playsShort', { count: third.period_plays ?? 0 }) }}
+          {{ formatChartListenWithPlays(third.period_listen_sec ?? 0, third.period_plays ?? 0) }}
         </p>
       </div>
     </button>

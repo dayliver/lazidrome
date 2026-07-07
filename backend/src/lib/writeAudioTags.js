@@ -9,9 +9,17 @@ function outputCodecArgs(ext) {
   switch (ext.toLowerCase()) {
     case '.mp3':
       return ['-codec:a', 'libmp3lame', '-qscale:a', '2'];
+    case '.flac':
+      return ['-codec:a', 'flac'];
+    case '.ogg':
+      return ['-codec:a', 'libvorbis'];
+    case '.opus':
+      return ['-codec:a', 'libopus'];
     case '.m4a':
     case '.mp4':
       return ['-codec:a', 'copy', '-movflags', 'use_metadata_tags'];
+    case '.wav':
+      return ['-codec:a', 'pcm_s16le'];
     default:
       return ['-codec:a', 'copy'];
   }

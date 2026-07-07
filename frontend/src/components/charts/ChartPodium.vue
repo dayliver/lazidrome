@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import SafeImage from '@/components/shared/SafeImage.vue'
+import { formatChartListenWithPlays } from '@/lib/listenTime'
 import { Crown, Medal, Award } from 'lucide-vue-next'
 
 /**
@@ -48,7 +49,7 @@ function trigger(rank) {
         <p class="truncate text-sm font-semibold">{{ second.title }}</p>
         <p class="truncate text-[11px] text-muted-foreground min-h-[1rem]">{{ second.artist || '—' }}</p>
         <p class="text-[10px] text-muted-foreground tabular-nums mt-1">
-          {{ t('chartsRow.playsShort', { count: second.period_plays ?? 0 }) }}
+          {{ formatChartListenWithPlays(second.period_listen_sec ?? 0, second.period_plays ?? 0) }}
         </p>
       </div>
     </button>
@@ -70,7 +71,7 @@ function trigger(rank) {
         <p class="truncate text-sm font-bold">{{ first.title }}</p>
         <p class="truncate text-xs text-muted-foreground min-h-[1rem]">{{ first.artist || '—' }}</p>
         <p class="text-[11px] text-primary tabular-nums mt-1 font-semibold">
-          {{ t('chartsRow.playsShort', { count: first.period_plays ?? 0 }) }}
+          {{ formatChartListenWithPlays(first.period_listen_sec ?? 0, first.period_plays ?? 0) }}
           <span v-if="first.rating"> · ★{{ first.rating }}</span>
         </p>
       </div>
@@ -93,7 +94,7 @@ function trigger(rank) {
         <p class="truncate text-sm font-semibold">{{ third.title }}</p>
         <p class="truncate text-[11px] text-muted-foreground min-h-[1rem]">{{ third.artist || '—' }}</p>
         <p class="text-[10px] text-muted-foreground tabular-nums mt-1">
-          {{ t('chartsRow.playsShort', { count: third.period_plays ?? 0 }) }}
+          {{ formatChartListenWithPlays(third.period_listen_sec ?? 0, third.period_plays ?? 0) }}
         </p>
       </div>
     </button>

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import { usePlaylistStore } from '@/stores/playlist'
+import { usePreferencesStore } from '@/stores/preferences'
 import { fetchFrequentVisits, ensureLegacyVisitsDiscarded } from '@/lib/visitHistory'
 import {
   useHorizontalDragScroll,
@@ -24,6 +25,7 @@ export function useHomePage() {
   const player = usePlayerStore()
   const playbackSync = usePlaybackSyncStore()
   const playlistStore = usePlaylistStore()
+  const prefs = usePreferencesStore()
   const route = useRoute()
 
   const visits = ref([])
@@ -119,7 +121,7 @@ export function useHomePage() {
     topLoading.value = true
     topError.value = null
     try {
-      const data = await library.fetchStatsTop('7d', 20)
+      const data = await library.fetchStatsTop('7d', 20, prefs.effectiveTimezone)
       top20.value = Array.isArray(data?.tracks) ? data.tracks : []
       topArtists.value = Array.isArray(data?.artists) ? data.artists : []
     } catch (e) {
@@ -160,6 +162,13 @@ export function useHomePage() {
         top20.value = []
         topArtists.value = []
       }
+    }
+  )
+
+  watch(
+    () => prefs.effectiveTimezone,
+    () => {
+      if (auth.isAuthenticated) void loadTop20()
     }
   )
 

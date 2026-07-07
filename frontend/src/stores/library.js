@@ -102,6 +102,23 @@ export const useLibraryStore = defineStore('library', () => {
     return normalizeTracksResponse(body).items
   }
 
+  const createAlbum = async (name, year = null) => {
+    const res = await auth.fetchWithAuth('/api/albums', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: String(name ?? '').trim(),
+        ...(year != null ? { year } : {}),
+      }),
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok || !body?.success) {
+      throw new Error(body?.error || t('library.albumCreateFailed'))
+    }
+    await fetchLibrary({ force: true })
+    return body.data?.id
+  }
+
   const fetchLibraryRevision = async () => {
     const res = await auth.fetchWithAuth('/api/library/revision')
     if (!res.ok) throw new Error(t('library.revisionFetchFailed'))
@@ -633,6 +650,7 @@ export const useLibraryStore = defineStore('library', () => {
     fetchTracksPage,
     fetchTracksByIds,
     searchTracks,
+    createAlbum,
     getArtists,
     getAlbums,
     getTracks,

@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { formatListenSeconds } from '@/lib/listenTime'
+import { formatChartListenTime } from '@/lib/listenTime'
 
 /**
  * 차트 헤더에 보여줄 기간 합계 (총 재생, 청취 시간, 고유 트랙).
@@ -26,7 +26,7 @@ const cells = computed(() => {
     {
       key: 'listen',
       label: t('charts.totals.listen'),
-      value: formatListenSeconds(props.totals?.totalListenSec ?? 0),
+      value: formatChartListenTime(props.totals?.totalListenSec ?? 0),
     },
     {
       key: 'unique',

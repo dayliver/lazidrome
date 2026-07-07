@@ -18,7 +18,13 @@
     "admin": "Library tools",
     "settings": "Settings",
     "menuOpen": "Open menu",
-    "menuClose": "Close menu"
+    "menuClose": "Close menu",
+    "more": "More",
+    "searchPlaceholder": "Search artists, albums, tracks…",
+    "searchShort": "Search",
+    "searchLoading": "Searching…",
+    "searchEmpty": "No results.",
+    "searchResults": "Search results"
   },
   "admin": {
     "title": "Library maintenance",
@@ -75,6 +81,15 @@
       "description": "Choose the language for menus and descriptions.",
       "en": "English",
       "ko": "Korean"
+    },
+    "navPin": {
+      "title": "Sidebar menu",
+      "description": "Pin items to the sidebar; the rest appear under More.",
+      "reset": "Reset to default",
+      "locked": "Home is always shown.",
+      "pinnedHeading": "Shown in sidebar",
+      "overflowHeading": "More menu",
+      "dragHint": "Drag to reorder pinned items."
     },
     "timezone": {
       "title": "Statistics timezone",
@@ -198,31 +213,32 @@
     "shown": "{shown} / {total}",
     "loadMore": "Load 50 more",
     "allLoaded": "All entries loaded.",
-    "scrobbled": "Last.fm"
+    "scrobbled": "Last.fm",
+    "playNumber": "#{n}"
   },
   "charts": {
     "title": "Charts",
-    "description": "Top tracks and artists by plays in each period.",
+    "description": "Top tracks and artists by listen time in each period.",
     "authEmpty": "Log in under Settings to view charts.",
     "tabTracks": "Tracks",
     "tabArtists": "Artists",
-    "artistsHint": "Each play counts once per participating artist (track + primary album). Duplicates on the same play count once.",
+    "artistsHint": "Each play's listen time is added to every participating artist (track + primary album). Duplicates on the same play count once.",
     "previewTracks": "Tracks",
     "previewArtists": "Artists",
     "weekly": {
       "title": "Weekly chart",
       "short": "Weekly",
-      "description": "Last 7 days · rating · all-time plays"
+      "description": "Last 7 days listen time · rating · all-time listen time"
     },
     "monthly": {
       "title": "Monthly chart",
       "short": "Monthly",
-      "description": "Last 30 days · rating · all-time plays"
+      "description": "Last 30 days listen time · rating · all-time listen time"
     },
     "alltime": {
       "title": "All-time chart",
       "short": "All time",
-      "description": "Full history · rating · all-time plays"
+      "description": "Full history listen time · rating · all-time listen time"
     },
     "backToList": "← Charts",
     "viewMore": "View all",
@@ -231,7 +247,7 @@
     "noPlaysYet": "No plays in this period yet. Listen to a track to start the chart.",
     "loadError": "Could not load chart.",
     "restHeading": "#{from}–{to}",
-    "totalsBadge": "{plays} plays · {unique} tracks",
+    "totalsBadge": "{detail} · {unique} tracks",
     "totals": {
       "plays": "Total plays",
       "listen": "Listen time",
@@ -261,7 +277,8 @@
       "partialFailed": "{n} track(s) failed to save",
       "completed": "Saved. The scanner will update the library.",
       "clear": "Clear list",
-      "importMore": "Import more files"
+      "importMore": "Import more files",
+      "useTypedValue": "Use \"{value}\""
     }
   },
   "upload": {

@@ -6,6 +6,7 @@ import {
   getPlayHistoryStorageZone,
   parsePlayedAt,
   resolveStatsTimezone,
+  sumListenSecByTrack,
 } from '../lib/playHistoryTime.js';
 
 const db = getDB();
@@ -18,13 +19,10 @@ export const HABIT_RANGES = new Set(['7d', '30d', 'all']);
 
 const LISTEN_FROM = `
   FROM play_history h
-  JOIN track_metadata t ON t.id = h.track_id
-  JOIN track_filedata f ON f.id = t.file_id
 `;
 
-/** 재생 1회당 해당 곡 파일 길이(초) 합산 — 실제 청취 초는 저장되지 않음 */
 function listenSecExpr() {
-  return 'SUM(COALESCE(f.duration, 0))';
+  return 'SUM(COALESCE(h.listened_sec, 0))';
 }
 
 /**
@@ -221,10 +219,8 @@ function loadPlayHistoryEvents() {
   const rows = db
     .prepare(
       `
-    SELECT h.played_at, h.track_id AS track_id, COALESCE(f.duration, 0) AS duration_sec
+    SELECT h.played_at, h.track_id AS track_id, COALESCE(h.listened_sec, 0) AS listen_sec
     FROM play_history h
-    JOIN track_metadata t ON t.id = h.track_id
-    JOIN track_filedata f ON f.id = t.file_id
   `
     )
     .all();
@@ -232,12 +228,10 @@ function loadPlayHistoryEvents() {
     .map((r) => {
       const playedAt = parsePlayedAt(r.played_at);
       if (!playedAt) return null;
-      // track_id 는 ULID(TEXT). 예전엔 Number()로 변환해 NaN을 만들고 있어
-      // countPlaysByTrack/Top* 결과가 항상 비어 있었음 (차트 무표시 버그).
       return {
         playedAt,
         trackId: String(r.track_id),
-        durationSec: Number(r.duration_sec) || 0,
+        listenSec: Number(r.listen_sec) || 0,
       };
     })
     .filter(Boolean);
@@ -326,26 +320,26 @@ function fetchTracksByIdsOrdered(trackIds) {
   return trackIds.map((id) => byId[id]).filter(Boolean);
 }
 
-/** play_history 기간 내 재생 수 → 별점 → 통산 재생 수 */
+/** play_history 기간 내 청취 초 합 → 별점 → 통산 청취 초 */
 export function getTopTracksByPlayEvents(range, limit = 20, timezoneRaw) {
   if (!CHART_RANGES.has(range) && !RANGES.has(range)) return [];
   const statsZone = resolveStatsTimezone(timezoneRaw);
   const all = getPlayHistoryEvents();
   const periodEv = filterEventsByRange(all, range, statsZone);
-  const allTimeCounts = countPlaysByTrack(all);
-  const periodCounts = countPlaysByTrack(periodEv);
+  const allTimeListen = sumListenSecByTrack(all);
+  const periodListen = sumListenSecByTrack(periodEv);
+  const allTimePlays = countPlaysByTrack(all);
+  const periodPlays = countPlaysByTrack(periodEv);
 
-  const ranked = [...periodCounts.entries()]
-    .map(([trackId, periodPlays]) => ({
+  const ranked = [...periodListen.entries()]
+    .map(([trackId, periodListenSec]) => ({
       trackId,
-      periodPlays,
-      allTimePlays: allTimeCounts.get(trackId) || 0,
+      periodListenSec,
+      allTimeListenSec: allTimeListen.get(trackId) || 0,
+      periodPlays: periodPlays.get(trackId) || 0,
+      allTimePlays: allTimePlays.get(trackId) || 0,
     }))
-    .sort(
-      (a, b) =>
-        b.periodPlays - a.periodPlays ||
-        0 // rating applied after fetch
-    );
+    .sort((a, b) => b.periodListenSec - a.periodListenSec);
 
   const topIds = ranked.slice(0, Math.min(limit * 3, ranked.length)).map((r) => r.trackId);
   const tracks = fetchTracksByIdsOrdered(topIds);
@@ -354,14 +348,16 @@ export function getTopTracksByPlayEvents(range, limit = 20, timezoneRaw) {
   return tracks
     .map((t) => ({
       ...t,
+      period_listen_sec: meta[t.id]?.periodListenSec ?? 0,
+      all_time_listen_sec: meta[t.id]?.allTimeListenSec ?? 0,
       period_plays: meta[t.id]?.periodPlays ?? 0,
       all_time_plays: meta[t.id]?.allTimePlays ?? 0,
     }))
     .sort(
       (a, b) =>
-        (meta[b.id]?.periodPlays ?? 0) - (meta[a.id]?.periodPlays ?? 0) ||
+        (meta[b.id]?.periodListenSec ?? 0) - (meta[a.id]?.periodListenSec ?? 0) ||
         (Number(b.rating) || 0) - (Number(a.rating) || 0) ||
-        (meta[b.id]?.allTimePlays ?? 0) - (meta[a.id]?.allTimePlays ?? 0) ||
+        (meta[b.id]?.allTimeListenSec ?? 0) - (meta[a.id]?.allTimeListenSec ?? 0) ||
         String(a.title || '').localeCompare(String(b.title || ''), undefined, {
           sensitivity: 'base',
         })
@@ -380,18 +376,17 @@ export function getChartTotals(range, timezoneRaw) {
   }
   const statsZone = resolveStatsTimezone(timezoneRaw);
   const periodEv = filterEventsByRange(getPlayHistoryEvents(), range, statsZone);
-  const periodCounts = countPlaysByTrack(periodEv);
+  const periodListen = sumListenSecByTrack(periodEv);
   let totalListenSec = 0;
-  const uniqueTracks = new Set();
-  for (const ev of periodEv) {
-    totalListenSec += ev.durationSec;
-    uniqueTracks.add(ev.trackId);
-  }
+  for (const sec of periodListen.values()) totalListenSec += sec;
+  const listenedTrackIds = [...periodListen.entries()]
+    .filter(([, sec]) => sec > 0)
+    .map(([trackId]) => trackId);
   return {
     totalPlays: periodEv.length,
     totalListenSec,
-    uniqueTrackCount: uniqueTracks.size,
-    uniqueArtistCount: countUniqueArtistsInPeriod(periodCounts),
+    uniqueTrackCount: listenedTrackIds.length,
+    uniqueArtistCount: countUniqueArtistsInPeriod(listenedTrackIds),
   };
 }
 
@@ -444,10 +439,9 @@ function buildUniqueArtistIdsByTrack(trackIds) {
   return map;
 }
 
-/** 기간 내 재생이 1회 이상 잡힌 고유 아티스트 수 */
-function countUniqueArtistsInPeriod(periodCounts) {
-  if (!periodCounts?.size) return 0;
-  const trackIds = [...periodCounts.keys()];
+/** 기간 내 청취 시간이 잡힌 고유 아티스트 수 */
+function countUniqueArtistsInPeriod(trackIds) {
+  if (!trackIds?.length) return 0;
   const byTrack = buildUniqueArtistIdsByTrack(trackIds);
   const unique = new Set();
   for (const ids of byTrack.values()) {
@@ -457,34 +451,39 @@ function countUniqueArtistsInPeriod(periodCounts) {
 }
 
 /**
- * 기간 내 play_history: 재생 1회마다 해당 곡에 참여한 아티스트(곡+대표앨범 합집합)마다 +1.
+ * 기간 내 play_history: 재생 1회의 listened_sec를 해당 곡 참여 아티스트(곡+대표앨범 합집합)마다 합산.
  * 동일 아티스트가 곡·앨범 양쪽에 있어도 그 재생에서는 1회만 집계.
  */
 export function getTopArtistsByPlayEvents(range, limit = 20, timezoneRaw) {
   if (!CHART_RANGES.has(range) && !RANGES.has(range)) return [];
   const statsZone = resolveStatsTimezone(timezoneRaw);
   const periodEv = filterEventsByRange(getPlayHistoryEvents(), range, statsZone);
-  const periodCounts = countPlaysByTrack(periodEv);
-  if (!periodCounts.size) return [];
+  if (!periodEv.length) return [];
 
-  const trackIds = [...periodCounts.keys()];
+  const trackIds = [...new Set(periodEv.map((ev) => ev.trackId))];
   const artistsByTrack = buildUniqueArtistIdsByTrack(trackIds);
 
+  const artistListenSec = new Map();
   const artistPlays = new Map();
-  for (const [trackId, playCount] of periodCounts) {
-    const artistIds = artistsByTrack.get(String(trackId));
+  for (const ev of periodEv) {
+    const sec = Number(ev.listenSec) || 0;
+    const artistIds = artistsByTrack.get(String(ev.trackId));
     if (!artistIds?.size) continue;
     for (const artistId of artistIds) {
-      artistPlays.set(artistId, (artistPlays.get(artistId) || 0) + playCount);
+      artistPlays.set(artistId, (artistPlays.get(artistId) || 0) + 1);
+      if (sec > 0) {
+        artistListenSec.set(artistId, (artistListenSec.get(artistId) || 0) + sec);
+      }
     }
   }
 
-  if (!artistPlays.size) return [];
+  if (!artistListenSec.size && !artistPlays.size) return [];
 
-  const sortedArtistIds = [...artistPlays.entries()]
+  const sortedArtistIds = [...artistListenSec.entries()]
     .sort(
       (a, b) =>
         b[1] - a[1] ||
+        (artistPlays.get(b[0]) || 0) - (artistPlays.get(a[0]) || 0) ||
         String(a[0]).localeCompare(String(b[0]), undefined, { sensitivity: 'base' })
     )
     .slice(0, limit)
@@ -508,6 +507,7 @@ export function getTopArtistsByPlayEvents(range, limit = 20, timezoneRaw) {
       if (!row) return null;
       return {
         ...row,
+        period_listen_sec: artistListenSec.get(id) || 0,
         period_plays: artistPlays.get(id) || 0,
       };
     })
@@ -519,10 +519,10 @@ export function getTopAlbumsByPlayEvents(range, limit = 20, timezoneRaw) {
   if (!CHART_RANGES.has(range) && !RANGES.has(range)) return [];
   const statsZone = resolveStatsTimezone(timezoneRaw);
   const periodEv = filterEventsByRange(getPlayHistoryEvents(), range, statsZone);
-  const periodCounts = countPlaysByTrack(periodEv);
-  if (!periodCounts.size) return [];
+  const periodListen = sumListenSecByTrack(periodEv);
+  if (!periodListen.size) return [];
 
-  const trackIds = [...periodCounts.keys()];
+  const trackIds = [...periodListen.keys()];
   const placeholders = trackIds.map(() => '?').join(',');
   const albumRows = db
     .prepare(
@@ -534,13 +534,14 @@ export function getTopAlbumsByPlayEvents(range, limit = 20, timezoneRaw) {
     )
     .all(...trackIds);
 
-  const albumPlays = new Map();
+  const albumListenSec = new Map();
   for (const row of albumRows) {
-    const plays = periodCounts.get(row.track_id) || 0;
-    albumPlays.set(row.album_id, (albumPlays.get(row.album_id) || 0) + plays);
+    const sec = periodListen.get(row.track_id) || 0;
+    if (sec <= 0) continue;
+    albumListenSec.set(row.album_id, (albumListenSec.get(row.album_id) || 0) + sec);
   }
 
-  const sortedAlbumIds = [...albumPlays.entries()]
+  const sortedAlbumIds = [...albumListenSec.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([id]) => id);
@@ -559,7 +560,7 @@ export function getTopAlbumsByPlayEvents(range, limit = 20, timezoneRaw) {
   const byId = Object.fromEntries(albums.map((a) => [a.id, a]));
   return sortedAlbumIds.map((id) => ({
     ...byId[id],
-    play_events: albumPlays.get(id) || 0,
+    period_listen_sec: albumListenSec.get(id) || 0,
   }));
 }
 

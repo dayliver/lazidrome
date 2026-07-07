@@ -9,8 +9,8 @@
       "frequentEmpty": "재생목록·앨범·아티스트·태그를 둘러보면 여기에 쌓입니다.",
       "visitMeta": "{kind} · 최근 7일 {count}회",
       "visitCount": "{count}회",
-      "topTitle": "최근 7일 많이 재생된 곡",
-      "topHint": "곡을 누르면 같은 순위의 상위 20곡이 대기열에 올라가고, 누른 곡부터 재생됩니다.",
+      "topTitle": "최근 7일 많이 들은 곡",
+      "topHint": "청취 시간 순 · 곡을 누르면 같은 순위의 상위 20곡이 대기열에 올라가고, 누른 곡부터 재생됩니다.",
       "topLoading": "불러오는 중…",
       "topError": "순위 데이터를 불러오지 못했습니다.",
       "topEmpty": "아직 기록이 없습니다.",
@@ -33,7 +33,17 @@
       "title": "앨범",
       "description": "총 {count}장",
       "loading": "Lazidrome 엔진에서 앨범 갤러리를 구성하고 있습니다...",
-      "empty": "표시할 앨범이 없습니다."
+      "empty": "표시할 앨범이 없습니다.",
+      "createTitle": "새 앨범",
+      "createHint": "빈 앨범을 만든 뒤 곡을 추가할 수 있습니다.",
+      "createNamePlaceholder": "앨범 이름",
+      "createYearPlaceholder": "선택",
+      "createSubmit": "만들기",
+      "createNoName": "앨범 이름을 입력하세요.",
+      "createBadYear": "연도가 올바르지 않습니다.",
+      "createDone": "앨범을 만들었습니다.",
+      "createFailed": "앨범을 만들지 못했습니다.",
+      "addMusic": "음원 추가"
     },
     "tracks": {
       "title": "곡",
@@ -51,7 +61,12 @@
       "allTitle": "모든 태그",
       "searchPlaceholder": "태그 검색...",
       "itemCount": "{count} 항목",
-      "noResults": "검색된 태그가 없습니다."
+      "noResults": "검색된 태그가 없습니다.",
+      "createTitle": "새 태그",
+      "createHint": "태그 페이지가 열립니다. 곡·앨범·아티스트 메타데이터에 이 태그를 붙이면 목록에 반영됩니다.",
+      "createPlaceholder": "태그 이름",
+      "createSubmit": "만들기",
+      "createReady": "태그를 사용할 준비가 되었습니다."
     },
     "playlists": {
       "title": "재생목록",

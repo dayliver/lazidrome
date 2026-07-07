@@ -10,6 +10,7 @@ import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import { Search, Hash, Tags } from 'lucide-vue-next'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
+import CreateTagDialog from '@/components/tags/CreateTagDialog.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -19,6 +20,7 @@ const { showAuthEmpty } = useRequiresAuth()
 const tags = ref([])
 const isLoading = ref(true)
 const searchQuery = ref('')
+const createOpen = ref(false)
 
 const description = computed(() =>
   t('pages.tags.description', { count: tags.value.length })
@@ -64,7 +66,7 @@ const goToTag = (name) => {
 const getTagImageUrl = (name) => authStore.coverSrc('tag', name)
 
 const handleCreate = () => {
-  console.log('create tag')
+  createOpen.value = true
 }
 </script>
 
@@ -153,5 +155,7 @@ const handleCreate = () => {
         </div>
       </section>
     </template>
+
+    <CreateTagDialog v-model:is-open="createOpen" />
   </PageLayout>
 </template>

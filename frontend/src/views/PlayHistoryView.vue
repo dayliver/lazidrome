@@ -183,6 +183,12 @@ watch(
             </RouterLink>
 
             <span
+              class="shrink-0 min-w-[3.25rem] text-right text-[11px] sm:text-xs font-semibold tabular-nums text-muted-foreground"
+            >
+              {{ t('history.playNumber', { n: row.play_number ?? '?' }) }}
+            </span>
+
+            <span
               v-if="row.scrobbled"
               class="hidden sm:inline shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground"
               :title="t('history.scrobbled')"

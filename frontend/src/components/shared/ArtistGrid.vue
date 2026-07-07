@@ -25,12 +25,12 @@ const subtitleFor = (artist) => {
 </script>
 
 <template>
-  <div class="flex flex-wrap gap-3 md:gap-4">
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 pb-12">
     <RouterLink
       v-for="artist in artists"
       :key="artist.id"
       :to="{ name: 'artist-detail', params: { id: artist.id } }"
-      class="flex w-[clamp(7.5rem,11vw,10.5rem)] shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition-all hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:w-[clamp(7.5rem,9vw,11rem)]"
+      class="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition-all hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div class="relative aspect-square w-full overflow-hidden bg-muted">
         <SafeImage
@@ -38,7 +38,7 @@ const subtitleFor = (artist) => {
           :src="getArtistImageUrl(artist.id)"
           type="artist"
           :alt="t('pages.artists.coverAlt', { name: artist.name })"
-          class="aspect-square h-full w-full object-cover"
+          class="aspect-square h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         <div
           v-else
@@ -52,9 +52,13 @@ const subtitleFor = (artist) => {
           {{ t('common.trackCount', { count: artist.trackCount || 0 }) }}
         </span>
       </div>
-      <div class="space-y-0.5 p-2">
-        <p class="text-xs font-semibold leading-snug break-words">{{ artist.name }}</p>
-        <p class="text-[11px] leading-snug text-muted-foreground break-words">{{ subtitleFor(artist) }}</p>
+      <div class="space-y-0.5 p-2 min-w-0">
+        <p class="text-xs font-semibold leading-snug truncate group-hover:text-primary transition-colors" :title="artist.name">
+          {{ artist.name }}
+        </p>
+        <p class="text-[11px] leading-snug text-muted-foreground truncate" :title="subtitleFor(artist)">
+          {{ subtitleFor(artist) }}
+        </p>
       </div>
     </RouterLink>
   </div>

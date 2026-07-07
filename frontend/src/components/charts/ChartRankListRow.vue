@@ -1,8 +1,10 @@
 <script setup>
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import SafeImage from '@/components/shared/SafeImage.vue'
+import { formatChartListenWithPlays } from '@/lib/listenTime'
 
-defineProps({
+const props = defineProps({
   rank: { type: Number, required: true },
   coverSrc: { type: String, default: '' },
   coverType: { type: String, default: 'track' },
@@ -10,7 +12,9 @@ defineProps({
   coverVariant: { type: String, default: 'track' },
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
+  periodListenSec: { type: Number, default: 0 },
   periodPlays: { type: Number, default: 0 },
+  allTimeListenSec: { type: Number, default: null },
   allTimePlays: { type: Number, default: null },
   rating: { type: Number, default: 0 },
   compact: { type: Boolean, default: false },
@@ -19,6 +23,14 @@ defineProps({
 const emit = defineEmits(['click'])
 
 const { t } = useI18n()
+
+const periodDetail = computed(() =>
+  formatChartListenWithPlays(props.periodListenSec, props.periodPlays),
+)
+const allTimeDetail = computed(() => {
+  if (props.allTimeListenSec == null) return null
+  return formatChartListenWithPlays(props.allTimeListenSec, props.allTimePlays ?? 0)
+})
 
 const coverClass =
   'h-10 w-10 shrink-0 ring-1 ring-border object-cover'
@@ -50,12 +62,12 @@ const coverClass =
         {{ subtitle || '\u00a0' }}
       </p>
       <p v-if="!compact" class="text-[10px] text-muted-foreground mt-0.5 tabular-nums leading-snug">
-        {{ t('chartsRow.periodPlays', { count: periodPlays ?? '—' }) }}
+        {{ t('chartsRow.periodListen', { detail: periodDetail }) }}
         <span v-if="rating"> · ★{{ rating }}</span>
-        <span v-if="allTimePlays != null">{{ t('chartsRow.allTimePlays', { count: allTimePlays }) }}</span>
+        <span v-if="allTimeDetail">{{ t('chartsRow.allTimeListen', { detail: allTimeDetail }) }}</span>
       </p>
       <p v-else class="text-[10px] text-muted-foreground mt-0.5 tabular-nums leading-snug">
-        {{ t('chartsRow.playsShort', { count: periodPlays ?? 0 }) }}
+        {{ periodDetail }}
         <span v-if="rating"> · ★{{ rating }}</span>
       </p>
     </div>

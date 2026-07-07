@@ -4,19 +4,30 @@ import { useI18n } from 'vue-i18n'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
 import { useRequiresAuth } from '@/composables/useRequiresAuth'
-import { Disc } from 'lucide-vue-next'
+import { useAddMediaAction } from '@/composables/useAddMediaAction'
+import { Disc, Plus } from 'lucide-vue-next'
 import AlbumGrid from '@/components/shared/AlbumGrid.vue'
+import CreateAlbumDialog from '@/components/albums/CreateAlbumDialog.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const { t } = useI18n()
 const library = useLibraryStore()
 const auth = useAuthStore()
 const { showAuthEmpty } = useRequiresAuth()
+const { goAddMedia } = useAddMediaAction()
 
 const albumsData = ref([])
 const isLoading = ref(true)
+const createOpen = ref(false)
 
 const description = computed(() =>
   t('pages.albums.description', { count: albumsData.value.length })
@@ -49,8 +60,8 @@ watch(showAuthEmpty, () => {
   void loadAlbums()
 })
 
-const handleCreateAlbum = () => {
-  console.log('create album')
+const onAlbumCreated = () => {
+  void loadAlbums()
 }
 </script>
 
@@ -59,8 +70,26 @@ const handleCreateAlbum = () => {
     <ViewHeader
       :title="t('pages.albums.title')"
       :description="description"
-      @action="handleCreateAlbum"
-    />
+      :show-action="false"
+    >
+      <template #actions>
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button variant="outline" size="icon" class="rounded-full">
+              <Plus class="w-5 h-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-44">
+            <DropdownMenuItem @click="createOpen = true">
+              {{ t('pages.albums.createTitle') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem @click="goAddMedia">
+              {{ t('pages.albums.addMusic') }}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </template>
+    </ViewHeader>
 
     <AuthEmptyState v-if="showAuthEmpty" />
 
@@ -75,5 +104,7 @@ const handleCreateAlbum = () => {
     </div>
 
     <AlbumGrid v-else :albums="albumsData" />
+
+    <CreateAlbumDialog v-model:is-open="createOpen" @success="onAlbumCreated" />
   </PageLayout>
 </template>

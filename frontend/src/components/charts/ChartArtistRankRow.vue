@@ -30,6 +30,7 @@ function goToArtist() {
     cover-variant="artist"
     :title="artist.name"
     subtitle=""
+    :period-listen-sec="artist.period_listen_sec"
     :period-plays="artist.period_plays"
     :compact="compact"
     @click="goToArtist"

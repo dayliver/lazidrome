@@ -47,6 +47,9 @@ const streamUrlByTrackId = new Map()
 let queueHlsPlayer = null
 let hlsQueueMode = false
 let lastHlsTrackIndex = -1
+let hlsSliceBaseIndex = 0
+let hlsSegmentStarts = []
+let hlsSegmentDurations = []
 
 export const usePlayerStore = defineStore('player', () => {
   const auth = useAuthStore()
@@ -132,9 +135,40 @@ export const usePlayerStore = defineStore('player', () => {
     get: () => [(duration.value === 0 ? 0 : (currentTime.value / duration.value) * 100)],
     set: (val) => {
       const time = (val[0] / 100) * duration.value
+      if (hlsQueueMode) {
+        const localIdx = currentIndex.value - hlsSliceBaseIndex
+        const segStart = hlsSegmentStarts[localIdx] ?? 0
+        audio.value.currentTime = segStart + time
+        syncHlsPlaybackTimes()
+        return
+      }
       audio.value.currentTime = time
     },
   })
+
+  const trackDurationFromQueue = (track) => {
+    const d = Number(track?.duration ?? track?.duration_sec)
+    return Number.isFinite(d) && d > 0 ? d : 0
+  }
+
+  const syncHlsPlaybackTimes = () => {
+    if (!hlsQueueMode) return
+    const localIdx = currentIndex.value - hlsSliceBaseIndex
+    if (localIdx < 0 || localIdx >= hlsSegmentStarts.length) return
+    const segStart = hlsSegmentStarts[localIdx] ?? 0
+    let segDur = hlsSegmentDurations[localIdx]
+    if (!Number.isFinite(segDur) || segDur <= 0) {
+      segDur = trackDurationFromQueue(currentTrack.value)
+    }
+    const audioCt = audio.value.currentTime
+    if (!Number.isFinite(audioCt)) return
+    const localCt =
+      segDur > 0
+        ? Math.max(0, Math.min(audioCt - segStart, segDur))
+        : Math.max(0, audioCt - segStart)
+    currentTime.value = localCt
+    if (segDur > 0) duration.value = segDur
+  }
 
   const toggleExpand = () => {
     isExpanded.value = !isExpanded.value
@@ -211,6 +245,9 @@ export const usePlayerStore = defineStore('player', () => {
   const destroyHlsQueue = () => {
     hlsQueueMode = false
     lastHlsTrackIndex = -1
+    hlsSliceBaseIndex = 0
+    hlsSegmentStarts = []
+    hlsSegmentDurations = []
     if (queueHlsPlayer) queueHlsPlayer.destroy()
   }
 
@@ -230,6 +267,7 @@ export const usePlayerStore = defineStore('player', () => {
       const tr = queue.value[index]
       playSessionTrackId.value = tr?.id ?? null
       playSessionPeakSec.value = 0
+      syncHlsPlaybackTimes()
       syncMediaSession()
     }
   }
@@ -269,6 +307,15 @@ export const usePlayerStore = defineStore('player', () => {
       return Number.isFinite(d) && d > 0 ? d : 1
     })
 
+    hlsSliceBaseIndex = idx
+    hlsSegmentDurations = segmentDurations
+    hlsSegmentStarts = []
+    let segmentAcc = 0
+    for (const d of hlsSegmentDurations) {
+      hlsSegmentStarts.push(segmentAcc)
+      segmentAcc += d
+    }
+
     const hls = ensureQueueHlsPlayer()
     hlsQueueMode = true
     lastHlsTrackIndex = idx
@@ -291,6 +338,7 @@ export const usePlayerStore = defineStore('player', () => {
     const tr = queue.value[idx]
     playSessionPeakSec.value = 0
     playSessionTrackId.value = tr?.id ?? null
+    syncHlsPlaybackTimes()
     syncUserVolumeToAudio()
     syncMediaSession()
     await play()
@@ -430,8 +478,8 @@ export const usePlayerStore = defineStore('player', () => {
 
   const syncMediaSessionPosition = () => {
     if (typeof navigator === 'undefined' || !navigator.mediaSession?.setPositionState) return
-    const dur = audio.value.duration
-    const pos = audio.value.currentTime
+    const dur = hlsQueueMode ? duration.value : audio.value.duration
+    const pos = hlsQueueMode ? currentTime.value : audio.value.currentTime
     if (!Number.isFinite(dur) || dur <= 0 || !Number.isFinite(pos)) return
     try {
       navigator.mediaSession.setPositionState({
@@ -622,7 +670,11 @@ export const usePlayerStore = defineStore('player', () => {
     syncMediaSession()
 
     audio.value.addEventListener('timeupdate', () => {
-      currentTime.value = audio.value.currentTime
+      if (hlsQueueMode) {
+        syncHlsPlaybackTimes()
+      } else {
+        currentTime.value = audio.value.currentTime
+      }
       bumpPlaySessionPeak()
       applyEndFadeIfForeground()
       syncMediaSessionPosition()
@@ -643,7 +695,11 @@ export const usePlayerStore = defineStore('player', () => {
       syncUserVolumeToAudio()
     })
     audio.value.addEventListener('loadedmetadata', () => {
-      duration.value = audio.value.duration
+      if (hlsQueueMode) {
+        syncHlsPlaybackTimes()
+      } else {
+        duration.value = audio.value.duration
+      }
       bumpPlaySessionPeak()
     })
     audio.value.addEventListener('ended', () => {

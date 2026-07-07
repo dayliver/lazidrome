@@ -69,6 +69,61 @@ export function uniqueDestPath(destPath) {
   return path.join(dir, `${base} (${n})${ext}`);
 }
 
+/**
+ * `{artist} - {album} - {title}` 파일명 역파싱 (buildTrackFileName 대응).
+ * @returns {{ artist: string, album: string, title: string } | null}
+ */
+export function parseArtistAlbumTitleFilename(baseName) {
+  const base = String(baseName ?? '').trim();
+  if (!base) return null;
+  const parts = base.split(' - ').map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 3) return null;
+  return {
+    artist: parts[0],
+    album: parts[1],
+    title: parts.slice(2).join(' - '),
+  };
+}
+
+/**
+ * Lazidrome 업로드 경로·파일명에서 메타 힌트 추출.
+ * layout: `{tracksRoot}/{artist}/{album}/{artist} - {album} - {title}.ext`
+ */
+export function parseLazidromeUploadPath(filePath, tracksRoot) {
+  const ext = path.extname(filePath);
+  const baseName = path.basename(filePath, ext);
+  const fromFile = parseArtistAlbumTitleFilename(baseName);
+
+  let pathArtist = '';
+  let pathAlbum = '';
+  try {
+    const rel = path.relative(path.resolve(tracksRoot), path.resolve(filePath));
+    const segments = rel.split(path.sep).filter(Boolean);
+    if (segments.length >= 3) {
+      pathArtist = segments[segments.length - 3];
+      pathAlbum = segments[segments.length - 2];
+    } else if (segments.length === 2) {
+      pathArtist = segments[0];
+    }
+  } catch {
+    /* ignore */
+  }
+
+  if (fromFile) {
+    return {
+      artist: fromFile.artist || pathArtist,
+      album: fromFile.album || pathAlbum,
+      title: fromFile.title || baseName,
+    };
+  }
+
+  return {
+    artist: pathArtist,
+    album: pathAlbum,
+    title: baseName,
+  };
+}
+
 /** dest가 tracksRoot 밖으로 나가지 않는지 확인 */
 export function assertInsideTracksRoot(tracksRoot, destPath) {
   const root = path.resolve(tracksRoot);

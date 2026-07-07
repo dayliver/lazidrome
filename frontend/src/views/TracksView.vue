@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import TracksListTable from '@/components/tracks/TracksListTable.vue'
 import TracksPageFilters from '@/components/tracks/TracksPageFilters.vue'
@@ -10,11 +9,12 @@ import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import { useTracksPageQuery } from '@/composables/useTracksPageQuery'
+import { useAddMediaAction } from '@/composables/useAddMediaAction'
 import { Music } from 'lucide-vue-next'
 
 const { t } = useI18n()
-const router = useRouter()
 const { showAuthEmpty } = useRequiresAuth()
+const { goAddMedia } = useAddMediaAction()
 
 const {
   query,
@@ -41,7 +41,7 @@ const description = computed(() =>
 )
 
 const handleCreateTrack = () => {
-  void router.push({ name: 'upload' })
+  void goAddMedia()
 }
 </script>
 

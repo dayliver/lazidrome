@@ -5,7 +5,7 @@ import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import SafeImage from '@/components/shared/SafeImage.vue'
-import { playCount } from '@/lib/trackStats'
+import { formatChartListenWithPlays } from '@/lib/listenTime'
 import { useHomePage } from '@/composables/useHomePage'
 
 const { t } = useI18n()
@@ -165,7 +165,7 @@ const bleedRightClass = 'w-[calc(100%+1rem)] max-w-none -mr-4 md:w-[calc(100%+3r
                 <span
                   class="pointer-events-none absolute left-2 top-2 z-10 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white shadow-sm ring-1 ring-white/20 backdrop-blur-sm"
                 >
-                  {{ t('pages.home.playCount', { count: playCount(track) }) }}
+                  {{ formatChartListenWithPlays(track.period_listen_sec ?? 0, track.period_plays ?? 0) }}
                 </span>
               </div>
               <div class="space-y-0.5 p-2">
@@ -220,7 +220,7 @@ const bleedRightClass = 'w-[calc(100%+1rem)] max-w-none -mr-4 md:w-[calc(100%+3r
                 <span
                   class="pointer-events-none absolute left-2 top-2 z-10 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white shadow-sm ring-1 ring-white/20 backdrop-blur-sm"
                 >
-                  {{ t('pages.home.playCount', { count: artist.period_plays ?? 0 }) }}
+                  {{ formatChartListenWithPlays(artist.period_listen_sec ?? 0, artist.period_plays ?? 0) }}
                 </span>
               </div>
               <div class="space-y-0.5 p-2">

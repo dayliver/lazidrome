@@ -7,6 +7,7 @@ import db from '../db.js';
 import sharp from 'sharp';
 import { ROLES } from '../constants/roles.js';
 import { splitArtistNames } from '../lib/artistTags.js';
+import { resolveScanTrackMeta } from '../lib/resolveScanTrackMeta.js';
 import { sha256FileStream } from '../lib/fileHash.js';
 import { cleanupOrphans } from '../lib/orphanCleanup.js';
 import { bumpLibraryRevision } from '../lib/libraryRevision.js';
@@ -47,21 +48,19 @@ export function startScanner(watchPath) {
       const newHash = await sha256FileStream(filePath);
       const stats = fs.statSync(filePath);
       const metadata = await mm.parseFile(filePath);
-      
-      const title = metadata.common.title || path.basename(filePath, ext);
-      const duration = metadata.format.duration || 0;
-      const year = metadata.common.year || null;
-      const genre = metadata.common.genre?.[0] || null;
-      const albumName = metadata.common.album;
-      const trackNo = metadata.common.track?.no || null;
-      const discNo = metadata.common.disk?.no || null;
 
-      const trackArtistNames = splitArtistNames(metadata.common.artist);
-      const albumArtistTagNames = splitArtistNames(metadata.common.albumartist);
-      const composerNames = splitArtistNames(metadata.common.composer);
-      const albumNamesForAlbum = splitArtistNames(
-        metadata.common.albumartist || metadata.common.artist
-      );
+      const resolved = resolveScanTrackMeta(filePath, watchPath, metadata);
+      const title = resolved.title;
+      const duration = resolved.duration;
+      const year = resolved.year;
+      const genre = resolved.genre;
+      const albumName = resolved.albumName;
+      const trackNo = resolved.trackNo;
+      const discNo = resolved.discNo;
+
+      const trackArtistNames = resolved.trackArtistNames;
+      const albumArtistTagNames = resolved.albumArtistTagNames;
+      const albumNamesForAlbum = resolved.albumNamesForAlbum;
 
       const maskByName = new Map();
       const addRoleBits = (name, bits) => {
@@ -69,6 +68,7 @@ export function startScanner(watchPath) {
         if (!k) return;
         maskByName.set(k, (maskByName.get(k) ?? 0) | bits);
       };
+      const composerNames = splitArtistNames(metadata.common.composer);
       for (let i = 0; i < trackArtistNames.length; i++) {
         addRoleBits(
           trackArtistNames[i],

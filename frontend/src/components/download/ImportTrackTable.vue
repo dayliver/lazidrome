@@ -1,9 +1,11 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import ImportMetaPicker from '@/components/import/ImportMetaPicker.vue'
+import { useLibraryStore } from '@/stores/library'
 
 const PAGE_SIZE = 50
 
@@ -17,10 +19,31 @@ const props = defineProps({
 const emit = defineEmits(['update:rows'])
 
 const { t } = useI18n()
+const library = useLibraryStore()
 
 const commonArtist = ref('')
 const commonAlbum = ref('')
 const page = ref(1)
+const allArtists = ref([])
+const allAlbums = ref([])
+
+const artistOptions = computed(() =>
+  allArtists.value.map((a) => ({ id: a.id, name: a.name })),
+)
+
+const albumOptions = computed(() =>
+  allAlbums.value.map((a) => ({
+    id: a.id,
+    name: a.name,
+    subtitle: a.displayArtist || '',
+  })),
+)
+
+onMounted(async () => {
+  const [artists, albums] = await Promise.all([library.getArtists(), library.getAlbums()])
+  allArtists.value = artists || []
+  allAlbums.value = albums || []
+})
 
 const totalPages = computed(() => Math.max(1, Math.ceil(props.rows.length / PAGE_SIZE)))
 
@@ -92,11 +115,19 @@ function applyCommonToSelected() {
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="space-y-1">
           <Label class="text-xs">{{ t('download.fieldArtist') }}</Label>
-          <Input v-model="commonArtist" :placeholder="t('download.fieldArtistHint')" />
+          <ImportMetaPicker
+            v-model="commonArtist"
+            :options="artistOptions"
+            :placeholder="t('download.fieldArtistHint')"
+          />
         </div>
         <div class="space-y-1">
           <Label class="text-xs">{{ t('download.fieldAlbum') }}</Label>
-          <Input v-model="commonAlbum" :placeholder="t('download.fieldAlbumHint')" />
+          <ImportMetaPicker
+            v-model="commonAlbum"
+            :options="albumOptions"
+            :placeholder="t('download.fieldAlbumHint')"
+          />
         </div>
       </div>
       <Button type="button" variant="secondary" size="sm" @click="applyCommonToSelected">
@@ -129,14 +160,16 @@ function applyCommonToSelected() {
           class="h-8 text-xs"
           @update:model-value="(v) => updateRow(globalIndex(localIdx), { title: String(v) })"
         />
-        <Input
+        <ImportMetaPicker
           :model-value="row.artist"
-          class="h-8 text-xs"
+          :options="artistOptions"
+          :placeholder="t('download.fieldArtistHint')"
           @update:model-value="(v) => updateRow(globalIndex(localIdx), { artist: String(v) })"
         />
-        <Input
+        <ImportMetaPicker
           :model-value="row.album"
-          class="h-8 text-xs"
+          :options="albumOptions"
+          :placeholder="t('download.fieldAlbumHint')"
           @update:model-value="(v) => updateRow(globalIndex(localIdx), { album: String(v) })"
         />
         <Input

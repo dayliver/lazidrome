@@ -95,7 +95,7 @@ export function luxonWeekdayToSqlDow(weekday) {
 }
 
 /**
- * @param {{ playedAt: import('luxon').DateTime, durationSec: number, trackId?: string }[]} events
+ * @param {{ playedAt: import('luxon').DateTime, listenSec: number, trackId?: string }[]} events
  * @param {string} range
  * @param {string} statsZone
  */
@@ -109,7 +109,7 @@ export function filterEventsByRange(events, range, statsZone) {
 }
 
 /**
- * @param {{ playedAt: import('luxon').DateTime, durationSec: number }[]} events
+ * @param {{ playedAt: import('luxon').DateTime, listenSec: number }[]} events
  * @param {string} statsZone
  */
 export function aggregateListenHabits(events, statsZone) {
@@ -121,7 +121,7 @@ export function aggregateListenHabits(events, statsZone) {
     const local = ev.playedAt.setZone(statsZone);
     const dow = luxonWeekdayToSqlDow(local.weekday);
     const hour = local.hour;
-    const sec = ev.durationSec;
+    const sec = ev.listenSec;
     dowSec[dow] += sec;
     hourSec[hour] = (hourSec[hour] || 0) + sec;
     totalListenSec += sec;
@@ -149,4 +149,18 @@ export function countPlaysByTrack(events) {
     counts.set(ev.trackId, (counts.get(ev.trackId) || 0) + 1);
   }
   return counts;
+}
+
+/**
+ * @param {{ trackId: string, listenSec: number }[]} events
+ * @returns {Map<string, number>}
+ */
+export function sumListenSecByTrack(events) {
+  const totals = new Map();
+  for (const ev of events) {
+    const sec = Number(ev.listenSec) || 0;
+    if (sec <= 0) continue;
+    totals.set(ev.trackId, (totals.get(ev.trackId) || 0) + sec);
+  }
+  return totals;
 }

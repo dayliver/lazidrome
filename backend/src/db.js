@@ -51,6 +51,83 @@ export function initDB() {
   ensureAlbumDescriptionColumn();
   normalizeEmptyMbids();
   ensurePageVisitsTable();
+  ensurePlayHistoryListenedSec();
+}
+
+/** play_history.listened_sec: 기존 행은 지수 추정 백필, 이후 신규 행은 실측값 저장 */
+const LISTEN_ESTIMATE_FLOOR = 0.95;
+/** 30회차쯤 floor(95%)에 수렴: 0.95 + 0.05·e^(-k·29) ≈ 0.951 */
+const LISTEN_ESTIMATE_DECAY_K = Math.log(50) / 29;
+
+function estimatedListenSec(durationSec, playNumber) {
+  const duration = Number(durationSec);
+  const n = Math.max(1, Number(playNumber) || 1);
+  if (!Number.isFinite(duration) || duration <= 0) return null;
+  const completion =
+    LISTEN_ESTIMATE_FLOOR + (1 - LISTEN_ESTIMATE_FLOOR) * Math.exp(-LISTEN_ESTIMATE_DECAY_K * (n - 1));
+  return Math.round(duration * completion);
+}
+
+function ensurePlayHistoryListenedSec() {
+  const historyExists = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='play_history'")
+    .get();
+  if (!historyExists) return;
+
+  const cols = db.prepare('PRAGMA table_info(play_history)').all();
+  if (!cols.some((c) => c.name === 'listened_sec')) {
+    try {
+      db.exec('ALTER TABLE play_history ADD COLUMN listened_sec INTEGER');
+      console.log('📌 play_history.listened_sec 컬럼 추가됨 (마이그레이션)');
+    } catch (err) {
+      console.error('❌ play_history.listened_sec 마이그레이션 실패:', err.message);
+      return;
+    }
+  }
+
+  try {
+    const pending = db
+      .prepare(
+        `SELECT h.id, f.duration AS duration_sec,
+                ROW_NUMBER() OVER (
+                  PARTITION BY h.track_id
+                  ORDER BY h.played_at ASC, h.id ASC
+                ) AS play_number
+         FROM play_history h
+         JOIN track_metadata t ON t.id = h.track_id
+         JOIN track_filedata f ON f.id = t.file_id
+         WHERE h.listened_sec IS NULL`,
+      )
+      .all();
+
+    if (!pending.length) return;
+
+    const update = db.prepare(
+      'UPDATE play_history SET listened_sec = ? WHERE id = ? AND listened_sec IS NULL',
+    );
+    const tx = db.transaction((rows) => {
+      let updated = 0;
+      let skipped = 0;
+      for (const row of rows) {
+        const listenedSec = estimatedListenSec(row.duration_sec, row.play_number);
+        if (listenedSec == null) {
+          skipped += 1;
+          continue;
+        }
+        updated += update.run(listenedSec, row.id).changes;
+      }
+      return { updated, skipped };
+    });
+    const { updated, skipped } = tx(pending);
+    if (updated || skipped) {
+      console.log(
+        `📌 play_history listened_sec 백필: ${updated}건 추정 저장` +
+          (skipped ? `, ${skipped}건 duration 없음 스킵` : ''),
+      );
+    }
+  } catch (err) {
+    console.error('❌ play_history listened_sec 백필 실패:', err.message);
+  }
 }
 
 /** 기존 DB에 albums.description 컬럼이 없으면 추가 (스키마 v2.1+) */

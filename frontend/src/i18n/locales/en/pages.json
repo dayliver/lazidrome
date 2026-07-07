@@ -9,8 +9,8 @@
       "frequentEmpty": "Browse playlists, albums, artists, and tags to see them here.",
       "visitMeta": "{kind} · {count} visits in 7 days",
       "visitCount": "{count} visits",
-      "topTitle": "Most played (7 days)",
-      "topHint": "Tap a track to queue the top 20 from that rank and play from it.",
+      "topTitle": "Most listened (7 days)",
+      "topHint": "Ranked by listen time · tap a track to queue the top 20 from that rank and play from it.",
       "topLoading": "Loading…",
       "topError": "Could not load rankings.",
       "topEmpty": "No plays recorded yet.",
@@ -33,7 +33,17 @@
       "title": "Albums",
       "description": "{count} albums total",
       "loading": "Building album gallery…",
-      "empty": "No albums to show."
+      "empty": "No albums to show.",
+      "createTitle": "New album",
+      "createHint": "Create an empty album, then add tracks.",
+      "createNamePlaceholder": "Album name",
+      "createYearPlaceholder": "Optional",
+      "createSubmit": "Create",
+      "createNoName": "Enter an album name.",
+      "createBadYear": "Invalid year.",
+      "createDone": "Album created.",
+      "createFailed": "Could not create album.",
+      "addMusic": "Add music"
     },
     "tracks": {
       "title": "Tracks",
@@ -51,7 +61,12 @@
       "allTitle": "All tags",
       "searchPlaceholder": "Search tags…",
       "itemCount": "{count} items",
-      "noResults": "No tags match your search."
+      "noResults": "No tags match your search.",
+      "createTitle": "New tag",
+      "createHint": "Opens the tag page. Add this tag on tracks, albums, or artists to see it in the list.",
+      "createPlaceholder": "Tag name",
+      "createSubmit": "Create",
+      "createReady": "Tag is ready to use."
     },
     "playlists": {
       "title": "Playlists",

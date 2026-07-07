@@ -37,7 +37,8 @@ defineEmits(['action'])
       </p>
     </div>
 
-    <div v-if="showShare || showAction" class="flex items-center gap-1 shrink-0">
+    <div v-if="showShare || showAction || $slots.actions" class="flex items-center gap-1 shrink-0">
+      <slot name="actions" />
       <SharePageButton v-if="showShare" :markdown-label="title" />
       <Button
         v-if="showAction"
