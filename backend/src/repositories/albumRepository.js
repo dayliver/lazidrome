@@ -21,27 +21,32 @@ export function updateAlbumTrack(trackId, albumId) {
   setPrimaryAlbumForTrack(trackId, albumId);
 }
 
-/** 트랙의 primary 앨범 링크를 설정 (없으면 생성) */
-export function setPrimaryAlbumForTrack(trackId, albumId) {
-  const primary = db
-    .prepare('SELECT id FROM album_tracks WHERE track_id = ? AND is_primary = 1')
-    .get(trackId);
+/** 트랙을 해당 앨범에만 primary로 연결 (다른 앨범 링크는 제거) */
+export function setPrimaryAlbumForTrack(trackId, albumId, opts = {}) {
+  const trackNumber = opts.trackNumber ?? null;
+  const discNumber = opts.discNumber ?? null;
 
-  if (primary) {
-    db.prepare('UPDATE album_tracks SET album_id = ? WHERE id = ?').run(albumId, primary.id);
-    return;
-  }
+  db.prepare('DELETE FROM album_tracks WHERE track_id = ? AND album_id != ?').run(trackId, albumId);
 
-  const anyLink = db.prepare('SELECT id FROM album_tracks WHERE track_id = ? LIMIT 1').get(trackId);
-  if (anyLink) {
-    db.prepare('UPDATE album_tracks SET album_id = ?, is_primary = 1 WHERE id = ?').run(albumId, anyLink.id);
+  const existing = db
+    .prepare('SELECT id FROM album_tracks WHERE track_id = ? AND album_id = ?')
+    .get(trackId, albumId);
+
+  if (existing) {
+    db.prepare(`
+      UPDATE album_tracks
+      SET is_primary = 1,
+          track_number = COALESCE(?, track_number),
+          disc_number = COALESCE(?, disc_number)
+      WHERE id = ?
+    `).run(trackNumber, discNumber, existing.id);
     return;
   }
 
   db.prepare(`
     INSERT INTO album_tracks (id, album_id, track_id, is_primary, disc_number, track_number)
-    VALUES (?, ?, ?, 1, 1, NULL)
-  `).run(ulid(), albumId, trackId);
+    VALUES (?, ?, ?, 1, ?, ?)
+  `).run(ulid(), albumId, trackId, discNumber ?? 1, trackNumber);
 }
 
 /**
@@ -187,20 +192,13 @@ export function replaceAlbumTracks(albumId, tracks) {
     .filter((t) => t && t.track_id);
   if (!valid.length) return;
 
+  // 이 앨범에만 있던 링크를 비운 뒤, 목록의 각 트랙을 이 앨범으로 단일 소속 이동
   db.prepare('DELETE FROM album_tracks WHERE album_id = ?').run(albumId);
-  const insertStmt = db.prepare(`
-    INSERT INTO album_tracks (id, album_id, track_id, is_primary, disc_number, track_number)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
   for (const t of valid) {
-    insertStmt.run(
-      ulid(),
-      albumId,
-      t.track_id,
-      t.is_primary ? 1 : 0,
-      t.disc_number || 1,
-      t.track_number || null,
-    );
+    setPrimaryAlbumForTrack(t.track_id, albumId, {
+      trackNumber: t.track_number || null,
+      discNumber: t.disc_number || null,
+    });
   }
 }
 

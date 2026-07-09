@@ -49,46 +49,41 @@ async function toggleFavorite() {
 
 async function changeRating(rate) {
   const tr = currentTrack.value
-  if (tr?.id) await library.updateTrackRating(tr.id, rate)
+  if (!tr?.id) return
+  // 같은 별을 다시 탭하면 해제
+  const nextRating = (currentTrack.value?.rating || 0) === rate ? 0 : rate
+  await library.updateTrackRating(tr.id, nextRating)
 }
 </script>
 
 <template>
-  <div
-    class="flex flex-col md:flex-row md:items-center gap-6 md:gap-10 lg:gap-14 w-full max-w-full"
-  >
-    <Transition name="fade-scale">
+  <div class="flex h-full w-full min-h-0 flex-col md:flex-row md:items-center md:justify-center gap-4 md:gap-10 lg:gap-14">
+    <!-- 커버: 모바일에서는 남는 높이에 맞춰 축소 (잘림 방지) -->
+    <div class="flex-1 md:flex-none min-h-[6rem] md:min-h-0 min-w-0 flex items-center justify-center">
+      <img
+        v-if="coverUrl"
+        :src="coverUrl"
+        crossorigin="anonymous"
+        class="aspect-square w-full max-w-[min(100%,22rem)] max-h-full md:w-64 md:max-w-none lg:w-80 rounded-2xl md:rounded-3xl object-cover shadow-[0_20px_50px_rgba(0,0,0,0.35)] border border-white/10 ring-1 ring-black/5 transition-[transform,opacity] duration-700"
+        :class="isPlaying ? '' : 'scale-[0.97] opacity-90'"
+        alt=""
+      />
       <div
-        class="w-[min(100%,18rem)] sm:w-[min(100%,20rem)] aspect-square shrink-0 mx-auto md:mx-0 md:w-56 md:h-56 lg:w-72 lg:h-72"
+        v-else
+        class="aspect-square w-full max-w-[min(100%,22rem)] max-h-full md:w-64 md:max-w-none lg:w-80 rounded-2xl md:rounded-3xl bg-muted border border-white/10 flex items-center justify-center text-2xl md:text-3xl font-black text-muted-foreground/20 italic text-center px-6"
       >
-        <div
-          class="w-full h-full rounded-2xl md:rounded-3xl lg:rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden border border-white/10 ring-1 ring-black/5 transition-all duration-700"
-          :class="isPlaying ? 'scale-100 shadow-primary/20' : 'scale-[0.98] md:scale-[0.96] opacity-90'"
-        >
-          <img
-            v-if="coverUrl"
-            :src="coverUrl"
-            crossorigin="anonymous"
-            class="w-full h-full object-cover"
-            alt=""
-          />
-          <div
-            v-else
-            class="w-full h-full bg-muted flex items-center justify-center text-2xl sm:text-3xl md:text-4xl font-black text-muted-foreground/20 italic text-center px-6"
-          >
-            {{ t('app.name') }}<br /><span class="text-sm md:text-lg opacity-50">{{ t('player.noCover').toUpperCase() }}</span>
-          </div>
-        </div>
+        {{ t('app.name') }}
       </div>
-    </Transition>
+    </div>
 
-    <div class="flex flex-col flex-1 min-w-0 gap-6 md:gap-8">
+    <!-- 정보 + 컨트롤 -->
+    <div class="w-full shrink-0 md:shrink md:flex-1 md:min-w-0 flex flex-col gap-4 md:gap-7 max-w-xl md:max-w-2xl mx-auto md:mx-0">
       <div
         v-if="isRemote || auth.isAuthenticated"
         class="flex flex-wrap items-center justify-center md:justify-start gap-2"
       >
         <template v-if="isRemote">
-          <span class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-wide text-primary">
+          <span class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-primary">
             <Radio class="w-4 h-4 shrink-0" aria-hidden="true" />
             {{ t('player.remoteOnDevice', { device: remoteBadge }) }}
           </span>
@@ -105,31 +100,30 @@ async function changeRating(rate) {
         />
       </div>
 
-      <div class="text-center md:text-left space-y-2">
-        <h2 class="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight leading-tight">
-          <template v-if="currentTrack?.title">
-            {{ trackTitleParts.main }}
-            <span
-              v-if="trackTitleParts.suffix"
-              class="ms-2 sm:ms-2.5 md:ms-3 font-medium text-md sm:text-lg md:text-xl lg:text-2xl text-muted-foreground/95"
-            >{{ trackTitleParts.suffix }}</span>
-          </template>
-          <template v-else>{{ t('player.selectTrack') }}</template>
-        </h2>
-        <p class="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground font-medium opacity-80">
-          {{ currentTrack?.artist || t('player.noArtist') }}
-        </p>
-      </div>
-
-      <div
-        v-if="canEditTrackMeta"
-        class="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4 sm:gap-6"
-      >
+      <!-- 제목·아티스트 + 하트 (업계 표준: 타이틀 행 우측) -->
+      <div class="flex items-center gap-3">
+        <div class="flex-1 min-w-0 space-y-1 text-left">
+          <h2 class="text-xl md:text-2xl lg:text-3xl font-bold tracking-tight leading-tight line-clamp-2">
+            <template v-if="currentTrack?.title">
+              {{ trackTitleParts.main }}
+              <span
+                v-if="trackTitleParts.suffix"
+                class="ms-2 md:ms-3 font-medium text-base md:text-xl lg:text-2xl text-muted-foreground/95"
+              >{{ trackTitleParts.suffix }}</span>
+            </template>
+            <template v-else>{{ t('player.selectTrack') }}</template>
+          </h2>
+          <p class="text-base md:text-lg lg:text-xl text-muted-foreground font-medium opacity-80 truncate">
+            {{ currentTrack?.artist || t('player.noArtist') }}
+          </p>
+        </div>
         <Button
+          v-if="canEditTrackMeta"
           variant="ghost"
           size="icon"
           class="h-12 w-12 rounded-full shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
-          :aria-pressed="currentTrack?.starred"
+          :aria-pressed="!!currentTrack?.starred"
+          :aria-label="currentTrack?.starred ? t('player.favoriteRemove') : t('player.favoriteAdd')"
           @click="toggleFavorite()"
         >
           <Heart
@@ -137,7 +131,49 @@ async function changeRating(rate) {
             :class="currentTrack?.starred ? 'fill-red-500 text-red-500' : ''"
           />
         </Button>
-        <div class="flex items-center gap-1 sm:gap-2" role="group" :aria-label="t('player.trackRating')">
+      </div>
+
+      <!-- 진행 바 -->
+      <div class="space-y-2">
+        <Slider v-model="progress" :max="100" :step="0.1" class="py-2" />
+        <div class="flex justify-between text-xs font-mono font-bold text-muted-foreground tracking-tighter">
+          <span>{{ formatTrackTime(currentTime) }}</span>
+          <span>{{ formatTrackTime(duration) }}</span>
+        </div>
+      </div>
+
+      <!-- 재생 컨트롤 -->
+      <div class="flex items-center justify-between">
+        <Button variant="ghost" size="icon" class="h-12 w-12" @click="toggleShuffle()" :class="isShuffle ? 'text-primary bg-primary/10' : 'text-muted-foreground/60'">
+          <Shuffle class="w-6 h-6" />
+        </Button>
+
+        <div class="flex items-center gap-3 md:gap-6">
+          <Button variant="ghost" size="icon" class="h-14 w-14 rounded-full" @click="prev()">
+            <SkipBack class="w-8 h-8 fill-current" />
+          </Button>
+          <Button variant="default" size="icon" class="h-18 w-18 md:h-20 md:w-20 rounded-full shadow-2xl bg-primary" @click="togglePlay()">
+            <component :is="isPlaying ? Pause : Play" class="w-9 h-9 md:w-10 md:h-10 fill-current" />
+          </Button>
+          <Button variant="ghost" size="icon" class="h-14 w-14 rounded-full" @click="next()">
+            <SkipForward class="w-8 h-8 fill-current" />
+          </Button>
+        </div>
+
+        <Button variant="ghost" size="icon" class="h-12 w-12" @click="toggleRepeat()" :class="repeatMode !== 'off' ? 'text-primary bg-primary/10' : 'text-muted-foreground/60'">
+          <Repeat1 v-if="repeatMode === 'one'" class="w-6 h-6" />
+          <Repeat v-else class="w-6 h-6" />
+        </Button>
+      </div>
+
+      <!-- 하단 액션 바: 별점 · 태그 · 큐 -->
+      <div class="flex items-center justify-between gap-2 border-t border-border/50 pt-3 md:pt-5">
+        <div
+          v-if="canEditTrackMeta"
+          class="flex items-center"
+          role="group"
+          :aria-label="t('player.trackRating')"
+        >
           <button
             v-for="i in 5"
             :key="i"
@@ -146,53 +182,26 @@ async function changeRating(rate) {
             @click="changeRating(i)"
           >
             <Star
-              class="w-7 h-7 sm:w-8 sm:h-8"
+              class="w-6 h-6 md:w-7 md:h-7"
               :class="i <= (currentTrack?.rating || 0) ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground/35'"
             />
           </button>
         </div>
-        <TrackTagsPopover :track="currentTrack" size="icon" />
-      </div>
+        <div v-else />
 
-    <div class="space-y-3">
-      <Slider v-model="progress" :max="100" :step="0.1" class="py-2" />
-      <div class="flex justify-between text-xs font-mono font-bold text-muted-foreground tracking-tighter">
-        <span>{{ formatTrackTime(currentTime) }}</span>
-        <span>{{ formatTrackTime(duration) }}</span>
-      </div>
-    </div>
-
-    <div class="flex flex-col gap-8">
-      <div class="flex items-center justify-between px-2">
-        <Button variant="ghost" size="icon" @click="toggleShuffle()" :class="isShuffle ? 'text-primary bg-primary/10' : 'text-muted-foreground/60'">
-          <Shuffle class="w-6 h-6" />
-        </Button>
-
-        <div class="flex items-center gap-4 md:gap-8">
-          <Button variant="ghost" size="icon" class="h-14 w-14 rounded-full" @click="prev()">
-            <SkipBack class="w-8 h-8 fill-current" />
-          </Button>
-          <Button variant="default" size="icon" class="h-20 w-20 md:h-24 md:w-24 rounded-full shadow-2xl bg-primary" @click="togglePlay()">
-            <component :is="isPlaying ? Pause : Play" class="w-10 h-10 md:w-12 md:h-12 fill-current" />
-          </Button>
-          <Button variant="ghost" size="icon" class="h-14 w-14 rounded-full" @click="next()">
-            <SkipForward class="w-8 h-8 fill-current" />
+        <div class="flex items-center gap-1">
+          <TrackTagsPopover v-if="canEditTrackMeta" :track="currentTrack" size="icon" />
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-12 w-12 rounded-full"
+            :aria-label="t('player.upNext')"
+            @click="toggleQueueView()"
+          >
+            <ListMusic class="w-6 h-6" />
           </Button>
         </div>
-
-        <Button variant="ghost" size="icon" @click="toggleRepeat()" :class="repeatMode !== 'off' ? 'text-primary bg-primary/10' : 'text-muted-foreground/60'">
-          <Repeat1 v-if="repeatMode === 'one'" class="w-6 h-6" />
-          <Repeat v-else class="w-6 h-6" />
-        </Button>
       </div>
-
-      <div class="flex justify-center md:justify-start border-t pt-6 md:pt-8 border-border/50">
-        <Button variant="outline" class="rounded-full px-6 py-6 gap-3 font-bold border-2" @click="toggleQueueView()">
-          <ListMusic class="w-5 h-5" />
-          <span>{{ t('player.upNext') }}</span>
-        </Button>
-      </div>
-    </div>
     </div>
   </div>
 </template>

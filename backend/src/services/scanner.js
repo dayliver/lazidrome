@@ -15,6 +15,7 @@ import {
   isAudioFilePath,
   MIN_AUDIO_BYTES,
 } from '../lib/audioExtensions.js';
+import { setPrimaryAlbumForTrack } from '../repositories/albumRepository.js';
 
 /** 스캔·감시 제외 폴더명 (경로 어디에든 동일하게 적용) */
 export const SCAN_EXCLUDED_DIR = '_excluded';
@@ -239,18 +240,10 @@ export function startScanner(watchPath) {
             insertTrackArtist.run(currentTrackId, artistId, mask);
           }
 
-          const existingLink = db
-            .prepare('SELECT id FROM album_tracks WHERE album_id = ? AND track_id = ?')
-            .get(albumId, currentTrackId);
-          if (!existingLink) {
-            const primaryCheck = db
-              .prepare('SELECT count(*) as cnt FROM album_tracks WHERE track_id = ? AND is_primary = 1')
-              .get(currentTrackId);
-            const isPrimary = primaryCheck.cnt === 0 ? 1 : 0;
-            db.prepare(
-              'INSERT INTO album_tracks (id, album_id, track_id, is_primary, track_number, disc_number) VALUES (?, ?, ?, ?, ?, ?)',
-            ).run(ulid(), albumId, currentTrackId, isPrimary, trackNo, discNo);
-          }
+          setPrimaryAlbumForTrack(currentTrackId, albumId, {
+            trackNumber: trackNo,
+            discNumber: discNo,
+          });
         }
       });
 

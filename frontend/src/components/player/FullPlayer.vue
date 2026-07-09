@@ -26,24 +26,22 @@ const { player, coverUrl, isQueueView, toggleQueueView } = usePlayerPresentation
     <div class="relative z-10 flex flex-col h-full w-full">
       <FullPlayerHeader @close="player.toggleExpand()" />
 
-      <main class="flex-1 flex flex-col items-stretch justify-center px-4 sm:px-6 md:px-12 max-w-6xl lg:max-w-7xl mx-auto w-full min-h-0 overflow-y-auto overflow-x-hidden pb-8 md:pb-12">
-        <div class="w-full flex-1 flex flex-col justify-center min-h-0 py-2 md:py-4">
-          <Transition name="slide-fade" mode="out-in">
-            <FullPlayerNowPlaying v-if="!isQueueView" />
+      <main class="flex-1 flex flex-col px-4 sm:px-6 md:px-12 max-w-6xl lg:max-w-7xl mx-auto w-full min-h-0 overflow-y-auto overflow-x-hidden pb-[max(env(safe-area-inset-bottom),1rem)] md:pb-12">
+        <Transition name="slide-fade" mode="out-in">
+          <FullPlayerNowPlaying v-if="!isQueueView" class="flex-1 min-h-0" />
 
-            <div v-else class="flex flex-col h-full max-h-[500px] md:max-h-[600px] w-full relative min-h-0">
-              <QueueList class="flex-1 min-h-0" />
-              <Button
-                variant="secondary"
-                class="mt-4 rounded-full w-full py-6 font-black gap-2 border shadow-lg active:scale-95 transition-transform shrink-0"
-                @click="toggleQueueView()"
-              >
-                <ArrowLeft class="w-4 h-4" />
-                <span>{{ t('player.backToPlayer').toUpperCase() }}</span>
-              </Button>
-            </div>
-          </Transition>
-        </div>
+          <div v-else class="flex flex-col flex-1 min-h-0 w-full relative py-2 md:py-4">
+            <QueueList class="flex-1 min-h-0" />
+            <Button
+              variant="secondary"
+              class="mt-4 rounded-full w-full py-6 font-black gap-2 border shadow-lg active:scale-95 transition-transform shrink-0"
+              @click="toggleQueueView()"
+            >
+              <ArrowLeft class="w-4 h-4" />
+              <span>{{ t('player.backToPlayer').toUpperCase() }}</span>
+            </Button>
+          </div>
+        </Transition>
       </main>
     </div>
   </div>
@@ -53,17 +51,7 @@ const { player, coverUrl, isQueueView, toggleQueueView } = usePlayerPresentation
 :deep(.relative.h-1\.5) { height: 8px; }
 :deep([role="slider"]) { width: 18px; height: 18px; border: 4px solid white; }
 
-h2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 .slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.3s ease-out; }
 .slide-fade-enter-from { opacity: 0; transform: translateX(20px); }
 .slide-fade-leave-to { opacity: 0; transform: translateX(-20px); }
-
-.fade-scale-enter-active, .fade-scale-leave-active { transition: all 0.5s ease; }
-.fade-scale-enter-from, .fade-scale-leave-to { opacity: 0; scale: 0.9; }
 </style>
