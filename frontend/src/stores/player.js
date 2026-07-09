@@ -3,7 +3,12 @@ import { ref, computed, shallowRef, watch } from 'vue'
 import { t } from '@/i18n/t'
 import { useAuthStore } from './auth'
 import { useLibraryStore } from './library'
-import { QueueHlsPlayer, shouldPreferHlsQueue } from '@/lib/queueHlsPlayer.js'
+import {
+  QueueHlsPlayer,
+  isMobilePlaybackUa,
+  prefetchHlsModule,
+  shouldPreferHlsQueue,
+} from '@/lib/queueHlsPlayer.js'
 
 const FADE_BEFORE_END_SEC = 5
 /** 다음 곡 URL을 미리 받아 둘 시점(끝나기 N초 전) */
@@ -816,6 +821,8 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   const startPlayback = async () => {
+    // 모바일: 재생 시작 시 CDN(또는 light 폴백)에서 hls.js를 미리 받아 둠
+    if (isMobilePlaybackUa()) void prefetchHlsModule()
     if (wantsHlsQueue() && auth.token) {
       await startHlsPlayback(currentIndex.value)
       return

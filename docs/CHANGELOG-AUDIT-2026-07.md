@@ -122,7 +122,15 @@
 - `useTracksPageQuery`, `PlaylistTracksTab`, `useTrackListLocalState`: `deep: true` 제거
 - `player.js`: MediaSession·queue persist를 필드 getter로 좁힘
 
+## 10. 0.7.3 — 모바일 HLS CDN + hls.light (2.3b)
+
+- `loadHlsModule`: jsDelivr `hls.min.js` 우선 → 실패 시 `hls.js/light` + sonner 경고
+- 모바일 재생 시작 시 `prefetchHlsModule`
+- PWA `globIgnores: ['**/hls*.js']` — precache에서 제외
+- 문서: [MOBILE-BACKGROUND-PLAYBACK.md](./MOBILE-BACKGROUND-PLAYBACK.md)
+
 ## 남은 우선 과제
 
-- **0.7.3+:** B9+, F7–F8, F10, 모바일 HLS 큐 (별도 논의)
-- B8~B25, F6~F10 백로그 — [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)
+- **0.7.4+:** B9+, F7–F8, F10 · stats 타임존 (/stats)
+- 모바일 HLS Phase C(트랜스코드 등)는 선택·보장 없음 — 문서 참고
+- B9~B25, F7–F10 백로그 — [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)

@@ -30,6 +30,7 @@
 | **0.7.0** | 디자인 토큰·a11y·아티스트 상세 서버 트랙 필터 | D4, D7–D11, F5 |
 | **0.7.1** | 앨범·태그 상세 서버 트랙 필터/페이지네이션 | F5 |
 | **0.7.2** | 홈 대시보드 통합 API, deep watch 정리 | B8, F6 |
+| **0.7.3** | 모바일 HLS CDN + hls.light 폴백 | 2.3b |
 
 ---
 
@@ -44,15 +45,24 @@
 
 ---
 
-## 0.7.3+ — 백로그 (다음)
+## 0.7.3 — 모바일 HLS CDN ✅
 
-우선순위 미정 — 감사 B9~B25, F7–F8, F10.
+| # | 작업 | 상태 |
+|---|------|------|
+| 0.7.3.1 | CDN `hls.min.js` 우선 로드 + sonner CDN 실패 경고 | ✅ |
+| 0.7.3.2 | 패키지 `hls.js/light` 폴백, PWA precache 제외 | ✅ |
+
+---
+
+## 0.7.4+ — 백로그 (다음)
+
+우선순위 미정 — 감사 B9~B25, F7–F8, F10 · stats 타임존 수정.
 
 | 테마 | 대표 항목 |
 |------|-----------|
 | 백엔드 | B9~10 N+1, B11 smart-mix `RANDOM()` |
 | 프론트 | F7~8 추가 route chunk, F10 i18n |
-| UX | 2.3b 모바일 HLS 큐 ([MOBILE-BACKGROUND-PLAYBACK.md](./MOBILE-BACKGROUND-PLAYBACK.md)) — 별도 논의 |
+| UX | stats 습관 차트 타임존 · /stats 개편 |
 
 ---
 

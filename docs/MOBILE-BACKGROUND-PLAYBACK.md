@@ -30,6 +30,17 @@ Lazidrome 1차 대응은 **트랜스코딩 없이** 기존 파일을 HLS VOD 플
    └─ Android 등: hls.js + MSE (지원 시)
 ```
 
+### hls.js 로딩 (CDN + light 폴백)
+
+| 단계 | 동작 |
+|------|------|
+| 1 | 모바일에서 **재생 시작** 시 `hls.min.js`를 jsDelivr CDN에서 로드 (풀 빌드, 워커 포함) |
+| 2 | CDN 실패 시 sonner 경고 + 패키지 `hls.js/light` 동적 import 폴백 |
+| 3 | PWA precache에서 `hls*.js` 제외 — 배포 번들에 풀 hls(~500KB)를 넣지 않음 |
+
+- 핀 버전: `frontend/src/lib/queueHlsPlayer.js`의 `HLS_JS_VERSION` (= package.json `hls.js`)
+- light는 기능 축소본(~330KB chunk)이라 오프라인·CDN 차단 시에만 쓰임
+
 ### API
 
 `GET /api/stream/playlist.m3u8`
@@ -66,9 +77,10 @@ Lazidrome 1차 대응은 **트랜스코딩 없이** 기존 파일을 HLS VOD 플
 
 ### 향후 단계
 
-1. Android 안정화: AAC fMP4 세그먼트(온디맨드 트랜스코드) 검토
-2. PWA + 배터리 최적화 제외 안내 UI
-3. Capacitor + foreground service
+1. ~~CDN / hls.light 로딩~~ — 위 절 참고
+2. **Phase C (선택·보장 없음):** Android MSE+MP3 안정화, 온디맨드 AAC/fMP4 트랜스코드 — 노력 대비 성공이 기기·브라우저에 좌우됨. 웹만으로는 유튜브 앱 수준 보장 불가
+3. PWA + 배터리 최적화 제외 안내 UI
+4. Capacitor + foreground service (장기)
 
 ## 관련 파일
 

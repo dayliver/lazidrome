@@ -189,6 +189,7 @@
     "remoteOnDevice": "Playing on {device}",
     "playHere": "Play here",
     "remoteQueueLoading": "Loading remote queue…",
+    "hlsCdnFailed": "Could not load the continuous-playback helper from the CDN. Playback may stutter when tracks change.",
     "devices": {
       "title": "Connected devices",
       "count": "{count} connected",

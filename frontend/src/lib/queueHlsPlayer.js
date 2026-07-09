@@ -1,11 +1,100 @@
-/** hls.js는 모바일 큐 재생 시에만 동적 로드 (초기 번들 ~500KB 절감) */
-let hlsModulePromise = null
+import { notify } from '@/lib/notify'
+import { i18n } from '@/i18n'
 
+/** 핀 버전 — CDN URL과 package.json hls.js 버전을 맞출 것 */
+export const HLS_JS_VERSION = '1.6.16'
+
+const HLS_CDN_SCRIPT = `https://cdn.jsdelivr.net/npm/hls.js@${HLS_JS_VERSION}/dist/hls.min.js`
+const HLS_CDN_WORKER = `https://cdn.jsdelivr.net/npm/hls.js@${HLS_JS_VERSION}/dist/hls.worker.js`
+
+/** @type {Promise<typeof import('hls.js').default> | null} */
+let hlsModulePromise = null
+/** @type {'cdn' | 'light' | null} */
+let hlsLoadSource = null
+let cdnFailWarned = false
+
+function warnCdnFailedOnce() {
+  if (cdnFailWarned) return
+  cdnFailWarned = true
+  try {
+    notify.warning(i18n.global.t('player.hlsCdnFailed'))
+  } catch {
+    notify.warning(
+      'Could not load the continuous-playback helper from the CDN. Queue playback may be less reliable.',
+    )
+  }
+}
+
+/**
+ * @returns {Promise<typeof import('hls.js').default>}
+ */
+function loadHlsFromCdn() {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('HLS_CDN_NO_WINDOW'))
+  }
+  const existing = window.Hls
+  if (existing) {
+    hlsLoadSource = 'cdn'
+    return Promise.resolve(existing)
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = HLS_CDN_SCRIPT
+    script.async = true
+    script.crossOrigin = 'anonymous'
+    script.onload = () => {
+      if (window.Hls) {
+        hlsLoadSource = 'cdn'
+        resolve(window.Hls)
+      } else {
+        reject(new Error('HLS_CDN_NO_GLOBAL'))
+      }
+    }
+    script.onerror = () => reject(new Error('HLS_CDN_SCRIPT_ERROR'))
+    document.head.appendChild(script)
+  })
+}
+
+/**
+ * @returns {Promise<typeof import('hls.js').default>}
+ */
+function loadHlsLightFromPackage() {
+  return import('hls.js/light').then((m) => {
+    hlsLoadSource = 'light'
+    return m.default
+  })
+}
+
+/**
+ * CDN(full) 우선 → 실패 시 패키지 hls.light 폴백.
+ * CDN 실패 시 sonner 경고(세션당 1회).
+ */
 export function loadHlsModule() {
   if (!hlsModulePromise) {
-    hlsModulePromise = import('hls.js').then((m) => m.default)
+    hlsModulePromise = loadHlsFromCdn().catch((cdnErr) => {
+      console.warn('hls.js CDN load failed, falling back to hls.light', cdnErr)
+      warnCdnFailedOnce()
+      return loadHlsLightFromPackage().catch((lightErr) => {
+        hlsModulePromise = null
+        hlsLoadSource = null
+        throw lightErr
+      })
+    })
   }
   return hlsModulePromise
+}
+
+/** 모바일에서 재생 시작 시 미리 받아 두기 (큐 HLS 여부와 무관) */
+export function prefetchHlsModule() {
+  return loadHlsModule().catch((e) => {
+    console.warn('hls.js prefetch failed', e)
+    return null
+  })
+}
+
+export function getHlsLoadSource() {
+  return hlsLoadSource
 }
 
 function isMediaSourceHlsCapable() {
@@ -33,6 +122,11 @@ export function isHlsJsSupported() {
   return isMediaSourceHlsCapable()
 }
 
+export function isMobilePlaybackUa() {
+  if (typeof navigator === 'undefined') return false
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+}
+
 /**
  * @param {{ queueLength: number, isShuffle: boolean, repeatMode: string }} opts
  */
@@ -41,8 +135,7 @@ export function shouldPreferHlsQueue(opts) {
   if (!opts || opts.queueLength < 2) return false
   if (opts.isShuffle) return false
   if (opts.repeatMode === 'one') return false
-  const ua = navigator.userAgent
-  if (!/Android|iPhone|iPad|iPod/i.test(ua)) return false
+  if (!isMobilePlaybackUa()) return false
   const probe = typeof Audio !== 'undefined' ? new Audio() : null
   return isHlsJsSupported() || canPlayNativeHls(probe)
 }
@@ -134,15 +227,20 @@ export class QueueHlsPlayer {
       throw new Error('HLS_NOT_SUPPORTED')
     }
 
-    this.hls = new Hls({
-      enableWorker: true,
+    const hlsConfig = {
+      enableWorker: hlsLoadSource === 'cdn',
       lowLatencyMode: false,
       xhrSetup: (xhr, url) => {
         if (opts.authorization && String(url).includes('/api/stream/playlist')) {
           xhr.setRequestHeader('Authorization', opts.authorization)
         }
       },
-    })
+    }
+    if (hlsLoadSource === 'cdn') {
+      hlsConfig.workerPath = HLS_CDN_WORKER
+    }
+
+    this.hls = new Hls(hlsConfig)
 
     this.hls.attachMedia(this.audio)
     this.hls.on(Hls.Events.FRAG_CHANGED, (_, data) => {

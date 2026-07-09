@@ -189,6 +189,7 @@
     "remoteOnDevice": "{device}에서 재생 중",
     "playHere": "여기서 재생",
     "remoteQueueLoading": "원격 대기열 불러오는 중…",
+    "hlsCdnFailed": "연속 재생 도우미를 CDN에서 불러오지 못했습니다. 곡이 바뀔 때 재생이 끊길 수 있습니다.",
     "devices": {
       "title": "연결된 기기",
       "count": "{count}대",

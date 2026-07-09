@@ -26,6 +26,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
+        // hls.light는 CDN 실패 시에만 동적 로드 — SW precache에서 제외해 배포 용량 절감
+        globIgnores: ['**/hls*.js'],
         navigateFallbackDenylist: [/^\/api/, /^\/assets\//],
         cleanupOutdatedCaches: true,
       },
