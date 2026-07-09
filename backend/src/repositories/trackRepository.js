@@ -19,9 +19,28 @@ const TRACK_LIST_SELECT = `
     SELECT 
       t.id, t.title, t.rating, t.starred, t.year, t.tags, t.play_count, t.last_played,
       t.custom_cover_type, f.duration, f.format, f.bitrate, f.scanned_at,
-      alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType, 
+      alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
+      at.track_number, at.disc_number,
       GROUP_CONCAT(a.name, ', ') as artist
     ${TRACK_LIST_FROM}`;
+
+/** 앨범 상세 스코프: 해당 앨범의 disc/track 번호 사용 */
+const TRACK_LIST_FROM_ALBUM = `
+    FROM track_metadata t
+    JOIN track_filedata f ON t.file_id = f.id
+    JOIN album_tracks at ON t.id = at.track_id AND at.album_id = ?
+    LEFT JOIN albums alb ON at.album_id = alb.id
+    LEFT JOIN track_artists ta ON t.id = ta.track_id
+    LEFT JOIN artists a ON ta.artist_id = a.id`;
+
+const TRACK_LIST_SELECT_ALBUM = `
+    SELECT 
+      t.id, t.title, t.rating, t.starred, t.year, t.tags, t.play_count, t.last_played,
+      t.custom_cover_type, f.duration, f.format, f.bitrate, f.scanned_at,
+      alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
+      at.track_number, at.disc_number,
+      GROUP_CONCAT(a.name, ', ') as artist
+    ${TRACK_LIST_FROM_ALBUM}`;
 
 export function countTracks() {
   return db
@@ -37,6 +56,19 @@ const TRACK_LIST_GROUP_ORDER = `GROUP BY t.id ORDER BY f.scanned_at DESC`;
 
 export function countTracksFiltered(query = {}) {
   const filters = parseTrackListFilters(query);
+  if (filters.albumId) {
+    const withoutAlbum = { ...filters, albumId: null };
+    const { where, params } = buildTrackListWhere(withoutAlbum);
+    return db
+      .prepare(`
+        SELECT COUNT(*) AS total
+        FROM track_metadata t
+        JOIN track_filedata f ON t.file_id = f.id
+        JOIN album_tracks at ON t.id = at.track_id AND at.album_id = ?
+        ${where}
+      `)
+      .get(filters.albumId, ...params).total;
+  }
   const { where, params } = buildTrackListWhere(filters);
   return db
     .prepare(`
@@ -54,9 +86,23 @@ export function findAllTracks() {
 
 export function findTracksPage(offset, limit, query = {}) {
   const filters = parseTrackListFilters(query);
-  const { where, params } = buildTrackListWhere(filters);
   const orderClause = buildTrackListOrder(filters.sorts);
 
+  if (filters.albumId) {
+    const withoutAlbum = { ...filters, albumId: null };
+    const { where, params } = buildTrackListWhere(withoutAlbum);
+    return db
+      .prepare(`
+        ${TRACK_LIST_SELECT_ALBUM}
+        ${where}
+        GROUP BY t.id, at.track_number, at.disc_number
+        ${orderClause}
+        LIMIT ? OFFSET ?
+      `)
+      .all(filters.albumId, ...params, limit, offset);
+  }
+
+  const { where, params } = buildTrackListWhere(filters);
   return db
     .prepare(`
       ${TRACK_LIST_SELECT}

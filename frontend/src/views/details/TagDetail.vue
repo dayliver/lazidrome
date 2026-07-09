@@ -2,14 +2,11 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
-import { useClientTrackListQuery } from '@/composables/useClientTrackListQuery'
+import { useScopedTracksPageQuery } from '@/composables/useScopedTracksPageQuery'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useDocumentTitle } from '@/composables/useDocumentTitle'
 import { formatTagDocumentTitle } from '@/lib/documentTitle'
 import { useAuthStore } from '@/stores/auth'
-
-import { getCoverUrl } from '@/lib/image'
 
 import DetailLayout from '@/components/layout/DetailLayout.vue'
 import SectionHeader from '@/components/shared/SectionHeader.vue'
@@ -18,7 +15,7 @@ import AlbumGrid from '@/components/shared/AlbumGrid.vue'
 import TrackListTable from '@/components/shared/TrackListTable.vue'
 import TrackListToolbar from '@/components/shared/TrackListToolbar.vue'
 
-import { Users, Disc, Music, Hash, Edit } from 'lucide-vue-next'
+import { Users, Disc, Music, Hash, Edit, Loader2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import TagEditDialog from '@/components/tags/TagEditDialog.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
@@ -54,21 +51,21 @@ const { data: tagDetail, error: fetchError, isLoading, reload: loadTag } = useAs
     return {
       artists: d.artists || [],
       albums: d.albums || [],
-      tracks: d.tracks || []
+      trackCount: Array.isArray(d.tracks) ? d.tracks.length : 0,
     }
   }
 )
 
 const artists = computed(() => tagDetail.value?.artists ?? [])
 const albums = computed(() => tagDetail.value?.albums ?? [])
-const tracks = computed(() => tagDetail.value?.tracks ?? [])
+const detailTrackCount = computed(() => tagDetail.value?.trackCount ?? 0)
 
 const loadError = computed(() => {
   if (!tagName.value) return t('pages.details.tagNoName')
   return fetchError.value
 })
 
-useSyncTrackListWithLibrary(() => tracks.value)
+const tagScope = computed(() => ({ tag: tagName.value }))
 
 const {
   query: trackQuery,
@@ -76,13 +73,21 @@ const {
   displayTracks,
   total: trackTotal,
   shown: trackShown,
+  hasMore: tracksHasMore,
+  isLoading: tracksLoading,
+  isLoadMore: tracksLoadMore,
+  loadMore: loadMoreTracks,
   sortOptions: trackSortOptions,
   setSort: setTrackSort,
   toggleOrder: toggleTrackOrder,
   toggleStarredFilter: toggleTrackStarredFilter,
   setMinRating: setTrackMinRating,
   resetFilters: resetTrackFilters,
-} = useClientTrackListQuery(() => tracks.value, 'tag')
+} = useScopedTracksPageQuery(tagScope, { presetKey: 'tag' })
+
+const showTracksSection = computed(
+  () => trackTotal.value > 0 || tracksLoading.value || detailTrackCount.value > 0,
+)
 
 const editOpen = ref(false)
 const imageBust = ref(0)
@@ -97,7 +102,7 @@ const imageUrl = computed(() => {
 const stats = computed(() => [
   { label: t('pages.details.statArtists'), value: artists.value.length },
   { label: t('pages.details.statAlbums'), value: albums.value.length },
-  { label: t('pages.details.statTracks'), value: tracks.value.length }
+  { label: t('pages.details.statTracks'), value: trackTotal.value || detailTrackCount.value },
 ])
 
 const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
@@ -159,7 +164,7 @@ const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
       <AlbumGrid :albums="albums" />
     </section>
 
-    <section v-if="tracks.length > 0" class="space-y-6 pb-12">
+    <section v-if="showTracksSection" class="space-y-6 pb-12">
       <SectionHeader :title="t('nav.tracks')">
         <template #icon>
           <Music class="w-6 h-6 text-primary" />
@@ -179,19 +184,26 @@ const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
         @reset-filters="resetTrackFilters"
       />
       <div class="bg-card overflow-hidden border rounded-xl shadow-sm">
-        <TrackListTable v-if="displayTracks.length" :tracks="displayTracks" />
+        <LoadingSpinner v-if="tracksLoading && !displayTracks.length" :label="t('pages.tracks.loading')" />
+        <TrackListTable v-else-if="displayTracks.length" :tracks="displayTracks" />
         <div
-          v-else
+          v-else-if="!tracksLoading"
           class="py-12 text-center text-sm font-medium text-muted-foreground"
         >
           {{ t('trackList.noResults') }}
         </div>
       </div>
+      <div v-if="tracksHasMore" class="flex justify-center pt-2">
+        <Button variant="outline" class="rounded-full" :disabled="tracksLoadMore" @click="loadMoreTracks">
+          <Loader2 v-if="tracksLoadMore" class="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
+          {{ tracksLoadMore ? t('pages.tracks.loadingMore') : t('pages.tracks.loadMore') }}
+        </Button>
+      </div>
     </section>
 
     <div
-      v-if="!artists.length && !albums.length && !tracks.length"
-      class="py-16 text-center border-2 border-dashed rounded-2xl bg-muted/5 text-muted-foreground"
+      v-if="!artists.length && !albums.length && !showTracksSection"
+      class="py-16 text-center border border-dashed rounded-xl bg-muted/5 text-muted-foreground"
     >
       <p class="font-bold">{{ t('pages.details.tagEmpty') }}</p>
       <p class="text-sm mt-2">{{ t('pages.details.tagEmptyHint') }}</p>

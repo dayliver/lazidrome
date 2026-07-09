@@ -65,6 +65,7 @@ export const useLibraryStore = defineStore('library', () => {
     genre,
     artistId,
     albumId,
+    tag,
   } = {}) => {
     const params = new URLSearchParams({
       offset: String(offset),
@@ -78,6 +79,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (genre) params.set('genre', String(genre))
     if (artistId) params.set('artistId', String(artistId))
     if (albumId) params.set('albumId', String(albumId))
+    if (tag) params.set('tag', String(tag))
 
     const res = await auth.fetchWithAuth(`/api/tracks?${params}`)
     if (!res.ok) throw new Error(t('library.tracksFetchFailed'))

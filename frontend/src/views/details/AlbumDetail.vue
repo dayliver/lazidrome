@@ -2,11 +2,10 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import { useSyncAlbumDetailWithLibrary } from '@/composables/useSyncAlbumDetailWithLibrary'
 import { useDocumentTitle } from '@/composables/useDocumentTitle'
 import { formatTrackDocumentTitle } from '@/lib/documentTitle'
-import { useClientTrackListQuery } from '@/composables/useClientTrackListQuery'
+import { useScopedTracksPageQuery } from '@/composables/useScopedTracksPageQuery'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useLibraryStore } from '@/stores/library'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
@@ -15,7 +14,7 @@ import { useAuthStore } from '@/stores/auth'
 
 import { useDurationLabel } from '@/composables/useDurationLabel'
 
-import { Play, Shuffle, Users, Edit } from 'lucide-vue-next'
+import { Play, Shuffle, Users, Edit, Loader2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import DetailLayout from '@/components/layout/DetailLayout.vue'
 
@@ -63,7 +62,8 @@ const shareMarkdownLabel = computed(() => {
 })
 
 useSyncAlbumDetailWithLibrary(() => data.value?.album ?? null)
-useSyncTrackListWithLibrary(() => album.value?.tracks)
+
+const albumScope = computed(() => ({ albumId: String(route.params.id ?? '') }))
 
 const {
   query: trackQuery,
@@ -71,20 +71,27 @@ const {
   displayTracks,
   total: trackTotal,
   shown: trackShown,
+  hasMore: tracksHasMore,
+  isLoading: tracksLoading,
+  isLoadMore: tracksLoadMore,
+  loadMore: loadMoreTracks,
   sortOptions: trackSortOptions,
   setSort: setTrackSort,
   toggleOrder: toggleTrackOrder,
   toggleStarredFilter: toggleTrackStarredFilter,
   setMinRating: setTrackMinRating,
   resetFilters: resetTrackFilters,
-} = useClientTrackListQuery(() => album.value?.tracks, 'album')
+} = useScopedTracksPageQuery(albumScope, { presetKey: 'album' })
+
+const showTracksSection = computed(
+  () => Boolean(album.value && (trackTotal.value > 0 || tracksLoading.value || album.value.tracks?.length)),
+)
 
 /** AlbumGrid와 동일: `cover_type`이 있을 때만 이미지 URL 부여 (불필요한 404·@error 방지) */
 const getAlbumImageUrl = (id) => auth.coverSrc('album', id)
 
 const albumCoverUrl = computed(() => {
   const a = data.value?.album
-  // serverUrl이 ''이면 상대 경로 `/api/images/...` (AlbumGrid·getCoverUrl와 동일). !serverUrl 로 막지 않음.
   if (!a?.id || !a.cover_type) return ''
   return getAlbumImageUrl(a.id)
 })
@@ -121,7 +128,7 @@ const handleEdit = async () => {
     :is-round-image="false"
     :image-url="albumCoverUrl"
     :stats="[
-      { label: t('pages.details.albumTracks'), value: album.tracks?.length || 0 },
+      { label: t('pages.details.albumTracks'), value: trackTotal || album.tracks?.length || 0 },
       { label: t('pages.details.albumYear'), value: album.year || '-' },
       { label: t('pages.details.albumTotalDuration'), value: durationLabel(album.totalDuration) }
     ]"
@@ -153,7 +160,7 @@ const handleEdit = async () => {
       </span>
     </div>
 
-    <section v-if="album.tracks?.length" class="space-y-4">
+    <section v-if="showTracksSection" class="space-y-4">
       <TrackListToolbar
         :query="trackQuery"
         :search-input="trackSearchInput"
@@ -168,21 +175,28 @@ const handleEdit = async () => {
         @reset-filters="resetTrackFilters"
       />
       <div class="bg-card overflow-hidden">
+        <LoadingSpinner v-if="tracksLoading && !displayTracks.length" :label="t('pages.tracks.loading')" />
         <TrackListTable
-          v-if="displayTracks.length"
+          v-else-if="displayTracks.length"
           :tracks="displayTracks"
           :show-album="false"
           :show-cover="false"
         />
         <div
-          v-else
+          v-else-if="!tracksLoading"
           class="py-12 text-center text-sm font-medium text-muted-foreground border-t"
         >
           {{ t('trackList.noResults') }}
         </div>
       </div>
-      <div v-if="album.tracks?.length > 0" class="px-2 text-[10px] text-muted-foreground opacity-50 text-right">
-        {{ t('pages.details.albumTrackSummary', { count: album.tracks.length, duration: durationLabel(album.totalDuration) }) }}
+      <div v-if="tracksHasMore" class="flex justify-center pt-2">
+        <Button variant="outline" class="rounded-full" :disabled="tracksLoadMore" @click="loadMoreTracks">
+          <Loader2 v-if="tracksLoadMore" class="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
+          {{ tracksLoadMore ? t('pages.tracks.loadingMore') : t('pages.tracks.loadMore') }}
+        </Button>
+      </div>
+      <div v-if="trackTotal > 0" class="px-2 text-[10px] text-muted-foreground opacity-50 text-right">
+        {{ t('pages.details.albumTrackSummary', { count: trackTotal, duration: durationLabel(album.totalDuration) }) }}
       </div>
     </section>
 

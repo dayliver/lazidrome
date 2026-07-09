@@ -15,8 +15,8 @@ function sortsFromDetailQuery(query) {
 }
 
 /**
- * 상세(아티스트·앨범) 트랙 목록 — /api/tracks scoped filter + 페이지네이션.
- * @param {import('vue').MaybeRefOrGetter<{ artistId?: string, albumId?: string }>} scope
+ * 상세(아티스트·앨범·태그) 트랙 목록 — /api/tracks scoped filter + 페이지네이션.
+ * @param {import('vue').MaybeRefOrGetter<{ artistId?: string, albumId?: string, tag?: string }>} scope
  */
 export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 50 } = {}) {
   const library = useLibraryStore()
@@ -59,18 +59,24 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
     return {
       artistId: s.artistId ? String(s.artistId) : undefined,
       albumId: s.albumId ? String(s.albumId) : undefined,
+      tag: s.tag ? String(s.tag) : undefined,
     }
   }
 
+  const hasScope = () => {
+    const { artistId, albumId, tag } = scopeParams()
+    return Boolean(artistId || albumId || tag)
+  }
+
   const loadTracks = async (append = false) => {
-    const { artistId, albumId } = scopeParams()
-    if (!artistId && !albumId) {
+    if (!hasScope()) {
       tracks.value = []
       total.value = 0
       hasMore.value = false
       return
     }
 
+    const { artistId, albumId, tag } = scopeParams()
     const generation = ++loadGeneration
     if (!append) isLoading.value = true
     else isLoadMore.value = true
@@ -85,6 +91,7 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
         minRating: query.value.minRating,
         artistId,
         albumId,
+        tag,
       })
 
       if (generation !== loadGeneration) return
@@ -123,7 +130,7 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
   }
 
   watch(
-    () => [toValue(scope)?.artistId, toValue(scope)?.albumId],
+    () => [toValue(scope)?.artistId, toValue(scope)?.albumId, toValue(scope)?.tag],
     () => {
       void reload()
     },

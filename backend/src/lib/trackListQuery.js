@@ -8,6 +8,7 @@ export const TRACK_SORT_KEYS = new Set([
   'play_count',
   'last_played',
   'scanned_at',
+  'track_number',
 ]);
 
 const SORT_SQL = {
@@ -20,6 +21,7 @@ const SORT_SQL = {
   play_count: 't.play_count',
   last_played: 't.last_played',
   scanned_at: 'f.scanned_at',
+  track_number: 'MIN(at.disc_number), MIN(at.track_number)',
 };
 
 const DEFAULT_SORT = [{ key: 'scanned_at', order: 'desc' }];
@@ -63,6 +65,7 @@ export function parseTrackListFilters(query = {}) {
   const genre = typeof query.genre === 'string' ? query.genre.trim() : '';
   const artistId = typeof query.artistId === 'string' ? query.artistId.trim() : '';
   const albumId = typeof query.albumId === 'string' ? query.albumId.trim() : '';
+  const tag = typeof query.tag === 'string' ? query.tag.trim() : '';
 
   return {
     sorts,
@@ -72,6 +75,7 @@ export function parseTrackListFilters(query = {}) {
     genre: genre || null,
     artistId: artistId || null,
     albumId: albumId || null,
+    tag: tag || null,
   };
 }
 
@@ -132,6 +136,14 @@ export function buildTrackListWhere(filters) {
     params.push(filters.albumId);
   }
 
+  if (filters.tag) {
+    conditions.push(`
+      t.tags IS NOT NULL AND t.tags != '[]'
+      AND EXISTS (SELECT 1 FROM json_each(t.tags) j WHERE j.value = ?)
+    `);
+    params.push(filters.tag);
+  }
+
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   return { where, params };
 }
@@ -139,11 +151,16 @@ export function buildTrackListWhere(filters) {
 /** @param {Array<{ key: string, order: string }>} sorts */
 export function buildTrackListOrder(sorts) {
   const list = Array.isArray(sorts) && sorts.length ? sorts : DEFAULT_SORT;
-  const parts = list.map((s) => {
-    const col = SORT_SQL[s.key] || SORT_SQL.scanned_at;
+  const parts = [];
+  for (const s of list) {
     const dir = s.order === 'asc' ? 'ASC' : 'DESC';
-    return `${col} ${dir}`;
-  });
+    if (s.key === 'track_number') {
+      parts.push(`MIN(at.disc_number) ${dir}`, `MIN(at.track_number) ${dir}`);
+      continue;
+    }
+    const col = SORT_SQL[s.key] || SORT_SQL.scanned_at;
+    parts.push(`${col} ${dir}`);
+  }
   parts.push('t.title COLLATE NOCASE ASC');
   return `ORDER BY ${parts.join(', ')}`;
 }

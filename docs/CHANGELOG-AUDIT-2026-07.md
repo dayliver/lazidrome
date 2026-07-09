@@ -97,7 +97,14 @@
 - `/api/tracks?artistId=` / `albumId=` 필터
 - `useScopedTracksPageQuery` + `ArtistDetail` load-more
 
+## 8. 0.7.1 — 앨범·태그 상세 트랙 (F5)
+
+- `/api/tracks?tag=` 필터, `track_number` 정렬
+- 앨범 스코프: `album_tracks` JOIN으로 disc/track 번호 유지
+- `AlbumDetail` / `TagDetail`: 서버 페이지네이션 + load-more
+- 태그 상세 초기 응답은 artists/albums(+trackCount) 위주, 트랙은 별도 API
+
 ## 남은 우선 과제
 
-- **0.7.1+:** F5 앨범/태그 상세, F6–F10, B8+ 백로그
+- **0.7.2+:** B8+, F6–F10, 모바일 HLS 큐
 - B8~B25, F6~F10 백로그 — [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)
