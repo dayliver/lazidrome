@@ -107,4 +107,22 @@
 ## 남은 우선 과제
 
 - **0.7.2+:** B8+, F6–F10, 모바일 HLS 큐
+
+## 9. 0.7.2 — 홈 대시보드 + deep watch (B8, F6)
+
+### B8
+
+- `findFrequentVisits`: CASE로 name 1회 조회 (N+1 제거)
+- `GET /api/home`: frequentVisits + 7d topTracks/topArtists
+- `getStatsTopPayload(..., include)` — 홈은 albums/totals 스킵
+- `useHomePage`: playlists/visits/stats 3회 → `fetchHomeDashboard` 1회
+
+### F6
+
+- `useTracksPageQuery`, `PlaylistTracksTab`, `useTrackListLocalState`: `deep: true` 제거
+- `player.js`: MediaSession·queue persist를 필드 getter로 좁힘
+
+## 남은 우선 과제
+
+- **0.7.3+:** B9+, F7–F8, F10, 모바일 HLS 큐 (별도 논의)
 - B8~B25, F6~F10 백로그 — [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)

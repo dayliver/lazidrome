@@ -31,7 +31,7 @@ const getTrackImageUrl = (id) => auth.coverSrc('track', id)
 
 watch(() => props.modelValue, (newVal) => {
   localTracks.value = [...newVal]
-}, { deep: true })
+})
 
 const updateParent = () => {
   emit('update:modelValue', [...localTracks.value])

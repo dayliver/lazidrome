@@ -6,7 +6,6 @@ import {
   findFrequentVisits,
   bulkInsertVisits,
   clearAllVisits,
-  resolveEntityDisplayName,
   entityExists,
 } from '../repositories/pageVisitsRepository.js';
 import { schedulePageVisitsPruneDebounced } from './pageVisitsPrune.js';
@@ -60,7 +59,7 @@ export function getFrequentVisits(limit) {
     .map((row) => ({
       type: row.type,
       id: row.id,
-      name: resolveEntityDisplayName(row.type, row.id),
+      name: row.name != null && String(row.name).trim() ? String(row.name).trim() : '',
       count: row.count,
       at: Date.parse(String(row.at).replace(' ', 'T') + 'Z') || 0,
     }))

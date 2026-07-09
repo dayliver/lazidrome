@@ -4,9 +4,8 @@ import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
-import { usePlaylistStore } from '@/stores/playlist'
 import { usePreferencesStore } from '@/stores/preferences'
-import { fetchFrequentVisits, ensureLegacyVisitsDiscarded } from '@/lib/visitHistory'
+import { ensureLegacyVisitsDiscarded } from '@/lib/visitHistory'
 import {
   useHorizontalDragScroll,
   isHorizontalDragInteractiveTarget,
@@ -24,7 +23,6 @@ export function useHomePage() {
   const auth = useAuthStore()
   const player = usePlayerStore()
   const playbackSync = usePlaybackSyncStore()
-  const playlistStore = usePlaylistStore()
   const prefs = usePreferencesStore()
   const route = useRoute()
 
@@ -34,16 +32,53 @@ export function useHomePage() {
   const topLoading = ref(false)
   const topError = ref(null)
 
-  const refreshVisits = async () => {
+  const applyDashboard = (data) => {
+    visits.value = Array.isArray(data?.frequentVisits) ? data.frequentVisits : []
+    top20.value = Array.isArray(data?.topTracks) ? data.topTracks : []
+    topArtists.value = Array.isArray(data?.topArtists) ? data.topArtists : []
+  }
+
+  const loadDashboard = async ({ visitsOnly = false } = {}) => {
     if (!auth.isAuthenticated) {
       visits.value = []
+      if (!visitsOnly) {
+        top20.value = []
+        topArtists.value = []
+      }
       return
     }
-    try {
-      visits.value = await fetchFrequentVisits()
-    } catch {
-      visits.value = []
+    if (!visitsOnly) {
+      topLoading.value = true
+      topError.value = null
     }
+    try {
+      const data = await library.fetchHomeDashboard({
+        limit: 20,
+        visitLimit: 24,
+        timezone: prefs.effectiveTimezone,
+      })
+      if (visitsOnly) {
+        visits.value = Array.isArray(data?.frequentVisits) ? data.frequentVisits : []
+      } else {
+        applyDashboard(data)
+      }
+    } catch (e) {
+      console.error(e)
+      if (visitsOnly) {
+        visits.value = []
+      } else {
+        topError.value = e
+        visits.value = []
+        top20.value = []
+        topArtists.value = []
+      }
+    } finally {
+      if (!visitsOnly) topLoading.value = false
+    }
+  }
+
+  const refreshVisits = async () => {
+    await loadDashboard({ visitsOnly: true })
   }
 
   function visitTo(v) {
@@ -65,10 +100,6 @@ export function useHomePage() {
 
   function resolveVisitName(v) {
     if (v.name && String(v.name).trim()) return String(v.name).trim()
-    if (v.type === 'playlist') {
-      const p = playlistStore.playlists.find((x) => String(x.id) === String(v.id))
-      return p?.name || ''
-    }
     if (v.type === 'track') {
       const tr = library.tracks.find((x) => String(x.id) === String(v.id))
       return tr?.title || ''
@@ -111,33 +142,13 @@ export function useHomePage() {
   )
 
   const loadTop20 = async () => {
-    if (!auth.isAuthenticated) {
-      top20.value = []
-      topArtists.value = []
-      return
-    }
-    topLoading.value = true
-    topError.value = null
-    try {
-      const data = await library.fetchStatsTop('7d', 20, prefs.effectiveTimezone)
-      top20.value = Array.isArray(data?.tracks) ? data.tracks : []
-      topArtists.value = Array.isArray(data?.artists) ? data.artists : []
-    } catch (e) {
-      console.error(e)
-      topError.value = e
-      top20.value = []
-      topArtists.value = []
-    } finally {
-      topLoading.value = false
-    }
+    await loadDashboard()
   }
 
   const loadHome = async () => {
     if (!auth.isAuthenticated) return
     await ensureLegacyVisitsDiscarded()
-    await playlistStore.fetchPlaylists()
-    await refreshVisits()
-    await loadTop20()
+    await loadDashboard()
   }
 
   onMounted(() => {

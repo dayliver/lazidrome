@@ -660,7 +660,17 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
-  watch([currentTrack, isPlaying, volume], () => syncMediaSession(), { deep: true })
+  watch(
+    () => [
+      currentTrack.value?.id,
+      currentTrack.value?.title,
+      currentTrack.value?.artist,
+      currentTrack.value?.album,
+      isPlaying.value,
+      volume.value,
+    ],
+    () => syncMediaSession(),
+  )
 
   const initAudio = () => {
     if (audioListenersBound) return
@@ -951,12 +961,15 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   watch(
-    [queue, currentIndex],
+    () => [
+      queue.value.map((t) => t?.id).join(','),
+      currentIndex.value,
+      queue.value[currentIndex.value]?.title,
+    ],
     () => {
       clearTimeout(queuePersistTimer)
       queuePersistTimer = setTimeout(saveQueueSnapshot, 350)
     },
-    { deep: true }
   )
 
   /** localStorage에 저장된 대기열이 있는지(복원 가능한 트랙이 라이브러리에 있어야 실제 재생 가능) */

@@ -649,6 +649,22 @@ export const useLibraryStore = defineStore('library', () => {
     return body?.data ?? null
   }
 
+  /** 홈: frequent visits + 7d top tracks/artists (1회) */
+  const fetchHomeDashboard = async ({ limit = 20, visitLimit = 24, timezone } = {}) => {
+    const q = new URLSearchParams({
+      limit: String(limit),
+      visitLimit: String(visitLimit),
+    })
+    if (timezone) q.set('timezone', timezone)
+    const res = await auth.fetchWithAuth(`/api/home?${q}`)
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || res.statusText)
+    }
+    const body = await res.json()
+    return body?.data ?? null
+  }
+
   const fetchPlayHistory = async ({ limit = 50, offset = 0 } = {}) => {
     const q = new URLSearchParams({
       limit: String(limit),
@@ -708,6 +724,7 @@ export const useLibraryStore = defineStore('library', () => {
     fetchStatsPlays,
     fetchStatsHabits,
     fetchStatsTop,
+    fetchHomeDashboard,
     fetchPlayHistory,
   }
 })

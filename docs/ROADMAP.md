@@ -114,6 +114,7 @@
 | 0.6.7 | ✅ | 그리드 중첩 스크롤 fix |
 | 0.7.0 | ✅ | D4–D11, F5 artist tracks |
 | 0.7.1 | ✅ | F5 album/tag tracks |
+| 0.7.2 | ✅ | B8 home dashboard, F6 deep watch |
 
 상세 일정·체크리스트: **[ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)**
 

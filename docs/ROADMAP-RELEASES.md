@@ -29,28 +29,30 @@
 | **0.6.7** | 앨범/아티스트 그리드 중첩 스크롤 제거 | — |
 | **0.7.0** | 디자인 토큰·a11y·아티스트 상세 서버 트랙 필터 | D4, D7–D11, F5 |
 | **0.7.1** | 앨범·태그 상세 서버 트랙 필터/페이지네이션 | F5 |
+| **0.7.2** | 홈 대시보드 통합 API, deep watch 정리 | B8, F6 |
 
 ---
 
-## 0.7.1 — F5 앨범·태그 상세 ✅
+## 0.7.2 — 홈 효율 + deep watch ✅
 
 | # | 작업 | 상태 |
 |---|------|------|
-| 0.7.1.1 | `/api/tracks?tag=` + `track_number` 정렬 | ✅ |
-| 0.7.1.2 | 앨범 스코프 JOIN + AlbumDetail load-more | ✅ |
-| 0.7.1.3 | TagDetail 서버 페이지 트랙 목록 | ✅ |
+| 0.7.2.1 | visits N+1 → SQL CASE name | ✅ |
+| 0.7.2.2 | `GET /api/home` + 홈 1회 로드 | ✅ |
+| 0.7.2.3 | stats/top `include` 슬림 (홈용) | ✅ |
+| 0.7.2.4 | F6 deep watch 제거·필드 좁히기 | ✅ |
 
 ---
 
-## 0.7.2+ — 백로그 (다음)
+## 0.7.3+ — 백로그 (다음)
 
-우선순위 미정 — 감사 B8~B25, F6~F8, F10.
+우선순위 미정 — 감사 B9~B25, F7–F8, F10.
 
 | 테마 | 대표 항목 |
 |------|-----------|
-| 백엔드 | B8 홈 4중 쿼리 통합, B9~10 N+1, B11 smart-mix `RANDOM()` |
-| 프론트 | F6 deep watch 정리, F7~8 추가 route chunk, F10 i18n |
-| UX | 2.3b 모바일 HLS 큐 ([MOBILE-BACKGROUND-PLAYBACK.md](./MOBILE-BACKGROUND-PLAYBACK.md)) |
+| 백엔드 | B9~10 N+1, B11 smart-mix `RANDOM()` |
+| 프론트 | F7~8 추가 route chunk, F10 i18n |
+| UX | 2.3b 모바일 HLS 큐 ([MOBILE-BACKGROUND-PLAYBACK.md](./MOBILE-BACKGROUND-PLAYBACK.md)) — 별도 논의 |
 
 ---
 

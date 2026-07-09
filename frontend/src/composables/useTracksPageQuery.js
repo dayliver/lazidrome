@@ -107,7 +107,6 @@ export function useTracksPageQuery({ limit = 50 } = {}) {
       persistFilters()
       void reload()
     },
-    { deep: true },
   )
 
   watch(

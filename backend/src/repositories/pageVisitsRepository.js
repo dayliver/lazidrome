@@ -93,7 +93,7 @@ export function insertVisit(entityType, entityId, visitedAtMs = null) {
 
 /**
  * @param {number} [limit=24]
- * @returns {{ type: string, id: string, count: number, at: string }[]}
+ * @returns {{ type: string, id: string, name: string, count: number, at: string }[]}
  */
 export function findFrequentVisits(limit = 24) {
   const cap = Math.min(50, Math.max(1, Number(limit) || 24));
@@ -103,7 +103,15 @@ export function findFrequentVisits(limit = 24) {
          entity_type AS type,
          entity_id AS id,
          COUNT(*) AS count,
-         MAX(visited_at) AS at
+         MAX(visited_at) AS at,
+         CASE entity_type
+           WHEN 'tag' THEN entity_id
+           WHEN 'album' THEN (SELECT name FROM albums WHERE id = page_visits.entity_id)
+           WHEN 'artist' THEN (SELECT name FROM artists WHERE id = page_visits.entity_id)
+           WHEN 'track' THEN (SELECT title FROM track_metadata WHERE id = page_visits.entity_id)
+           WHEN 'playlist' THEN (SELECT name FROM playlists WHERE id = page_visits.entity_id)
+           ELSE NULL
+         END AS name
        FROM page_visits
        WHERE visited_at >= datetime('now', ?)
          AND (${VISIT_ENTITY_EXISTS_SQL})

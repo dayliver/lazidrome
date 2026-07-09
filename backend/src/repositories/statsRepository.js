@@ -592,16 +592,30 @@ function topAlbumsFromEvents(periodEv, limit = 20) {
 /**
  * `/api/stats/top` 통합 페이로드.
  * 기간 이벤트를 SQL 필터로 1회만 로드해 tracks/albums/artists/totals를 모두 계산한다.
+ * @param {{ tracks?: boolean, albums?: boolean, artists?: boolean, totals?: boolean }} [include]
  */
-export function getStatsTopPayload(range, limit = 20, timezoneRaw) {
+export function getStatsTopPayload(range, limit = 20, timezoneRaw, include = {}) {
   if (!CHART_RANGES.has(range) && !RANGES.has(range)) return null;
+  const want = {
+    tracks: include.tracks !== false,
+    albums: include.albums !== false,
+    artists: include.artists !== false,
+    totals: include.totals !== false,
+  };
   const statsZone = resolveStatsTimezone(timezoneRaw);
   const periodEv = loadPlayHistoryEvents(range, statsZone);
   return {
-    tracks: topTracksFromEvents(periodEv, limit),
-    albums: topAlbumsFromEvents(periodEv, limit),
-    artists: topArtistsFromEvents(periodEv, limit),
-    totals: chartTotalsFromEvents(periodEv),
+    tracks: want.tracks ? topTracksFromEvents(periodEv, limit) : [],
+    albums: want.albums ? topAlbumsFromEvents(periodEv, limit) : [],
+    artists: want.artists ? topArtistsFromEvents(periodEv, limit) : [],
+    totals: want.totals
+      ? chartTotalsFromEvents(periodEv)
+      : {
+          totalPlays: 0,
+          totalListenSec: 0,
+          uniqueTrackCount: 0,
+          uniqueArtistCount: 0,
+        },
   };
 }
 
