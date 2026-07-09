@@ -22,7 +22,7 @@ const subtitleFor = (artist) => {
 </script>
 
 <template>
-  <VirtualScrollGrid :items="artists" :row-height="280" class="pb-12">
+  <VirtualScrollGrid :items="artists" class="pb-12">
     <template #item="{ item: artist }">
       <RouterLink
         :to="{ name: 'artist-detail', params: { id: artist.id } }"
