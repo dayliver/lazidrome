@@ -7,7 +7,9 @@ import { X, Trash2, ListMusic } from 'lucide-vue-next'
 import PlaylistSelectModal from '@/components/playlist/PlaylistSelectModal.vue'
 import TrackListTableDesktop from '@/components/shared/TrackListTableDesktop.vue'
 import TrackListTableMobile from '@/components/shared/TrackListTableMobile.vue'
+import TrackContextMenuHost from '@/components/shared/TrackContextMenuHost.vue'
 import { useTrackListTable } from '@/composables/useTrackListTable'
+import { useTrackContextMenu } from '@/composables/useTrackContextMenu'
 
 const props = defineProps({
   tracks: { type: Array, required: true, default: () => [] },
@@ -50,6 +52,15 @@ const { t } = useI18n()
 const nowPlayingTrackId = computed(() => player.currentTrack?.id ?? null)
 const playerIsPlaying = computed(() => player.isPlaying)
 const togglePlayerPlay = () => player.togglePlay()
+
+const {
+  open: contextMenuOpen,
+  anchorX,
+  anchorY,
+  contextTrack,
+  openAt,
+  openFromTrigger,
+} = useTrackContextMenu()
 </script>
 
 <template>
@@ -84,6 +95,8 @@ const togglePlayerPlay = () => player.togglePlay()
       :now-playing-track-id="nowPlayingTrackId"
       :player-is-playing="playerIsPlaying"
       :toggle-play="togglePlayerPlay"
+      :open-context-at="openAt"
+      :open-context-from-trigger="openFromTrigger"
     />
 
     <TrackListTableMobile
@@ -115,6 +128,26 @@ const togglePlayerPlay = () => player.togglePlay()
       :fetch-metadata="fetchMetadata"
       :now-playing-track-id="nowPlayingTrackId"
       :player-is-playing="playerIsPlaying"
+      :open-context-at="openAt"
+      :open-context-from-trigger="openFromTrigger"
+    />
+
+    <TrackContextMenuHost
+      v-model:open="contextMenuOpen"
+      :anchor-x="anchorX"
+      :anchor-y="anchorY"
+      :track="contextTrack"
+      :show-artist="showArtist"
+      :show-album="showAlbum"
+      :playlist-id="playlistId"
+      :toggle-star="toggleStar"
+      :update-rating="updateRating"
+      :go-to-track="goToTrack"
+      :go-to-album="goToAlbum"
+      :go-to-artist="goToArtist"
+      :open-playlist-modal="openPlaylistModal"
+      :remove-track-from-playlist="removeTrackFromPlaylist"
+      :fetch-metadata="fetchMetadata"
     />
 
     <Transition name="slide-up">

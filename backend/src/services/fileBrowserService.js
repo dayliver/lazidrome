@@ -3,8 +3,9 @@ import path from 'node:path';
 import { getDB } from '../db.js';
 import { assertInsideTracksRoot } from '../lib/pathSanitize.js';
 import { isExcludedScanPath, SCAN_EXCLUDED_DIR } from './scanner.js';
+import { AUDIO_EXT_SET } from '../lib/audioExtensions.js';
 
-const AUDIO_EXT = new Set(['.mp3', '.flac', '.wav', '.m4a', '.ogg', '.aac']);
+const AUDIO_EXT = AUDIO_EXT_SET;
 
 /**
  * API·UI용 상대 경로 정규화 (posix, `..` 거부).

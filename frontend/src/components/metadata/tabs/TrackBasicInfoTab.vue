@@ -29,6 +29,16 @@ const isAlbumFocused = ref(false)
 
 onMounted(async () => {
   allAlbums.value = await library.getAlbums()
+  const id = props.modelValue.albumId
+  if (id && !props.modelValue.albumArtistName) {
+    const alb = allAlbums.value.find((a) => a.id === id)
+    if (alb) {
+      emit('update:modelValue', {
+        ...props.modelValue,
+        albumArtistName: alb.displayArtist || t('common.unknownArtist'),
+      })
+    }
+  }
 })
 
 const handleAlbumBlur = () => {

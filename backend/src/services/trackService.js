@@ -4,12 +4,11 @@ import {
   replaceTrackArtists, 
   findTrackById 
 } from '../repositories/trackRepository.js';
-import { 
-  findAlbumByName, 
-  createAlbum, 
+import {
+  findAlbumById,
+  createAlbum,
   setPrimaryAlbumForTrack,
-  findOrCreateAlbumByNameAndArtists,
-  findOrCreateArtist 
+  findOrCreateArtist,
 } from '../repositories/albumRepository.js';
 import { saveCoverFromUrl, saveCoverFromBuffer } from './coverService.js';
 import { bumpLibraryRevisionNow } from '../lib/libraryRevision.js';
@@ -19,7 +18,6 @@ const db = getDB();
 export function editTrack(id, data, fileBuffer) {
   const { title, year, genre, tags, artists, albumId, albumName, newCoverUrl } = data;
   let targetAlbumId = null;
-  let resolvedArtistIds = null;
 
   db.transaction(() => {
     updateTrackMeta(id, { title, genre, tags });
@@ -30,26 +28,20 @@ export function editTrack(id, data, fileBuffer) {
         role_mask: a.role_mask,
       }));
       replaceTrackArtists(id, resolved);
-      resolvedArtistIds = resolved.map((a) => a.artistId);
     }
 
+    const trimmedAlbumId = albumId != null ? String(albumId).trim() : '';
     const trimmedAlbum = albumName != null ? String(albumName).trim() : '';
-    if (trimmedAlbum) {
-      const artistIds =
-        resolvedArtistIds ??
-        db
-          .prepare('SELECT artist_id FROM track_artists WHERE track_id = ?')
-          .all(id)
-          .map((r) => r.artist_id);
 
-      if (artistIds.length > 0) {
-        targetAlbumId = findOrCreateAlbumByNameAndArtists(trimmedAlbum, artistIds, year);
-      } else {
-        const existing = findAlbumByName(trimmedAlbum);
-        targetAlbumId = existing ? existing.id : createAlbum(trimmedAlbum, year);
+    if (trimmedAlbumId) {
+      if (!findAlbumById(trimmedAlbumId)) {
+        const err = new Error('Not found: album');
+        err.statusCode = 404;
+        throw err;
       }
-    } else if (albumId) {
-      targetAlbumId = albumId;
+      targetAlbumId = trimmedAlbumId;
+    } else if (trimmedAlbum) {
+      targetAlbumId = createAlbum(trimmedAlbum, year);
     }
 
     if (targetAlbumId) setPrimaryAlbumForTrack(id, targetAlbumId);

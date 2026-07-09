@@ -4,8 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-import { Heart, MoreVertical, Disc, Users, ListPlus, ListMusic, Sparkles, Trash2, GripVertical } from 'lucide-vue-next'
+import { Heart, MoreVertical, Disc, Users, GripVertical } from 'lucide-vue-next'
 import { VueDraggable } from 'vue-draggable-plus'
 import SafeImage from '@/components/shared/SafeImage.vue'
 import TrackPlayingMarker from '@/components/shared/TrackPlayingMarker.vue'
@@ -40,7 +39,9 @@ const props = defineProps({
   /** 플레이어 now playing 과 동일 표시용 (null 이면 미표시) */
   nowPlayingTrackId: { type: String, default: null },
   playerIsPlaying: { type: Boolean, default: false },
-  togglePlay: { type: Function, required: true }
+  togglePlay: { type: Function, required: true },
+  openContextAt: { type: Function, required: true },
+  openContextFromTrigger: { type: Function, required: true },
 })
 
 function activeNow(trackId) {
@@ -108,6 +109,7 @@ const draggableTracks = computed({
             'bg-primary/[0.08]': activeNow(item.id),
           }"
           @click="playTrack(index)"
+          @contextmenu.prevent="openContextAt($event, item)"
           @mouseenter="prefetchTrackStream?.(item)"
         >
           <TableCell v-if="playlistId" class="w-8 p-0 text-center align-middle" @click.stop>
@@ -182,28 +184,14 @@ const draggableTracks = computed({
           <TableCell class="text-center font-bold text-primary tabular-nums">{{ item.play_count || 0 }}</TableCell>
 
           <TableCell class="text-right">
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child>
-                <Button variant="ghost" size="icon" class="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none" @click.stop><MoreVertical class="w-4 h-4" /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" class="w-48">
-                <template v-if="playlistId && item.playlist_track_id">
-                  <DropdownMenuItem @click.stop="removeTrackFromPlaylist(item.playlist_track_id, item.title)" class="text-red-500 focus:text-red-500 focus:bg-red-500/10">
-                    <Trash2 class="mr-2 h-4 w-4" /> {{ t('trackTable.removeFromPlaylistMenu') }}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </template>
-
-                <DropdownMenuItem @click.stop="openPlaylistModal(item.id)"><ListMusic class="mr-2 h-4 w-4 text-primary" /> {{ t('trackTable.addToPlaylist') }}</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem @click.stop="goToTrack(item.id)"><ListMusic class="mr-2 h-4 w-4" /> {{ t('trackTable.goToTrack') }}</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem v-if="showAlbum" @click.stop="goToAlbum(item.albumId)"><Disc class="mr-2 h-4 w-4" /> {{ t('trackTable.goToAlbum') }}</DropdownMenuItem>
-                <DropdownMenuItem v-if="showArtist" @click.stop="goToArtist(item.artist)"><Users class="mr-2 h-4 w-4" /> {{ t('trackTable.goToArtist') }}</DropdownMenuItem>
-                <DropdownMenuItem @click.stop><ListPlus class="mr-2 h-4 w-4" /> {{ t('trackTable.playNext') }}</DropdownMenuItem>
-                <DropdownMenuItem @click.stop="fetchMetadata(item.id)"><Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> {{ t('trackTable.updateMetadata') }}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none"
+              @click.stop="openContextFromTrigger($event, item)"
+            >
+              <MoreVertical class="w-4 h-4" />
+            </Button>
           </TableCell>
         </TableRow>
       </VueDraggable>

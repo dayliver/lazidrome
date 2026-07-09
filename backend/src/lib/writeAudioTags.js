@@ -3,6 +3,7 @@ import path from 'node:path';
 import { spawnCmd } from './spawnCmd.js';
 import { buildFfmpegMetadataArgs } from './audioTags.js';
 import { resolveFfmpegBin } from './importEnv.js';
+import { MIN_AUDIO_BYTES } from './audioExtensions.js';
 
 /** 확장자별 ffmpeg 출력 옵션 (태그 반영 신뢰도 우선) */
 function outputCodecArgs(ext) {
@@ -55,6 +56,12 @@ export async function writeAudioFileWithTags(sourcePath, destPath, tags) {
   try {
     const ff = await spawnCmd(ffmpeg, ffArgs, { timeoutMs: 300_000 });
     if (ff.code === 0 && fs.existsSync(tmpPath)) {
+      const tmpStat = fs.statSync(tmpPath);
+      if (tmpStat.size < MIN_AUDIO_BYTES) {
+        fs.unlinkSync(tmpPath);
+        console.warn('[writeAudioTags] ffmpeg output too small:', tmpPath);
+        return false;
+      }
       fs.renameSync(tmpPath, destPath);
       return true;
     }

@@ -126,7 +126,13 @@
     "tracksSelected": "tracks selected",
     "removeFromPlaylistMenu": "Remove from playlist",
     "removeFromPlaylistConfirm": "Remove \"{title}\" from this playlist?",
-    "removeBulkConfirm": "Remove {count} selected tracks from this playlist?"
+    "removeBulkConfirm": "Remove {count} selected tracks from this playlist?",
+    "favorite": "Favorite",
+    "tags": "Tags",
+    "tagsEmpty": "No tags yet. Add one below.",
+    "tagsNoMatch": "No matching tags.",
+    "tagsSearch": "Search tags…",
+    "tagsNewPlaceholder": "New tag, press Enter"
   },
   "artistTable": {
     "artist": "Artist",
@@ -173,6 +179,7 @@
     "favoriteAdd": "Add to favorites",
     "favoriteRemove": "Remove from favorites",
     "trackRating": "Track rating",
+    "editTags": "Edit tags",
     "unknownTrack": "Unknown track",
     "noCover": "No cover",
     "upNext": "Up next",

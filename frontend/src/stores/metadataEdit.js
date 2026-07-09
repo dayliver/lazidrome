@@ -125,20 +125,20 @@ export const useMetadataEditStore = defineStore('metadataEdit', () => {
 
   const _attachTrackData = (payload, formData, isMultipart) => {
     const safeTags = Array.isArray(formData.tags) ? formData.tags : []
+    const albumId = formData.albumId != null ? String(formData.albumId).trim() : ''
     const albumName = formData.albumName != null ? String(formData.albumName).trim() : ''
-    const includeAlbumId = albumName ? '' : (formData.albumId || '')
     if (isMultipart) {
       payload.append('tags', JSON.stringify(safeTags))
       payload.append('genre', formData.genre || '')
       payload.append('artists', JSON.stringify(formData.artists || []))
-      if (includeAlbumId) payload.append('albumId', includeAlbumId)
-      if (albumName) payload.append('albumName', albumName)
+      if (albumId) payload.append('albumId', albumId)
+      else if (albumName) payload.append('albumName', albumName)
     } else {
       payload.tags = safeTags
       payload.genre = formData.genre
       payload.artists = formData.artists || []
-      if (includeAlbumId) payload.albumId = includeAlbumId
-      if (albumName) payload.albumName = albumName
+      if (albumId) payload.albumId = albumId
+      else if (albumName) payload.albumName = albumName
     }
   }
 

@@ -8,6 +8,7 @@ import { splitTrailingParentheticals } from '@/lib/titleParts'
 import { usePlayerPresentation } from '@/composables/usePlayerPresentation.js'
 import { formatTrackTime } from '@/lib/audio'
 import ConnectedDevicesTrigger from '@/components/player/ConnectedDevicesTrigger.vue'
+import TrackTagsPopover from '@/components/shared/TrackTagsPopover.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const {
@@ -150,6 +151,7 @@ async function changeRating(rate) {
             />
           </button>
         </div>
+        <TrackTagsPopover :track="currentTrack" size="icon" />
       </div>
 
     <div class="space-y-3">

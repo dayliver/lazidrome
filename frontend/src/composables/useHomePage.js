@@ -67,22 +67,22 @@ export function useHomePage() {
     if (v.name && String(v.name).trim()) return String(v.name).trim()
     if (v.type === 'album') {
       const a = library.albums.find((x) => String(x.id) === String(v.id))
-      return a?.name || t('visit.fallbackAlbum')
+      return a?.name || ''
     }
     if (v.type === 'artist') {
       const a = library.artists.find((x) => String(x.id) === String(v.id))
-      return a?.name || t('visit.fallbackArtist')
+      return a?.name || ''
     }
     if (v.type === 'playlist') {
       const p = playlistStore.playlists.find((x) => String(x.id) === String(v.id))
-      return p?.name || t('visit.fallbackPlaylist')
+      return p?.name || ''
     }
     if (v.type === 'track') {
       const tr = library.tracks.find((x) => String(x.id) === String(v.id))
-      return tr?.title || v.name || v.id
+      return tr?.title || ''
     }
     if (v.type === 'tag') return v.id
-    return v.id
+    return ''
   }
 
   function visitCoverSrc(v) {
@@ -102,14 +102,20 @@ export function useHomePage() {
   }
 
   const visitItems = computed(() =>
-    visits.value.map((v) => ({
-      ...v,
-      kindLabel: kindLabel(v.type),
-      displayName: resolveVisitName(v),
-      to: visitTo(v),
-      coverSrc: visitCoverSrc(v),
-      imageType: visitImageType(v),
-    }))
+    visits.value
+      .map((v) => {
+        const displayName = resolveVisitName(v)
+        return {
+          ...v,
+          kindLabel: kindLabel(v.type),
+          displayName,
+          to: visitTo(v),
+          coverSrc: visitCoverSrc(v),
+          imageType: visitImageType(v),
+        }
+      })
+      // 삭제된 엔티티: 서버 name이 비고 라이브러리에도 없으면 유령 카드로 숨김
+      .filter((v) => v.type === 'tag' || (v.displayName && String(v.displayName).trim()))
   )
 
   const loadTop20 = async () => {

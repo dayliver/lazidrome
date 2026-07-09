@@ -5,27 +5,20 @@ import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu'
-import {
   Heart,
   MoreVertical,
   Disc,
-  Users,
   ListMusic,
-  Sparkles,
   ChevronUp,
   ChevronDown,
   X,
 } from 'lucide-vue-next'
 import SafeImage from '@/components/shared/SafeImage.vue'
 import TrackPlayingMarker from '@/components/shared/TrackPlayingMarker.vue'
+import TrackContextMenuHost from '@/components/shared/TrackContextMenuHost.vue'
 import PlaylistSelectModal from '@/components/playlist/PlaylistSelectModal.vue'
 import { useTrackListTable } from '@/composables/useTrackListTable'
+import { useTrackContextMenu } from '@/composables/useTrackContextMenu'
 import { usePlayerStore } from '@/stores/player'
 import { formatLocaleDateTime } from '@/lib/localeFormat'
 import { TRACKS_PAGE_SORT_COLUMNS } from '@/lib/trackListQuery'
@@ -75,6 +68,15 @@ const { t } = useI18n()
 const nowPlayingTrackId = computed(() => player.currentTrack?.id ?? null)
 const playerIsPlaying = computed(() => player.isPlaying)
 const togglePlayerPlay = () => player.togglePlay()
+
+const {
+  open: contextMenuOpen,
+  anchorX,
+  anchorY,
+  contextTrack,
+  openAt,
+  openFromTrigger,
+} = useTrackContextMenu()
 
 function activeNow(trackId) {
   return nowPlayingTrackId.value != null && String(nowPlayingTrackId.value) === String(trackId)
@@ -176,6 +178,7 @@ function formatScannedAt(value) {
               'bg-primary/[0.08]': activeNow(item.id),
             }"
             @click="playTrack(index)"
+            @contextmenu.prevent="openAt($event, item)"
             @mouseenter="prefetchTrackStream?.(item)"
           >
             <TableCell class="text-center" @click.stop>
@@ -285,42 +288,36 @@ function formatScannedAt(value) {
             </TableCell>
 
             <TableCell class="text-right">
-              <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    class="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                    @click.stop
-                  >
-                    <MoreVertical class="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="w-48">
-                  <DropdownMenuItem @click.stop="openPlaylistModal(item.id)">
-                    <ListMusic class="mr-2 h-4 w-4 text-primary" /> {{ t('trackTable.addToPlaylist') }}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem @click.stop="goToTrack(item.id)">
-                    <ListMusic class="mr-2 h-4 w-4" /> {{ t('trackTable.goToTrack') }}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem @click.stop="goToAlbum(item.albumId)">
-                    <Disc class="mr-2 h-4 w-4" /> {{ t('trackTable.goToAlbum') }}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem @click.stop="goToArtist(item.artist)">
-                    <Users class="mr-2 h-4 w-4" /> {{ t('trackTable.goToArtist') }}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem @click.stop="fetchMetadata(item.id)">
-                    <Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> {{ t('trackTable.updateMetadata') }}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="icon"
+                class="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                @click.stop="openFromTrigger($event, item)"
+              >
+                <MoreVertical class="w-4 h-4" />
+              </Button>
             </TableCell>
           </TableRow>
         </tbody>
       </Table>
     </div>
+
+    <TrackContextMenuHost
+      v-model:open="contextMenuOpen"
+      :anchor-x="anchorX"
+      :anchor-y="anchorY"
+      :track="contextTrack"
+      :show-artist="showArtist"
+      :show-album="showAlbum"
+      :playlist-id="playlistId"
+      :toggle-star="toggleStar"
+      :update-rating="updateRating"
+      :go-to-track="goToTrack"
+      :go-to-album="goToAlbum"
+      :go-to-artist="goToArtist"
+      :open-playlist-modal="openPlaylistModal"
+      :fetch-metadata="fetchMetadata"
+    />
 
     <Transition name="slide-up">
       <div

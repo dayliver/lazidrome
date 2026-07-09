@@ -2,8 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-import { Heart, Play, MoreVertical, Disc, Users, ListMusic, Sparkles, Trash2, GripVertical } from 'lucide-vue-next'
+import { Heart, Play, MoreVertical, Disc, Users, GripVertical } from 'lucide-vue-next'
 import { VueDraggable } from 'vue-draggable-plus'
 import SafeImage from '@/components/shared/SafeImage.vue'
 
@@ -35,7 +34,9 @@ const props = defineProps({
   openPlaylistModal: { type: Function, required: true },
   fetchMetadata: { type: Function, required: true },
   nowPlayingTrackId: { type: String, default: null },
-  playerIsPlaying: { type: Boolean, default: false }
+  playerIsPlaying: { type: Boolean, default: false },
+  openContextAt: { type: Function, required: true },
+  openContextFromTrigger: { type: Function, required: true },
 })
 
 function activeNow(trackId) {
@@ -63,6 +64,41 @@ const draggableTracks = computed({
   set: (val) => emit('update:localTracks', val)
 })
 const { t } = useI18n()
+
+const LONG_PRESS_MS = 500
+let longPressTimer = null
+let longPressOpened = false
+
+function clearLongPress() {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer)
+    longPressTimer = null
+  }
+}
+
+function onRowTouchStart(event, item) {
+  clearLongPress()
+  longPressOpened = false
+  const touch = event.touches?.[0]
+  if (!touch) return
+  longPressTimer = setTimeout(() => {
+    longPressOpened = true
+    props.openContextAt(event, item)
+  }, LONG_PRESS_MS)
+}
+
+function onRowTouchEnd() {
+  clearLongPress()
+}
+
+function onRowClick(index, event) {
+  if (longPressOpened) {
+    longPressOpened = false
+    event?.preventDefault?.()
+    return
+  }
+  props.playTrack(index)
+}
 </script>
 
 <template>
@@ -84,7 +120,7 @@ const { t } = useI18n()
           'border-l-[3px] border-l-primary': activeNow(item.id),
           'bg-primary/[0.07]': activeNow(item.id),
           'bg-primary/5': selectedTrackIds.includes(item.id) && !activeNow(item.id),
-        }" @click="playTrack(index)" @mouseenter="prefetchTrackStream?.(item)"
+        }" @click="onRowClick(index, $event)" @touchstart.passive="onRowTouchStart($event, item)" @touchend="onRowTouchEnd" @touchmove="onRowTouchEnd" @touchcancel="onRowTouchEnd" @mouseenter="prefetchTrackStream?.(item)"
       >
         <div v-if="playlistId" class="shrink-0 flex items-center pr-1" @click.stop>
           <GripVertical class="w-5 h-5 text-muted-foreground/30 hover:text-foreground cursor-grab active:cursor-grabbing drag-handle transition-colors" />
@@ -122,25 +158,9 @@ const { t } = useI18n()
             </div>
             <div class="flex items-center gap-1 shrink-0 -mr-1">
               <button @click.stop="toggleStar(item)" class="p-1 focus:outline-none"><Heart class="w-4 h-4" :class="item.starred ? 'text-red-500 fill-current' : 'text-muted-foreground'" /></button>
-              <DropdownMenu>
-                <DropdownMenuTrigger as-child><button class="p-1 text-muted-foreground focus:outline-none" @click.stop><MoreVertical class="w-4 h-4" /></button></DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="w-48">
-                  <template v-if="playlistId && item.playlist_track_id">
-                    <DropdownMenuItem @click.stop="removeTrackFromPlaylist(item.playlist_track_id, item.title)" class="text-red-500 focus:text-red-500 focus:bg-red-500/10">
-                      <Trash2 class="mr-2 h-4 w-4" /> {{ t('trackTable.removeFromPlaylistMenu') }}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </template>
-
-                  <DropdownMenuItem @click.stop="openPlaylistModal(item.id)"><ListMusic class="mr-2 h-4 w-4 text-primary" /> {{ t('trackTable.addToPlaylist') }}</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem @click.stop="goToTrack(item.id)"><ListMusic class="mr-2 h-4 w-4" /> {{ t('trackTable.goToTrack') }}</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem v-if="showAlbum" @click.stop="goToAlbum(item.albumId)"><Disc class="mr-2 h-4 w-4" /> {{ t('trackTable.goToAlbum') }}</DropdownMenuItem>
-                  <DropdownMenuItem v-if="showArtist" @click.stop="goToArtist(item.artist)"><Users class="mr-2 h-4 w-4" /> {{ t('trackTable.goToArtist') }}</DropdownMenuItem>
-                  <DropdownMenuItem @click.stop="fetchMetadata(item.id)"><Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> {{ t('trackTable.updateMetadata') }}</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <button class="p-1 text-muted-foreground focus:outline-none" @click.stop="openContextFromTrigger($event, item)">
+                <MoreVertical class="w-4 h-4" />
+              </button>
             </div>
           </div>
 

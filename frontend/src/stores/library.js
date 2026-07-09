@@ -306,6 +306,20 @@ export const useLibraryStore = defineStore('library', () => {
     }
   }
 
+  const updateTrackTags = async (trackId, tags) => {
+    const res = await auth.fetchWithAuth(`/api/tracks/${trackId}/rate`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags }),
+    })
+    if (!res.ok) {
+      throw new Error('Failed to update track tags')
+    }
+    const track = tracks.value.find((t) => t.id === trackId)
+    if (track) track.tags = tags
+    emitTrackExternalSync({ id: trackId, tags })
+  }
+
   // 💉 수술: 상세 페이지용 단일 객체 패치 함수 추가
   const getArtistById = async (id) => {
     try {
@@ -656,6 +670,7 @@ export const useLibraryStore = defineStore('library', () => {
     getTracks,
     updateTrackRating,
     toggleTrackStar,
+    updateTrackTags,
     getArtistById,
     getAlbumById,
     getTrackById,

@@ -8,6 +8,7 @@ import {
   pruneOldVisits,
   clearAllVisits,
   resolveEntityDisplayName,
+  entityExists,
 } from '../repositories/pageVisitsRepository.js';
 
 const MAX_IMPORT_EVENTS = 800;
@@ -42,6 +43,9 @@ function sqliteDatetimeFromMs(ms) {
 
 export function recordPageVisit(type, id) {
   const { type: t, id: sid } = validateEntity(type, id);
+  if (!entityExists(t, sid)) {
+    return { recorded: false, missing: true };
+  }
   if (hasRecentVisit(t, sid)) {
     return { recorded: false, debounced: true };
   }
@@ -52,13 +56,15 @@ export function recordPageVisit(type, id) {
 
 export function getFrequentVisits(limit) {
   const rows = findFrequentVisits(limit);
-  return rows.map((row) => ({
-    type: row.type,
-    id: row.id,
-    name: resolveEntityDisplayName(row.type, row.id),
-    count: row.count,
-    at: Date.parse(String(row.at).replace(' ', 'T') + 'Z') || 0,
-  }));
+  return rows
+    .map((row) => ({
+      type: row.type,
+      id: row.id,
+      name: resolveEntityDisplayName(row.type, row.id),
+      count: row.count,
+      at: Date.parse(String(row.at).replace(' ', 'T') + 'Z') || 0,
+    }))
+    .filter((row) => row.type === 'tag' || (row.name && String(row.name).trim()));
 }
 
 /**

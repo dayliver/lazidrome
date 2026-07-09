@@ -14,13 +14,12 @@ import {
   ensureImportTempDir,
   TRACKS_PATH,
 } from '../lib/importEnv.js';
+import { AUDIO_EXT_SET } from '../lib/audioExtensions.js';
 
 const STAGING_SUBDIR = 'staging';
 const STAGING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-const ALLOWED_EXT = new Set([
-  '.mp3', '.flac', '.m4a', '.aac', '.ogg', '.opus', '.wav', '.wma', '.ape', '.alac',
-]);
+const ALLOWED_EXT = AUDIO_EXT_SET;
 
 function stagingRoot() {
   return path.join(ensureImportTempDir(), STAGING_SUBDIR);

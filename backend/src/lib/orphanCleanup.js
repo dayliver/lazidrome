@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { getDB } from '../db.js';
+import { pruneOrphanVisits } from '../repositories/pageVisitsRepository.js';
 
 const IMAGES_PATH = process.env.IMAGES_PATH || './storage/images';
 
@@ -134,5 +135,11 @@ export function cleanupOrphans() {
     return { albumsRemoved: albumIds.length, artistsRemoved: artistIds.length };
   });
 
-  return tx();
+  const result = tx();
+  try {
+    pruneOrphanVisits();
+  } catch (err) {
+    console.error('❌ orphan visit 정리 중 오류:', err?.message || err);
+  }
+  return result;
 }

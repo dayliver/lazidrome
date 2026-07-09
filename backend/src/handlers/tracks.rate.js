@@ -1,4 +1,5 @@
 import { updateTrackRating } from '../repositories/trackRepository.js';
+import { clearTagCache } from '../services/tagService.js';
 
 export async function patchTrackRatingHandler(request, reply) {
   const { id } = request.params;
@@ -6,6 +7,7 @@ export async function patchTrackRatingHandler(request, reply) {
 
   try {
     const changes = updateTrackRating(id, { rating, tags, starred });
+    if (changes > 0 && tags !== undefined) clearTagCache();
     if (changes === 0) return reply.code(404).send({ error: 'Track not found' });
     return { success: true };
   } catch (err) {
