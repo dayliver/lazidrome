@@ -32,6 +32,7 @@ ssh home 'PW=$(grep "^ADMIN_PASSWORD=" /projects/lazidrome/backend/.env | sed "s
 | `POST /api/auth/media-sign` | stream·image 서명 |
 | `GET /api/stream/:id?exp=&sig=` | 프리뷰보다 큰 본문 |
 | `GET /api/images/track/:id?exp=&sig=` | 200 또는 404(커버 없음) |
+| `Cache-Control` / `ETag` (이미지·스트림) | `private, max-age=…`, `If-None-Match` → 304 |
 | 레거시 `?token=` 스트림 | 200 (호환) |
 
 ## 프로덕션 참고

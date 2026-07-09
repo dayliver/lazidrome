@@ -214,21 +214,41 @@ async function main() {
     const res = await fetch(`${BASE}/api/stream/${trackId}?${streamQuery}`);
     const len = Number(res.headers.get('content-length') || 0);
     const ct = res.headers.get('content-type') || '';
+    const cc = res.headers.get('cache-control') || '';
     const looksAudio =
       ct.includes('audio') || ct.includes('octet-stream') || ct.includes('mp4');
     const longerThanPreview = previewLen > 0 ? len > previewLen : len > 0;
     if (res.ok && looksAudio && longerThanPreview) {
       pass('Stream with exp/sig (full)', `Content-Length=${len} ct=${ct}`);
+      if (cc.includes('max-age')) pass('Stream cache-control', cc);
+      else fail('Stream cache-control', cc || '(missing)');
     } else {
       fail('Stream exp/sig', `status ${res.status} ct=${ct} len=${len} preview=${previewLen}`);
     }
   }
 
-  // 10) exp/sig 이미지
+  // 10) exp/sig 이미지 + 캐시 헤더
   if (imageQuery) {
     const res = await fetch(`${BASE}/api/images/track/${trackId}?${imageQuery}`);
+    const cc = res.headers.get('cache-control') || '';
+    const etag = res.headers.get('etag');
     if (res.ok || res.status === 404) {
-      pass('Image track with exp/sig', `status ${res.status} (404=커버 없음 허용)`);
+      if (cc.includes('max-age') || cc.includes('private')) {
+        pass('Image cache-control', cc);
+      } else {
+        fail('Image cache-control', cc || '(missing)');
+      }
+      if (etag && res.ok) {
+        const res304 = await fetch(`${BASE}/api/images/track/${trackId}?${imageQuery}`, {
+          headers: { 'If-None-Match': etag },
+        });
+        if (res304.status === 304) pass('Image If-None-Match → 304');
+        else fail('Image conditional GET', `status ${res304.status}`);
+      } else if (res.ok) {
+        pass('Image track with exp/sig', `status ${res.status} (no etag)`);
+      } else {
+        pass('Image track with exp/sig', `status ${res.status} (404=커버 없음 허용)`);
+      }
     } else {
       fail('Image exp/sig', `status ${res.status}`);
     }

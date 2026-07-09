@@ -82,8 +82,15 @@
 
 릴리스 계획: [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)
 
+## 7. 0.6.6 — 미디어 HTTP 캐시 (B12, B13)
+
+- `httpCache.js`: `Cache-Control: private, max-age=…` (서명 `exp`와 정합), `ETag`, `If-None-Match` → 304
+- `images.get.js`: 커버 파일 mtime/size 기반 ETag
+- `stream.get.js`: 전체 스트림·프리뷰(120s) 구분 캐시
+- `stream.playlist.get.js`: manifest ETag + max-age 60
+- `smoke-phase1.mjs`: cache-control·304 검증
+
 ## 남은 우선 과제
 
-- **0.6.6:** B12~13 이미지/스트림 HTTP 캐시
 - **0.7.0:** D7~D11 타이포·간격·접근성, F5 상세 필터
 - B8~B25, F6~F10 백로그 — [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)

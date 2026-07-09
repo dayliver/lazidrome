@@ -8,6 +8,7 @@ import {
   DEFAULT_STREAM_PREVIEW_SECONDS,
 } from '../services/streamService.js';
 import { hasMediaOrJwtAccess } from '../lib/mediaAuth.js';
+import { applyStreamCacheHeaders } from '../lib/httpCache.js';
 
 function isStreamFullAccess(request) {
   const secret = request.server?.mediaSigningSecret;
@@ -36,6 +37,13 @@ export async function streamTrackHandler(request, reply) {
     const effectiveTotalBytes = fullAccess ? fileSize : previewMaxEnd + 1;
 
     const contentType = getContentType(format);
+
+    const cacheResult = applyStreamCacheHeaders(request, reply, {
+      fullAccess,
+      filePath,
+      rangeRequested: Boolean(rangeHeader),
+    });
+  if (cacheResult.notModified) return reply.send();
 
     if (rangeHeader) {
       const rangeInfo = parseRange(rangeHeader, fileSize);

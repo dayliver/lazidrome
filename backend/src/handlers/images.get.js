@@ -1,48 +1,67 @@
-import { 
-  resolveAlbumImage, 
-  resolveTrackImage, 
-  resolveArtistImage, 
+import path from 'node:path';
+import {
+  resolveAlbumImage,
+  resolveTrackImage,
+  resolveArtistImage,
   resolvePlaylistImage,
   resolveTagImage,
-  getDefaultImage 
+  getDefaultImage,
 } from '../services/imageService.js';
+import {
+  mediaCacheMaxAgeSec,
+  tryStatFile,
+  etagFromStat,
+  replyNotModifiedIfMatch,
+  setPrivateCacheControl,
+} from '../lib/httpCache.js';
 
-// 💡 공통 헬퍼: 경로가 있으면 쏴주고, 없으면 디폴트, 디폴트도 없으면 404
-function sendImageResponse(reply, imagePath) {
+const IMAGES_PATH = process.env.IMAGES_PATH || './storage/images';
+
+function sendImageResponse(request, reply, relativePath) {
   reply.header('Access-Control-Allow-Origin', '*');
   reply.header('Cross-Origin-Resource-Policy', 'cross-origin');
-  if (imagePath) {
-    return reply.sendFile(imagePath);
+
+  const serveRelative = relativePath || getDefaultImage();
+  if (!serveRelative) {
+    return reply.code(404).send({ error: 'Image not found' });
   }
-  const defaultPath = getDefaultImage();
-  if (defaultPath) {
-    return reply.sendFile(defaultPath);
+
+  const absPath = path.resolve(IMAGES_PATH, serveRelative);
+  const stat = tryStatFile(absPath);
+  const etag = etagFromStat(stat);
+  const maxAge = mediaCacheMaxAgeSec(request);
+
+  if (replyNotModifiedIfMatch(request, reply, etag)) {
+    setPrivateCacheControl(reply, maxAge, { etag });
+    return reply.send();
   }
-  return reply.code(404).send({ error: 'Image not found' });
+
+  setPrivateCacheControl(reply, maxAge, { etag });
+  return reply.sendFile(serveRelative);
 }
 
 export async function getAlbumImageHandler(request, reply) {
   const { id } = request.params;
   const imagePath = resolveAlbumImage(id);
-  return sendImageResponse(reply, imagePath);
+  return sendImageResponse(request, reply, imagePath);
 }
 
 export async function getTrackImageHandler(request, reply) {
   const { id } = request.params;
   const imagePath = resolveTrackImage(id);
-  return sendImageResponse(reply, imagePath);
+  return sendImageResponse(request, reply, imagePath);
 }
 
 export async function getArtistImageHandler(request, reply) {
   const { id } = request.params;
   const imagePath = resolveArtistImage(id);
-  return sendImageResponse(reply, imagePath);
+  return sendImageResponse(request, reply, imagePath);
 }
 
 export async function getPlaylistImageHandler(request, reply) {
   const { id } = request.params;
   const imagePath = resolvePlaylistImage(id);
-  return sendImageResponse(reply, imagePath);
+  return sendImageResponse(request, reply, imagePath);
 }
 
 export async function getTagImageHandler(request, reply) {
@@ -51,5 +70,5 @@ export async function getTagImageHandler(request, reply) {
     return reply.code(400).send({ error: 'name query is required' });
   }
   const imagePath = resolveTagImage(name);
-  return sendImageResponse(reply, imagePath);
+  return sendImageResponse(request, reply, imagePath);
 }

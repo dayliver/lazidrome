@@ -110,7 +110,7 @@
 |------|------|------|
 | 0.6.4 | ✅ | 페이지네이션, 가상 스크롤, lazy bundle |
 | 0.6.5 | ✅ | /tracks fix, B7 visit prune, B6 tag detail |
-| 0.6.6 | ⬜ | B12~13 HTTP 캐시 |
+| 0.6.6 | ✅ | B12~13 HTTP 캐시 |
 | 0.7.0 | ⬜ | D7~D11, F5 |
 
 상세 일정·체크리스트: **[ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)**

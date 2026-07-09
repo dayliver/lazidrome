@@ -4,6 +4,12 @@ import {
   signStreamQuery,
 } from '../lib/hlsPlaylist.js';
 import { findTracksPlaylistMetaByIds } from '../repositories/streamRepository.js';
+import {
+  etagFromString,
+  playlistManifestCacheMaxAgeSec,
+  replyNotModifiedIfMatch,
+  setPrivateCacheControl,
+} from '../lib/httpCache.js';
 
 function requestPublicOrigin(request) {
   const proto = String(request.headers['x-forwarded-proto'] || request.protocol || 'http').split(',')[0].trim();
@@ -29,10 +35,17 @@ export function createStreamPlaylistHandler(mediaSecret, mediaTtlSec) {
       signStreamQuery(trackId, mediaSecret, ttl),
     );
 
+    const etag = etagFromString(body);
+    const maxAge = playlistManifestCacheMaxAgeSec();
+    if (replyNotModifiedIfMatch(request, reply, etag)) {
+      setPrivateCacheControl(reply, maxAge, { etag });
+      return reply.send();
+    }
+
+    setPrivateCacheControl(reply, maxAge, { etag });
     return reply
       .code(200)
       .header('Content-Type', 'application/vnd.apple.mpegurl; charset=utf-8')
-      .header('Cache-Control', 'private, max-age=60')
       .send(body);
   };
 }

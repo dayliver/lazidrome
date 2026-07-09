@@ -12,33 +12,21 @@
 | **0.6.3** | 모바일 FullPlayer, 앨범 primary link | — |
 | **0.6.4** | 카탈로그 페이지네이션, 가상 스크롤(그리드·큐), lazy bundle, D6 radius | B5, B6(부분), F1, F2, F9, D6 |
 | **0.6.5** | /tracks 버그, visit prune 배치, 태그 상세 top-tracks 스코프 | B7, B6, tracks fix |
+| **0.6.6** | 커버·스트림 HTTP 캐시 (`Cache-Control`, `ETag`) | B12, B13 |
 
 ---
 
-## 0.6.5 — 홈 hot path + 태그 상세 ✅
+## 0.6.6 — 미디어 HTTP 캐시 ✅
 
 | # | 작업 | 상태 |
 |---|------|------|
-| 0.6.5.1 | /tracks row·load more | ✅ |
-| 0.6.5.2 | `countTracks` filedata join | ✅ |
-| 0.6.5.3 | B7 visit prune 배치 | ✅ |
-| 0.6.5.4 | B6 tag detail top-tracks | ✅ |
+| 0.6.6.1 | 커버 `Cache-Control` / `ETag` / 304 | ✅ |
+| 0.6.6.2 | 스트림·HLS manifest 캐시 | ✅ |
+| 0.6.6.3 | smoke 캐시 헤더 검증 | ✅ |
 
 ---
 
-## 0.6.6 — 미디어 HTTP 캐시 (다음)
-
-**목표:** 커버·스트림 재요청·대역폭 절감.
-
-| # | 작업 | 감사 | 비고 |
-|---|------|------|------|
-| 0.6.6.1 | 커버 이미지 `Cache-Control` / `ETag` | B12 | `images.*`, 서명 TTL과 정합 |
-| 0.6.6.2 | 오디오·HLS 세그먼트 캐시 정책 | B13 | manifest vs segment 구분 |
-| 0.6.6.3 | 스모크: 캐시 헤더·304 동작 | — | `PHASE1_SMOKE` 확장 또는 수동 체크리스트 |
-
----
-
-## 0.7.0 — 디자인·프론트 폴리시
+## 0.7.0 — 디자인·프론트 폴리시 (다음)
 
 **목표:** [DESIGN-TOKENS.md](./DESIGN-TOKENS.md) 기준으로 UI 통일·접근성.
 
