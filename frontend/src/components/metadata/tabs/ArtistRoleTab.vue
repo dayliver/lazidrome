@@ -166,10 +166,10 @@ const handleBlur = () => {
               </div>
               <span class="font-bold text-lg">{{ artist.name }}</span>
               <span v-if="artist.id" class="text-[10px] bg-muted px-2 py-0.5 rounded text-muted-foreground font-mono">{{ t('metadata.dbLinked') }}</span>
-              <span v-else class="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded font-bold">{{ t('metadata.newArtist') }}</span>
+              <span v-else class="text-[10px] bg-success/10 text-success px-2 py-0.5 rounded font-bold">{{ t('metadata.newArtist') }}</span>
             </div>
 
-            <Button variant="ghost" size="icon" @click="removeArtist(index)" class="text-red-500 hover:bg-red-500/10 hover:text-red-600">
+            <Button variant="ghost" size="icon" @click="removeArtist(index)" class="text-destructive hover:bg-destructive/10 hover:text-destructive">
               <Trash2 class="w-4 h-4" />
             </Button>
           </div>

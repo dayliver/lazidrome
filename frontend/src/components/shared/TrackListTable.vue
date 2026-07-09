@@ -163,7 +163,7 @@ const isMd = breakpoints.greaterOrEqual('md')
         <button @click="openPlaylistModal()" class="text-sm font-bold flex items-center gap-2 hover:text-primary transition-colors whitespace-nowrap"><ListMusic class="w-4 h-4" /> {{ t('trackTable.addToPlaylistBulk') }}</button>
         <template v-if="playlistId">
           <div class="w-px h-5 bg-background/20"></div>
-          <button @click="removeSelectedFromPlaylist" class="text-sm font-bold flex items-center gap-2 text-red-400 hover:text-red-500 transition-colors whitespace-nowrap"><Trash2 class="w-4 h-4" /> {{ t('trackTable.removeFromPlaylist') }}</button>
+          <button @click="removeSelectedFromPlaylist" class="text-sm font-bold flex items-center gap-2 text-destructive hover:text-destructive/90 transition-ui whitespace-nowrap"><Trash2 class="w-4 h-4" /> {{ t('trackTable.removeFromPlaylist') }}</button>
         </template>
         <button @click="selectedTrackIds = []" class="ml-2 text-muted-foreground hover:text-background p-1 focus:outline-none transition-colors" :title="t('trackTable.clearSelection')"><X class="w-5 h-5" /></button>
       </div>

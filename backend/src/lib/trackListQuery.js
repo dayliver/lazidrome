@@ -61,6 +61,8 @@ export function parseTrackListFilters(query = {}) {
       : null;
 
   const genre = typeof query.genre === 'string' ? query.genre.trim() : '';
+  const artistId = typeof query.artistId === 'string' ? query.artistId.trim() : '';
+  const albumId = typeof query.albumId === 'string' ? query.albumId.trim() : '';
 
   return {
     sorts,
@@ -68,6 +70,8 @@ export function parseTrackListFilters(query = {}) {
     starred,
     minRating,
     genre: genre || null,
+    artistId: artistId || null,
+    albumId: albumId || null,
   };
 }
 
@@ -106,6 +110,26 @@ export function buildTrackListWhere(filters) {
   if (filters.genre) {
     conditions.push('t.genre LIKE ? COLLATE NOCASE');
     params.push(`%${filters.genre}%`);
+  }
+
+  if (filters.artistId) {
+    conditions.push(`
+      EXISTS (
+        SELECT 1 FROM track_artists ta_scope
+        WHERE ta_scope.track_id = t.id AND ta_scope.artist_id = ?
+      )
+    `);
+    params.push(filters.artistId);
+  }
+
+  if (filters.albumId) {
+    conditions.push(`
+      EXISTS (
+        SELECT 1 FROM album_tracks at_scope
+        WHERE at_scope.track_id = t.id AND at_scope.album_id = ?
+      )
+    `);
+    params.push(filters.albumId);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

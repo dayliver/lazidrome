@@ -158,7 +158,7 @@ const applyAll = () => {
           <div class="flex items-start justify-between border-b border-primary/10 pb-4">
             <div>
               <div class="flex items-center gap-2 mb-1">
-                <CheckCircle2 class="w-4 h-4 text-green-500" />
+                <CheckCircle2 class="w-4 h-4 text-success" />
                 <p class="text-[10px] font-black text-muted-foreground uppercase">{{ t('external.foundAlbumName') }}</p>
               </div>
               <h3 class="font-black text-xl tracking-tight">{{ item.external.name || item.external.title || t('external.notAvailable') }}</h3>

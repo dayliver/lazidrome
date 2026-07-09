@@ -144,7 +144,7 @@ const fetchMetadata = (artistId) => {
                 <Users class="mr-2 h-4 w-4" /> {{ t('artistTable.viewDetails') }}
               </DropdownMenuItem>
               <DropdownMenuItem @click.stop="fetchMetadata(artist.id)">
-                <Sparkles class="mr-2 h-4 w-4 text-yellow-500" /> {{ t('artistTable.updateMetadata') }}
+                <Sparkles class="mr-2 h-4 w-4 text-rating" /> {{ t('artistTable.updateMetadata') }}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

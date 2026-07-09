@@ -69,7 +69,7 @@ const removeCondition = (idx) => {
           <TabsTrigger 
             value="mix" 
             :disabled="isEdit" 
-            class="h-full rounded-lg font-black text-sm data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
+            class="h-full rounded-lg font-black text-sm data-[state=active]:bg-smart data-[state=active]:text-white data-[state=active]:shadow-md transition-ui"
           >
             {{ t('playlist.typeSmartMixAuto') }}
           </TabsTrigger>
@@ -97,12 +97,12 @@ const removeCondition = (idx) => {
 
     <div v-if="modelValue.type === 'mix'" class="pt-6 border-t-2 space-y-6 animate-in slide-in-from-top-4">
       <div class="flex items-center justify-between px-1">
-        <h3 class="text-lg font-black flex items-center gap-2"><Zap class="w-5 h-5 text-purple-500"/> {{ t('playlist.smartRules') }}</h3>
-        <Button variant="outline" size="sm" @click="addCondition" class="font-bold border-2 hover:bg-purple-500/10 hover:text-purple-500"><Plus class="w-4 h-4 mr-1"/> {{ t('playlist.addCondition') }}</Button>
+        <h3 class="text-lg font-black flex items-center gap-2"><Zap class="w-5 h-5 text-smart"/> {{ t('playlist.smartRules') }}</h3>
+        <Button variant="outline" size="sm" @click="addCondition" class="font-bold border-2 hover:bg-smart/10 hover:text-smart"><Plus class="w-4 h-4 mr-1"/> {{ t('playlist.addCondition') }}</Button>
       </div>
 
       <div class="space-y-3">
-        <div v-for="(cond, idx) in modelValue.rules.conditions" :key="idx" class="flex items-center gap-3 bg-muted/30 p-3 rounded-xl border-2 group transition-all hover:border-purple-500/30">
+        <div v-for="(cond, idx) in modelValue.rules.conditions" :key="idx" class="flex items-center gap-3 bg-muted/30 p-3 rounded-xl border-2 group transition-ui hover:border-smart/30">
           <Select v-model="cond.field">
             <SelectTrigger class="w-[160px] bg-background font-bold border-none shadow-none"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -118,7 +118,7 @@ const removeCondition = (idx) => {
           </Select>
 
           <Input v-model="cond.value" :type="fieldOptions.find(f => f.value === cond.field)?.type === 'number' ? 'number' : 'text'" class="flex-1 bg-background border-none shadow-none font-bold" />
-          <Button variant="ghost" size="icon" @click="removeCondition(idx)" class="text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"><X class="w-4 h-4"/></Button>
+          <Button variant="ghost" size="icon" @click="removeCondition(idx)" class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-ui"><X class="w-4 h-4"/></Button>
         </div>
         <div v-if="modelValue.rules.conditions.length === 0" class="text-center py-10 border-2 border-dashed rounded-xl text-muted-foreground text-sm font-medium bg-muted/5">
           {{ t('playlist.addConditionHint') }}

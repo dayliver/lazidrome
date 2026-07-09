@@ -12,7 +12,7 @@ const props = defineProps({
 <template>
   <div
     class="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground"
-    :class="variant === 'panel' ? 'rounded-2xl border-2 border-dashed bg-muted/5' : ''"
+    :class="variant === 'panel' ? 'rounded-xl border border-dashed bg-muted/5' : ''"
   >
     <component :is="icon" v-if="icon" class="w-12 h-12 opacity-30" aria-hidden="true" />
     <p v-if="title" class="font-semibold text-foreground">{{ title }}</p>

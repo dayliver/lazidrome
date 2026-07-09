@@ -82,15 +82,22 @@
 
 릴리스 계획: [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)
 
-## 7. 0.6.6 — 미디어 HTTP 캐시 (B12, B13)
+## 7. 0.7.0 — 디자인 토큰 + 아티스트 트랙 API (D4, D7–D11, F5)
 
-- `httpCache.js`: `Cache-Control: private, max-age=…` (서명 `exp`와 정합), `ETag`, `If-None-Match` → 304
-- `images.get.js`: 커버 파일 mtime/size 기반 ETag
-- `stream.get.js`: 전체 스트림·프리뷰(120s) 구분 캐시
-- `stream.playlist.get.js`: manifest ETag + max-age 60
-- `smoke-phase1.mjs`: cache-control·304 검증
+### 디자인 (D4, D7–D11)
+
+- `style.css`: `--success`, `--smart`, z-index·motion tokens, `.transition-ui`, `.text-label`
+- `DESIGN-TOKENS.md` 확장
+- `EmptyState`/`AuthEmptyState` `rounded-xl`, `PageLayout` spacing 8
+- 플레이리스트·메타·컨텍스트 메뉴: favorite/rating/success/smart/destructive 토큰
+- `DropdownMenuContent`: `z-[var(--z-dropdown)]`
+
+### F5 아티스트 상세 트랙
+
+- `/api/tracks?artistId=` / `albumId=` 필터
+- `useScopedTracksPageQuery` + `ArtistDetail` load-more
 
 ## 남은 우선 과제
 
-- **0.7.0:** D7~D11 타이포·간격·접근성, F5 상세 필터
+- **0.7.1+:** F5 앨범/태그 상세, F6–F10, B8+ 백로그
 - B8~B25, F6~F10 백로그 — [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)

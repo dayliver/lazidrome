@@ -63,6 +63,8 @@ export const useLibraryStore = defineStore('library', () => {
     starred,
     minRating,
     genre,
+    artistId,
+    albumId,
   } = {}) => {
     const params = new URLSearchParams({
       offset: String(offset),
@@ -74,6 +76,8 @@ export const useLibraryStore = defineStore('library', () => {
     if (starred) params.set('starred', '1')
     if (minRating != null && minRating >= 1) params.set('minRating', String(minRating))
     if (genre) params.set('genre', String(genre))
+    if (artistId) params.set('artistId', String(artistId))
+    if (albumId) params.set('albumId', String(albumId))
 
     const res = await auth.fetchWithAuth(`/api/tracks?${params}`)
     if (!res.ok) throw new Error(t('library.tracksFetchFailed'))

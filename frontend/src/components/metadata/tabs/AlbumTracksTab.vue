@@ -219,8 +219,8 @@ const sortedTracks = computed(() => {
               class="flex flex-col items-center justify-center w-12 h-12 rounded-lg hover:bg-muted transition-colors focus:outline-none"
               :title="track.is_primary ? t('metadata.primaryAlbum') : t('metadata.setPrimaryAlbum')"
             >
-              <Star class="w-4 h-4 transition-all" :class="track.is_primary ? 'fill-yellow-500 text-yellow-500 scale-110' : 'text-muted-foreground'" />
-              <span class="text-[8px] font-bold uppercase mt-1" :class="track.is_primary ? 'text-yellow-600' : 'text-muted-foreground'">
+              <Star class="w-4 h-4 transition-ui" :class="track.is_primary ? 'fill-rating text-rating scale-110' : 'text-muted-foreground'" />
+              <span class="text-[8px] font-bold uppercase mt-1" :class="track.is_primary ? 'text-rating' : 'text-muted-foreground'">
                 {{ track.is_primary ? t('metadata.primaryShort') : t('metadata.subShort') }}
               </span>
             </button>

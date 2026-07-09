@@ -138,7 +138,7 @@ const formatDate = (dateString) => {
                     <Edit class="mr-2 h-4 w-4" /> {{ t('playlist.editInfo') }}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem @click.stop="deletePlaylist(pl.id, pl.name)" class="text-red-500 focus:text-red-500 focus:bg-red-500/10">
+                  <DropdownMenuItem @click.stop="deletePlaylist(pl.id, pl.name)" class="text-destructive focus:text-destructive focus:bg-destructive/10">
                     <Trash2 class="mr-2 h-4 w-4" /> {{ t('common.delete') }}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -186,7 +186,7 @@ const formatDate = (dateString) => {
                   <Edit class="mr-2 h-4 w-4" /> {{ t('playlist.editInfo') }}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem @click.stop="deletePlaylist(pl.id, pl.name)" class="text-red-500">
+                <DropdownMenuItem @click.stop="deletePlaylist(pl.id, pl.name)" class="text-destructive">
                   <Trash2 class="mr-2 h-4 w-4" /> {{ t('common.delete') }}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -194,7 +194,7 @@ const formatDate = (dateString) => {
           </div>
           
           <div class="flex items-center gap-1 mt-0.5 text-[11px] font-medium truncate"
-               :class="pl.type === 'mix' ? 'text-purple-500' : 'text-muted-foreground'">
+               :class="pl.type === 'mix' ? 'text-smart' : 'text-muted-foreground'">
             <Zap v-if="pl.type === 'mix'" class="w-3 h-3 shrink-0 fill-current" />
             <ListMusic v-else class="w-3 h-3 shrink-0" />
             <span class="truncate">{{ pl.type === 'mix' ? getMixSummary(pl) : getListSummary(pl) }}</span>

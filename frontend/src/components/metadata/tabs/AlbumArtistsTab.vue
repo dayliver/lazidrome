@@ -157,11 +157,11 @@ const handleBlur = () => {
             <div>
               <span class="font-bold text-base block">{{ artist.name }}</span>
               <span v-if="artist.id" class="text-[10px] bg-muted px-2 py-0.5 rounded text-muted-foreground font-mono inline-block mt-1">DB ID: {{ artist.id }}</span>
-              <span v-else class="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded font-bold inline-block mt-1">{{ t('metadata.newAlbumArtist') }}</span>
+              <span v-else class="text-[10px] bg-success/10 text-success px-2 py-0.5 rounded font-bold inline-block mt-1">{{ t('metadata.newAlbumArtist') }}</span>
             </div>
           </div>
           
-          <Button variant="ghost" size="icon" @click="removeArtist(index)" class="text-muted-foreground opacity-50 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500 transition-all">
+          <Button variant="ghost" size="icon" @click="removeArtist(index)" class="text-muted-foreground opacity-50 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-ui">
             <Trash2 class="w-5 h-5" />
           </Button>
         </div>

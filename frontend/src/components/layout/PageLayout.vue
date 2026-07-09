@@ -5,7 +5,7 @@ defineProps({
   /** 섹션 간격: 6(기본) | 8 | 10 */
   spacing: {
     type: String,
-    default: '6',
+    default: '8',
     validator: (v) => ['6', '8', '10'].includes(v),
   },
 })

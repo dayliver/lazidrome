@@ -2,17 +2,16 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import { useSyncArtistDetailWithLibrary } from '@/composables/useSyncArtistDetailWithLibrary'
 import { useDocumentTitle } from '@/composables/useDocumentTitle'
 import { formatArtistDocumentTitle } from '@/lib/documentTitle'
-import { useClientTrackListQuery } from '@/composables/useClientTrackListQuery'
+import { useScopedTracksPageQuery } from '@/composables/useScopedTracksPageQuery'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useCoverUrl } from '@/composables/useCoverUrl'
 import { useLibraryStore } from '@/stores/library'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
 
-import { Users, Edit } from 'lucide-vue-next'
+import { Users, Edit, Loader2 } from 'lucide-vue-next'
 
 import { VisXYContainer, VisStackedBar, VisAxis } from '@unovis/vue'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
@@ -44,7 +43,8 @@ const shareMarkdownLabel = computed(() => {
 })
 
 useSyncArtistDetailWithLibrary(() => artist.value)
-useSyncTrackListWithLibrary(() => artist.value?.tracks)
+
+const artistScope = computed(() => ({ artistId: String(route.params.id ?? '') }))
 
 const {
   query: trackQuery,
@@ -52,13 +52,21 @@ const {
   displayTracks,
   total: trackTotal,
   shown: trackShown,
+  hasMore: tracksHasMore,
+  isLoading: tracksLoading,
+  isLoadMore: tracksLoadMore,
+  loadMore: loadMoreTracks,
   sortOptions: trackSortOptions,
   setSort: setTrackSort,
   toggleOrder: toggleTrackOrder,
   toggleStarredFilter: toggleTrackStarredFilter,
   setMinRating: setTrackMinRating,
   resetFilters: resetTrackFilters,
-} = useClientTrackListQuery(() => artist.value?.tracks, 'artist')
+} = useScopedTracksPageQuery(artistScope, { presetKey: 'artist' })
+
+const showTracksSection = computed(
+  () => Boolean(artist.value && (trackTotal.value > 0 || tracksLoading.value || artist.value.tracks?.length)),
+)
 
 const imageUrl = useCoverUrl('artist', () => artist.value?.id)
 
@@ -145,7 +153,7 @@ const handleEdit = async () => {
       <AlbumGrid :albums="artistAlbums" />
     </section>
 
-    <section v-if="artist.tracks && artist.tracks.length > 0" class="space-y-6">
+    <section v-if="showTracksSection" class="space-y-6">
       <SectionHeader :title="t('pages.details.sectionPopularTracks')" />
       <TrackListToolbar
         :query="trackQuery"
@@ -160,16 +168,23 @@ const handleEdit = async () => {
         @set-min-rating="setTrackMinRating"
         @reset-filters="resetTrackFilters"
       />
+      <LoadingSpinner v-if="tracksLoading && !displayTracks.length" :label="t('pages.tracks.loading')" />
       <TrackListTable
-        v-if="displayTracks.length"
+        v-else-if="displayTracks.length"
         :tracks="displayTracks"
         :show-artist="false"
       />
       <div
-        v-else
+        v-else-if="!tracksLoading"
         class="py-12 text-center text-sm font-medium text-muted-foreground border rounded-xl"
       >
         {{ t('trackList.noResults') }}
+      </div>
+      <div v-if="tracksHasMore" class="flex justify-center pt-2">
+        <Button variant="outline" class="rounded-full" :disabled="tracksLoadMore" @click="loadMoreTracks">
+          <Loader2 v-if="tracksLoadMore" class="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
+          {{ tracksLoadMore ? t('pages.tracks.loadingMore') : t('pages.tracks.loadMore') }}
+        </Button>
       </div>
     </section>
 

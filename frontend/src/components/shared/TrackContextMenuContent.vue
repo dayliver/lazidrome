@@ -61,7 +61,7 @@ function onTagsSubOpen(isOpen) {
     @update:checked="onToggleStar"
     @select.prevent
   >
-    <Heart class="mr-2 h-4 w-4" :class="track.starred ? 'text-red-500 fill-current' : ''" />
+    <Heart class="mr-2 h-4 w-4" :class="track.starred ? 'text-favorite fill-current' : ''" />
     {{ t('trackTable.favorite') }}
   </DropdownMenuCheckboxItem>
 
@@ -91,7 +91,7 @@ function onTagsSubOpen(isOpen) {
   <template v-if="playlistId && track.playlist_track_id">
     <DropdownMenuSeparator />
     <DropdownMenuItem
-      class="text-red-500 focus:text-red-500 focus:bg-red-500/10"
+      class="text-destructive focus:text-destructive focus:bg-destructive/10"
       @select="() => removeTrackFromPlaylist?.(track.playlist_track_id, track.title)"
     >
       <Trash2 class="mr-2 h-4 w-4" />
@@ -124,7 +124,7 @@ function onTagsSubOpen(isOpen) {
   <DropdownMenuSeparator />
 
   <DropdownMenuItem @select="() => fetchMetadata(track.id)">
-    <Sparkles class="mr-2 h-4 w-4 text-yellow-500" />
+    <Sparkles class="mr-2 h-4 w-4 text-rating" />
     {{ t('trackTable.updateMetadata') }}
   </DropdownMenuItem>
 </template>

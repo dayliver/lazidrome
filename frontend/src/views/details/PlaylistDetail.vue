@@ -182,7 +182,7 @@ const handleEdit = () => {
       <Button
         v-if="playlist.type === 'mix'"
         variant="secondary"
-        class="rounded-full px-4 border shadow-sm transition-all hover:bg-purple-500 hover:text-white"
+        class="rounded-full px-4 border shadow-sm transition-ui hover:bg-primary hover:text-primary-foreground"
         :disabled="isRefreshing || isMixResolving"
         @click="refreshMix"
       >

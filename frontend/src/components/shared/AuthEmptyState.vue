@@ -14,7 +14,7 @@ defineProps({
 
 <template>
   <div
-    class="rounded-2xl border border-border bg-card/50 p-8 text-center space-y-4"
+    class="rounded-xl border border-border bg-card/50 p-8 text-center space-y-4"
     role="status"
   >
     <p class="text-muted-foreground">{{ description || t('auth.emptyDefault') }}</p>
