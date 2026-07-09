@@ -162,8 +162,8 @@
       "30d": "Last 30 days",
       "all": "All time"
     },
-    "timezoneNote": "Grouped in {statsZone}. Play times are stored on the server ({storageZone}).",
-    "listenNote": "Listen time is replays × track file length; actual playback position is not stored.",
+    "timezoneNote": "Grouped in {statsZone}. Play times are stored in UTC and converted for aggregation.",
+    "listenNote": "Listen time is the sum of measured (or estimated) seconds per play session.",
     "loading": "Loading stats…",
     "error": "Could not load statistics.",
     "total": "Approx. total listen time: {time}",

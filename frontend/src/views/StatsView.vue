@@ -100,10 +100,7 @@ const totalListenLabel = computed(() => formatListenSeconds(payload.value?.total
       </div>
 
       <p v-if="payload?.timezone" class="text-xs text-muted-foreground max-w-3xl leading-relaxed">
-        {{ t('stats.timezoneNote', {
-          statsZone: payload.timezone,
-          storageZone: payload.storageZone ?? '—',
-        }) }}
+        {{ t('stats.timezoneNote', { statsZone: payload.timezone }) }}
         {{ t('stats.listenNote') }}
       </p>
 

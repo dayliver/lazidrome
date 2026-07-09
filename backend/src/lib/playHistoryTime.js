@@ -23,15 +23,16 @@ export const TIME_HABIT_BUCKETS = [
   { key: 'night', match: (h) => h >= 22 },
 ];
 
-/** DB `played_at`가 기록될 때의 기준 타임존 (서버 OS 또는 .env) */
+/**
+ * DB `played_at` 문자열의 기준 타임존.
+ * SQLite `CURRENT_TIMESTAMP` / `datetime('now')`는 **항상 UTC**(timezone 없음)이므로
+ * 기본값은 UTC. 잘못 로컬(OS)로 해석하면 습관 차트(시간·요일)가 오프셋만큼 밀린다.
+ * 레거시 DB만 `.env` `PLAY_HISTORY_STORAGE_ZONE`으로 오버라이드.
+ */
 export function getPlayHistoryStorageZone() {
   const fromEnv = process.env.PLAY_HISTORY_STORAGE_ZONE?.trim();
-  if (fromEnv) return fromEnv;
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  } catch {
-    return 'UTC';
-  }
+  if (fromEnv && isValidIanaTimezone(fromEnv)) return fromEnv;
+  return 'UTC';
 }
 
 export function isValidIanaTimezone(tz) {
