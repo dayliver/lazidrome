@@ -9,6 +9,7 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 import { initDB } from './db.js';
 import { startScanner } from './services/scanner.js';
+import { startPageVisitsPruneScheduler } from './services/pageVisitsPrune.js';
 import { resolveJwtSecret, resolveAdminPassword, resolveCorsOrigins, resolveMediaTokenTtlSec } from './lib/envConfig.js';
 import { rebindTrackFilePaths } from './lib/trackPath.js';
 import { createMediaSignHandler } from './handlers/auth.mediaSign.post.js';
@@ -47,6 +48,7 @@ const TRACKS_PATH = process.env.TRACKS_PATH || './storage/tracks';
 const IMAGES_PATH = process.env.IMAGES_PATH || './storage/images';
 rebindTrackFilePaths(TRACKS_PATH);
 startScanner(TRACKS_PATH);
+startPageVisitsPruneScheduler();
 
 const fastify = Fastify({
   logger: true,

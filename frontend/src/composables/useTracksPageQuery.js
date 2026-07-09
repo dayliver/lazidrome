@@ -72,7 +72,7 @@ export function useTracksPageQuery({ limit = 50 } = {}) {
       hasMore.value = page.hasMore
 
       if (append) {
-        tracks.value.push(...page.items)
+        tracks.value = [...tracks.value, ...page.items]
       } else {
         tracks.value = page.items
       }

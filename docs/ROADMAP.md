@@ -102,8 +102,23 @@
 
 ---
 
+## Phase 4 — 감사 기반 성능·UX (2026-07~)
+
+**목표:** [AUDIT-2026-07.md](./AUDIT-2026-07.md) 권장 항목을 버전 단위로 반영.
+
+| 버전 | 상태 | 요약 |
+|------|------|------|
+| 0.6.4 | ✅ | 페이지네이션, 가상 스크롤, lazy bundle |
+| 0.6.5 | ✅ | /tracks fix, B7 visit prune, B6 tag detail |
+| 0.6.6 | ⬜ | B12~13 HTTP 캐시 |
+| 0.7.0 | ⬜ | D7~D11, F5 |
+
+상세 일정·체크리스트: **[ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)**
+
+---
+
 ## 참고
 
-- 초기 감사 요약: 채팅 기록의 효율·심미·보안 후보 목록
+- 초기 감사 요약: [AUDIT-2026-07.md](./AUDIT-2026-07.md) · [CHANGELOG-AUDIT-2026-07.md](./CHANGELOG-AUDIT-2026-07.md)
 - 백엔드: [`backend/README.md`](../backend/README.md)
 - 프론트: [`frontend/README.md`](../frontend/README.md)

@@ -10,7 +10,7 @@ export function useTrackListLocalState(props) {
     (newVal) => {
       localTracks.value = [...(newVal || [])]
     },
-    { immediate: true }
+    { immediate: true, deep: true },
   )
 
   const onDragEnd = async () => {

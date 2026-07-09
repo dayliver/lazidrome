@@ -24,7 +24,13 @@ const TRACK_LIST_SELECT = `
     ${TRACK_LIST_FROM}`;
 
 export function countTracks() {
-  return db.prepare(`SELECT COUNT(*) AS total FROM track_metadata`).get().total;
+  return db
+    .prepare(`
+      SELECT COUNT(*) AS total
+      FROM track_metadata t
+      JOIN track_filedata f ON t.file_id = f.id
+    `)
+    .get().total;
 }
 
 const TRACK_LIST_GROUP_ORDER = `GROUP BY t.id ORDER BY f.scanned_at DESC`;

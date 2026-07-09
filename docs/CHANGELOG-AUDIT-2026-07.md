@@ -62,8 +62,28 @@
 - 카드·다이얼로그·큐 패널 `rounded-xl` 통일
 - `docs/DESIGN-TOKENS.md` 추가
 
-## 남은 우선 과제 (6번 이후)
+## 6. 0.6.5 — /tracks 버그 + visit prune + 태그 top-tracks (B7, B6)
 
-- B7 visit prune 타이머화, B12~13 이미지/스트림 HTTP 캐시
-- B6 태그 상세 등 나머지 top-tracks 스코프
-- D7~D11 타이포·간격·접근성
+### /tracks 버그
+
+- `TracksListTable`: tbody 가상 스크롤 제거 (row 높이 불균일)
+- `useTracksPageQuery`: append 시 새 배열 할당
+- `useTrackListLocalState`: `deep: true` watch
+- `countTracks()`: `filedata` join — settings·목록 total 정합
+
+### B7 visit prune
+
+- `pageVisitsPrune.js`: 기동 1회 + 10분 주기, 기록/import 후 60s debounce
+- `findFrequentVisits`: hot path DELETE 제거, EXISTS로 유령 항목 필터
+
+### B6 태그 상세
+
+- `tags.detail.get.js`: `findTopTracksForArtistIds(태그 내 아티스트 ID)`
+
+릴리스 계획: [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)
+
+## 남은 우선 과제
+
+- **0.6.6:** B12~13 이미지/스트림 HTTP 캐시
+- **0.7.0:** D7~D11 타이포·간격·접근성, F5 상세 필터
+- B8~B25, F6~F10 백로그 — [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)

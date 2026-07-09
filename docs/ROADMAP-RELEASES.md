@@ -1,0 +1,70 @@
+# 릴리스 로드맵 (0.6.5+)
+
+[감사 문서 AUDIT-2026-07.md](./AUDIT-2026-07.md) 우선순위 6번 이후를 **버전 단위**로 쪼갠 실행 계획입니다.  
+착수 로그는 [CHANGELOG-AUDIT-2026-07.md](./CHANGELOG-AUDIT-2026-07.md)에 누적합니다.
+
+---
+
+## 완료
+
+| 버전 | 요약 | 감사 항목 |
+|------|------|-----------|
+| **0.6.3** | 모바일 FullPlayer, 앨범 primary link | — |
+| **0.6.4** | 카탈로그 페이지네이션, 가상 스크롤(그리드·큐), lazy bundle, D6 radius | B5, B6(부분), F1, F2, F9, D6 |
+| **0.6.5** | /tracks 버그, visit prune 배치, 태그 상세 top-tracks 스코프 | B7, B6, tracks fix |
+
+---
+
+## 0.6.5 — 홈 hot path + 태그 상세 ✅
+
+| # | 작업 | 상태 |
+|---|------|------|
+| 0.6.5.1 | /tracks row·load more | ✅ |
+| 0.6.5.2 | `countTracks` filedata join | ✅ |
+| 0.6.5.3 | B7 visit prune 배치 | ✅ |
+| 0.6.5.4 | B6 tag detail top-tracks | ✅ |
+
+---
+
+## 0.6.6 — 미디어 HTTP 캐시 (다음)
+
+**목표:** 커버·스트림 재요청·대역폭 절감.
+
+| # | 작업 | 감사 | 비고 |
+|---|------|------|------|
+| 0.6.6.1 | 커버 이미지 `Cache-Control` / `ETag` | B12 | `images.*`, 서명 TTL과 정합 |
+| 0.6.6.2 | 오디오·HLS 세그먼트 캐시 정책 | B13 | manifest vs segment 구분 |
+| 0.6.6.3 | 스모크: 캐시 헤더·304 동작 | — | `PHASE1_SMOKE` 확장 또는 수동 체크리스트 |
+
+---
+
+## 0.7.0 — 디자인·프론트 폴리시
+
+**목표:** [DESIGN-TOKENS.md](./DESIGN-TOKENS.md) 기준으로 UI 통일·접근성.
+
+| # | 작업 | 감사 |
+|---|------|------|
+| 0.7.0.1 | D7 타이포, D8 간격 | D7, D8 |
+| 0.7.0.2 | D9 드롭다운·z-index, D11 모션 | D9, D11 |
+| 0.7.0.3 | D10 a11y (포커스·aria) | D10 |
+| 0.7.0.4 | D4 잔여 purple/green → 시맨틱 토큰 | D4 |
+| 0.7.0.5 | F5 상세 필터 서버/API 정렬 (앨범·아티스트·태그) | F5 |
+
+---
+
+## 백로그 (0.7.1+)
+
+우선순위 미정 — 감사 B8~B25, F6~F8, F10.
+
+| 테마 | 대표 항목 |
+|------|-----------|
+| 백엔드 | B8 홈 4중 쿼리 통합, B9~10 N+1, B11 smart-mix `RANDOM()` |
+| 프론트 | F6 deep watch 정리, F7~8 추가 route chunk, F10 i18n |
+| UX | 2.3b 모바일 HLS 큐 ([MOBILE-BACKGROUND-PLAYBACK.md](./MOBILE-BACKGROUND-PLAYBACK.md)) |
+
+---
+
+## 참고
+
+- Phase 1~3 기능 로드맵: [ROADMAP.md](./ROADMAP.md)
+- 감사 전체 목록·상태: [AUDIT-2026-07.md](./AUDIT-2026-07.md)

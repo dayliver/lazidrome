@@ -5,11 +5,11 @@ import {
   insertVisit,
   findFrequentVisits,
   bulkInsertVisits,
-  pruneOldVisits,
   clearAllVisits,
   resolveEntityDisplayName,
   entityExists,
 } from '../repositories/pageVisitsRepository.js';
+import { schedulePageVisitsPruneDebounced } from './pageVisitsPrune.js';
 
 const MAX_IMPORT_EVENTS = 800;
 
@@ -50,7 +50,7 @@ export function recordPageVisit(type, id) {
     return { recorded: false, debounced: true };
   }
   insertVisit(t, sid);
-  pruneOldVisits();
+  schedulePageVisitsPruneDebounced();
   return { recorded: true, debounced: false };
 }
 
@@ -95,7 +95,7 @@ export function importPageVisits(entries) {
   }
 
   const inserted = bulkInsertVisits(rows);
-  pruneOldVisits();
+  schedulePageVisitsPruneDebounced();
   return { inserted, capped: rows.length >= MAX_IMPORT_EVENTS };
 }
 

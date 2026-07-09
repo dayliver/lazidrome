@@ -3,7 +3,7 @@ import {
   findAlbumsWithTag,
   findTracksWithTag
 } from '../repositories/tagRepository.js';
-import { findTopTracksForArtists } from '../repositories/artistRepository.js';
+import { findTopTracksForArtistIds } from '../repositories/artistRepository.js';
 import { formatAlbumTags } from '../services/albumService.js';
 
 export async function getTagDetailHandler(request, reply) {
@@ -14,7 +14,8 @@ export async function getTagDetailHandler(request, reply) {
 
   try {
     const rawArtists = findArtistsWithTag(tagName);
-    const topTracksData = findTopTracksForArtists();
+    const artistIds = rawArtists.map((a) => a.id);
+    const topTracksData = findTopTracksForArtistIds(artistIds);
     const topTracksMap = {};
     for (const row of topTracksData) {
       if (!topTracksMap[row.artist_id]) topTracksMap[row.artist_id] = [];

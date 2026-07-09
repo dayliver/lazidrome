@@ -45,6 +45,15 @@ export function pruneOrphanVisits() {
     .run().changes;
 }
 
+/** 조회 시 유령 카드 제외 — DELETE 없이 NOT EXISTS 필터 */
+const VISIT_ENTITY_EXISTS_SQL = `
+  entity_type = 'tag'
+  OR (entity_type = 'album' AND EXISTS (SELECT 1 FROM albums WHERE id = page_visits.entity_id))
+  OR (entity_type = 'artist' AND EXISTS (SELECT 1 FROM artists WHERE id = page_visits.entity_id))
+  OR (entity_type = 'track' AND EXISTS (SELECT 1 FROM track_metadata WHERE id = page_visits.entity_id))
+  OR (entity_type = 'playlist' AND EXISTS (SELECT 1 FROM playlists WHERE id = page_visits.entity_id))
+`;
+
 /** @returns {boolean} */
 export function entityExists(type, id) {
   const sid = id != null ? String(id).trim() : '';
@@ -87,8 +96,6 @@ export function insertVisit(entityType, entityId, visitedAtMs = null) {
  * @returns {{ type: string, id: string, count: number, at: string }[]}
  */
 export function findFrequentVisits(limit = 24) {
-  pruneOldVisits();
-  pruneOrphanVisits();
   const cap = Math.min(50, Math.max(1, Number(limit) || 24));
   return db
     .prepare(
@@ -99,6 +106,7 @@ export function findFrequentVisits(limit = 24) {
          MAX(visited_at) AS at
        FROM page_visits
        WHERE visited_at >= datetime('now', ?)
+         AND (${VISIT_ENTITY_EXISTS_SQL})
        GROUP BY entity_type, entity_id
        ORDER BY count DESC, at DESC
        LIMIT ?`,

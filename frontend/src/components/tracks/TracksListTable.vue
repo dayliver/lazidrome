@@ -1,6 +1,5 @@
 <script setup>
 import { computed } from 'vue'
-import { useVirtualList } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -70,13 +69,6 @@ const nowPlayingTrackId = computed(() => player.currentTrack?.id ?? null)
 const playerIsPlaying = computed(() => player.isPlaying)
 const togglePlayerPlay = () => player.togglePlay()
 
-const trackRows = computed(() => localTracks.value ?? [])
-
-const { list, containerProps, wrapperProps } = useVirtualList(trackRows, {
-  itemHeight: 56,
-  overscan: 8,
-})
-
 const {
   open: contextMenuOpen,
   anchorX,
@@ -122,9 +114,9 @@ function formatScannedAt(value) {
 
 <template>
   <div class="w-full relative">
-    <div v-bind="containerProps" class="hidden md:block pb-2 max-h-[min(70vh,calc(100dvh-14rem))] overflow-y-auto">
+    <div class="hidden md:block pb-2">
       <Table class="border-b table-fixed">
-        <TableHeader class="sticky top-0 z-10 bg-background shadow-[0_1px_0_hsl(var(--border))]">
+        <TableHeader>
           <TableRow class="bg-muted/30">
             <TableHead class="w-10 text-center">
               <input
@@ -176,9 +168,9 @@ function formatScannedAt(value) {
           </TableRow>
         </TableHeader>
 
-        <tbody v-bind="wrapperProps" class="[&_tr:last-child]:border-0">
+        <tbody class="[&_tr:last-child]:border-0">
           <TableRow
-            v-for="{ data: item, index } in list"
+            v-for="(item, index) in localTracks"
             :key="item.id"
             class="hover:bg-muted/50 transition-colors group cursor-pointer"
             :class="{
