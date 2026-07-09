@@ -20,6 +20,7 @@ import {
   Trash2,
 } from 'lucide-vue-next'
 import TrackTagSubmenu from '@/components/shared/TrackTagSubmenu.vue'
+import StarRating from '@/components/shared/StarRating.vue'
 
 const props = defineProps({
   track: { type: Object, required: true },
@@ -64,19 +65,8 @@ function onTagsSubOpen(isOpen) {
     {{ t('trackTable.favorite') }}
   </DropdownMenuCheckboxItem>
 
-  <div class="px-2 py-1.5" @pointerdown.stop>
-    <div class="flex items-center justify-center gap-0.5" role="group" :aria-label="t('trackTable.rating')">
-      <button
-        v-for="star in 5"
-        :key="star"
-        type="button"
-        class="p-0.5 text-lg leading-none transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-        :class="star <= (track.rating || 0) ? 'text-yellow-500' : 'text-muted-foreground/40'"
-        @click="onRating(star)"
-      >
-        ★
-      </button>
-    </div>
+  <div class="px-2 py-1.5 flex justify-center" @pointerdown.stop>
+    <StarRating :rating="track.rating || 0" interactive size="sm" @change="onRating" />
   </div>
 
   <DropdownMenuSeparator />

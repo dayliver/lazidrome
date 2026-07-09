@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import DetailLayout from '@/components/layout/DetailLayout.vue'
 import TrackListTable from '@/components/shared/TrackListTable.vue'
 import TrackListToolbar from '@/components/shared/TrackListToolbar.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 
 const { t } = useI18n()
 const durationLabel = useDurationLabel()
@@ -148,10 +149,7 @@ const handleEdit = () => {
 </script>
 
 <template>
-  <div v-if="isLoading" class="p-16 flex flex-col items-center gap-4 text-muted-foreground">
-    <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-    <p>{{ t('pages.details.playlistLoading') }}</p>
-  </div>
+  <LoadingSpinner v-if="isLoading" :label="t('pages.details.playlistLoading')" />
 
   <DetailLayout
     v-else-if="playlist"
@@ -193,13 +191,10 @@ const handleEdit = () => {
       </Button>
     </div>
 
-    <div
+    <LoadingSpinner
       v-if="playlist.type === 'mix' && isMixResolving && !effectiveTracks.length"
-      class="py-12 text-center text-muted-foreground flex flex-col items-center gap-3"
-    >
-      <div class="w-7 h-7 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      <p class="text-sm">{{ t('playlist.mixSnapshotLoading') }}</p>
-    </div>
+      :label="t('playlist.mixSnapshotLoading')"
+    />
 
     <section v-else-if="effectiveTracks.length" class="space-y-4">
       <TrackListToolbar

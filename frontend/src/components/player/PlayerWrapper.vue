@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { usePlayerStore } from '@/stores/player'
 import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import MiniPlayer from './MiniPlayer.vue'
-import FullPlayer from './FullPlayer.vue'
+
+const FullPlayer = defineAsyncComponent(() => import('./FullPlayer.vue'))
 
 const props = defineProps({
   isSidebarExpanded: { type: Boolean, default: true }

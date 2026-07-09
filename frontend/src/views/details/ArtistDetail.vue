@@ -23,6 +23,7 @@ import TrackListTable from '@/components/shared/TrackListTable.vue'
 import TrackListToolbar from '@/components/shared/TrackListToolbar.vue'
 import AlbumGrid from '@/components/shared/AlbumGrid.vue'
 import SectionHeader from '@/components/shared/SectionHeader.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 const { t } = useI18n()
 
 const route = useRoute()
@@ -115,10 +116,7 @@ const handleEdit = async () => {
 </script>
 
 <template>
-  <div v-if="isLoading" class="p-16 flex flex-col items-center gap-4 text-muted-foreground">
-    <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-    <p>{{ t('pages.details.artistLoading') }}</p>
-  </div>
+  <LoadingSpinner v-if="isLoading" :label="t('pages.details.artistLoading')" />
 
   <DetailLayout
     v-else-if="artist"

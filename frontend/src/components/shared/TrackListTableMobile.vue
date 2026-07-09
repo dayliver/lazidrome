@@ -2,9 +2,11 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Heart, Play, MoreVertical, Disc, Users, GripVertical } from 'lucide-vue-next'
+import { Play, MoreVertical, Disc, Users, GripVertical } from 'lucide-vue-next'
 import { VueDraggable } from 'vue-draggable-plus'
 import SafeImage from '@/components/shared/SafeImage.vue'
+import FavoriteButton from '@/components/shared/FavoriteButton.vue'
+import StarRating from '@/components/shared/StarRating.vue'
 
 const props = defineProps({
   localTracks: { type: Array, required: true },
@@ -28,7 +30,6 @@ const props = defineProps({
   goToAlbum: { type: Function, required: true },
   goToTrack: { type: Function, required: true },
   formatTrackTime: { type: Function, required: true },
-  renderStars: { type: Function, required: true },
   updateRating: { type: Function, required: true },
   removeTrackFromPlaylist: { type: Function, required: true },
   openPlaylistModal: { type: Function, required: true },
@@ -157,7 +158,7 @@ function onRowClick(index, event) {
               </div>
             </div>
             <div class="flex items-center gap-1 shrink-0 -mr-1">
-              <button @click.stop="toggleStar(item)" class="p-1 focus:outline-none"><Heart class="w-4 h-4" :class="item.starred ? 'text-red-500 fill-current' : 'text-muted-foreground'" /></button>
+              <FavoriteButton :starred="!!item.starred" size="sm" @click.stop @toggle="toggleStar(item)" />
               <button class="p-1 text-muted-foreground focus:outline-none" @click.stop="openContextFromTrigger($event, item)">
                 <MoreVertical class="w-4 h-4" />
               </button>
@@ -180,11 +181,13 @@ function onRowClick(index, event) {
           <div class="flex items-center gap-2 mt-0.5 text-[10px] font-mono text-muted-foreground/80">
             <div @click.stop>
               <Popover>
-                <PopoverTrigger as-child><button class="text-yellow-500 tracking-wider font-sans focus:outline-none">{{ renderStars(item.rating) }}</button></PopoverTrigger>
+                <PopoverTrigger as-child>
+                  <button class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md" :aria-label="t('trackTable.rating')">
+                    <StarRating :rating="item.rating || 0" size="sm" class="[&_span]:p-0" />
+                  </button>
+                </PopoverTrigger>
                 <PopoverContent class="w-auto p-2" align="start" side="top">
-                  <div class="flex gap-2">
-                    <button v-for="star in 5" :key="star" @click="updateRating(item, star)" class="text-2xl focus:outline-none" :class="star <= (item.rating || 0) ? 'text-yellow-500' : 'text-muted'">★</button>
-                  </div>
+                  <StarRating :rating="item.rating || 0" interactive size="lg" @change="updateRating(item, $event)" />
                 </PopoverContent>
               </Popover>
             </div>

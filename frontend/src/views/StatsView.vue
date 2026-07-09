@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import HabitBarChart from '@/components/charts/HabitBarChart.vue'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -106,10 +107,7 @@ const totalListenLabel = computed(() => formatListenSeconds(payload.value?.total
         {{ t('stats.listenNote') }}
       </p>
 
-      <div v-if="loading && !payload" class="py-20 flex flex-col items-center gap-3">
-        <div class="w-9 h-9 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p class="text-sm text-muted-foreground">{{ t('stats.loading') }}</p>
-      </div>
+      <LoadingSpinner v-if="loading && !payload" size="lg" :label="t('stats.loading')" />
 
       <div
         v-else-if="error"

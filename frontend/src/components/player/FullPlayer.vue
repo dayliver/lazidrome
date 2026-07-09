@@ -49,7 +49,7 @@ const { player, coverUrl, isQueueView, toggleQueueView } = usePlayerPresentation
 
 <style scoped>
 :deep(.relative.h-1\.5) { height: 8px; }
-:deep([role="slider"]) { width: 18px; height: 18px; border: 4px solid white; }
+:deep([role="slider"]) { width: 18px; height: 18px; border: 4px solid var(--color-background); }
 
 .slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.3s ease-out; }
 .slide-fade-enter-from { opacity: 0; transform: translateX(20px); }

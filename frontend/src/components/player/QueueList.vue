@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, watch } from 'vue'
+import { useVirtualList } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerPresentation } from '@/composables/usePlayerPresentation.js'
@@ -20,6 +21,13 @@ const trackCoverSrc = (track) => {
   return auth.coverSrc('track', track.id)
 }
 
+const queueItems = computed(() => displayQueue.value ?? [])
+
+const { list, containerProps, wrapperProps } = useVirtualList(queueItems, {
+  itemHeight: 72,
+  overscan: 6,
+})
+
 watch(() => isQueueView.value, (isOpen) => {
   if (isOpen) {
     nextTick(() => {
@@ -31,10 +39,10 @@ watch(() => isQueueView.value, (isOpen) => {
 </script>
 
 <template>
-  <div class="w-full h-full flex flex-col overflow-hidden bg-background/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl min-h-0">
-    <div class="p-6 border-b border-white/10 flex justify-between items-center bg-muted/20 shrink-0">
+  <div class="w-full h-full flex flex-col overflow-hidden bg-background/50 backdrop-blur-md rounded-xl border border-border/60 shadow-2xl min-h-0">
+    <div class="p-6 border-b border-border/60 flex justify-between items-center bg-muted/20 shrink-0">
       <h3 class="font-black text-xl tracking-tighter uppercase">{{ t('player.upNext') }}</h3>
-      <span class="text-xs font-bold text-muted-foreground bg-muted px-2 py-1 rounded">
+      <span class="text-xs font-bold text-muted-foreground bg-muted px-2 py-1 rounded-md">
         {{ t('player.queueTrackCount', { count: displayQueue.length }) }}
       </span>
     </div>
@@ -43,12 +51,12 @@ watch(() => isQueueView.value, (isOpen) => {
       {{ t('player.remoteQueueLoading') }}
     </p>
 
-    <div class="flex-1 overflow-y-auto min-h-0 px-2 scroll-smooth">
-      <div class="flex flex-col gap-1 py-4">
+    <div v-bind="containerProps" class="flex-1 min-h-0 px-2 scroll-smooth">
+      <div v-bind="wrapperProps" class="py-4">
         <div
-          v-for="(track, index) in displayQueue"
+          v-for="{ data: track, index } in list"
           :key="`${track.id}-${index}`"
-          class="group flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all hover:bg-white/10 active:scale-[0.98]"
+          class="group flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all hover:bg-muted/60 active:scale-[0.98]"
           :class="{ 'queue-item-active bg-primary/20': currentIndex === index }"
           @click="playAtIndex(index)"
         >
@@ -61,7 +69,7 @@ watch(() => isQueueView.value, (isOpen) => {
             </div>
           </div>
 
-          <div class="w-12 h-12 rounded-lg overflow-hidden border border-white/5 bg-muted shrink-0">
+          <div class="w-12 h-12 rounded-lg overflow-hidden border border-border/50 bg-muted shrink-0">
             <img
               v-if="trackCoverSrc(track)"
               :src="trackCoverSrc(track)"

@@ -12,14 +12,13 @@ export function loadLibraryCache() {
   }
 }
 
+/** revision·설정·트랙 수만 캐시 (카탈로그 전체는 저장하지 않음) */
 export function saveLibraryCache(payload) {
   try {
     localStorage.setItem(
       CACHE_KEY,
       JSON.stringify({
         revision: payload.revision,
-        artists: payload.artists ?? [],
-        albums: payload.albums ?? [],
         trackCount: payload.trackCount ?? 0,
         serverSettings: payload.serverSettings ?? null,
         savedAt: Date.now(),

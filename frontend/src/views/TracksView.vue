@@ -7,10 +7,12 @@ import TracksPageFilters from '@/components/tracks/TracksPageFilters.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import EmptyState from '@/components/shared/EmptyState.vue'
 import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import { useTracksPageQuery } from '@/composables/useTracksPageQuery'
 import { useAddMediaAction } from '@/composables/useAddMediaAction'
-import { Music } from 'lucide-vue-next'
+import { Music, Loader2 } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const { showAuthEmpty } = useRequiresAuth()
@@ -67,18 +69,15 @@ const handleCreateTrack = () => {
         @set-min-rating="setMinRating"
       />
 
-      <div v-if="isLoading && tracks.length === 0" class="p-16 text-center text-muted-foreground flex flex-col items-center gap-4 bg-card rounded-xl border">
-        <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p>{{ t('pages.tracks.loading') }}</p>
+      <div v-if="isLoading && tracks.length === 0" class="bg-card rounded-xl border">
+        <LoadingSpinner :label="t('pages.tracks.loading')" />
       </div>
 
-      <div
+      <EmptyState
         v-else-if="!isLoading && tracks.length === 0"
-        class="py-16 text-center border-2 border-dashed rounded-2xl bg-muted/5 text-muted-foreground"
-      >
-        <Music class="w-12 h-12 mx-auto opacity-30 mb-3" />
-        <p class="font-bold text-lg">{{ t('trackList.noResults') }}</p>
-      </div>
+        :icon="Music"
+        :title="t('trackList.noResults')"
+      />
 
       <div v-else class="bg-card overflow-hidden pb-4 rounded-xl border">
         <TracksListTable
@@ -96,10 +95,7 @@ const handleCreateTrack = () => {
             :disabled="isLoadMore"
             @click="loadMore"
           >
-            <span
-              v-if="isLoadMore"
-              class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2"
-            />
+            <Loader2 v-if="isLoadMore" class="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
             {{ isLoadMore ? t('pages.tracks.loadingMore') : t('pages.tracks.loadMore') }}
           </Button>
         </div>

@@ -29,21 +29,6 @@ export function useGlobalSearch() {
     results.value = { artists: [], albums: [], tracks: [] }
   }
 
-  const searchLocal = (q) => {
-    const needle = q.toLowerCase()
-    const artists = (library.artists || [])
-      .filter((a) => a.name?.toLowerCase().includes(needle))
-      .slice(0, 8)
-    const albums = (library.albums || [])
-      .filter(
-        (a) =>
-          a.name?.toLowerCase().includes(needle) ||
-          a.displayArtist?.toLowerCase().includes(needle),
-      )
-      .slice(0, 8)
-    return { artists, albums }
-  }
-
   const runSearch = async (raw) => {
     const q = String(raw ?? '').trim()
     if (!q || !auth.isAuthenticated) {
@@ -54,33 +39,37 @@ export function useGlobalSearch() {
 
     const id = ++reqId
     loading.value = true
-    const local = searchLocal(q)
 
+    let artists = []
+    let albums = []
     let tracks = []
+
     try {
-      tracks = await library.searchTracks(q, 12)
-    } catch {
-      tracks = []
+      ;[artists, albums, tracks] = await Promise.all([
+        library.searchArtists(q, 8),
+        library.searchAlbums(q, 8),
+        library.searchTracks(q, 10),
+      ])
+    } catch (err) {
+      console.error(err)
     }
 
     if (id !== reqId) return
-    results.value = { artists: local.artists, albums: local.albums, tracks }
+    results.value = { artists, albums, tracks }
     loading.value = false
   }
 
   watch(query, (value) => {
     if (timer) clearTimeout(timer)
-    const q = String(value ?? '').trim()
-    if (!q) {
+    const trimmed = String(value ?? '').trim()
+    if (!trimmed) {
       results.value = { artists: [], albums: [], tracks: [] }
       loading.value = false
       return
     }
-    open.value = true
-    loading.value = true
     timer = setTimeout(() => {
-      void runSearch(q)
-    }, 200)
+      void runSearch(trimmed)
+    }, 280)
   })
 
   return {
@@ -88,8 +77,9 @@ export function useGlobalSearch() {
     open,
     loading,
     results,
-    clear,
     hasAnyResults,
     showPanel,
+    clear,
+    runSearch,
   }
 }

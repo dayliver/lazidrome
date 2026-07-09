@@ -65,14 +65,6 @@ export function useHomePage() {
 
   function resolveVisitName(v) {
     if (v.name && String(v.name).trim()) return String(v.name).trim()
-    if (v.type === 'album') {
-      const a = library.albums.find((x) => String(x.id) === String(v.id))
-      return a?.name || ''
-    }
-    if (v.type === 'artist') {
-      const a = library.artists.find((x) => String(x.id) === String(v.id))
-      return a?.name || ''
-    }
     if (v.type === 'playlist') {
       const p = playlistStore.playlists.find((x) => String(x.id) === String(v.id))
       return p?.name || ''

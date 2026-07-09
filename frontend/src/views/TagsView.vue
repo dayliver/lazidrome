@@ -11,6 +11,7 @@ import { Search, Hash, Tags } from 'lucide-vue-next'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import CreateTagDialog from '@/components/tags/CreateTagDialog.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -84,10 +85,7 @@ const handleCreate = () => {
 
     <AuthEmptyState v-if="showAuthEmpty" />
 
-    <div v-else-if="isLoading" class="py-20 flex flex-col items-center justify-center text-muted-foreground">
-      <span class="animate-spin border-4 border-primary/30 border-t-primary rounded-full w-10 h-10 mb-4" />
-      <p class="font-bold tracking-tight">{{ t('pages.tags.loading') }}</p>
-    </div>
+    <LoadingSpinner v-else-if="isLoading" size="lg" :label="t('pages.tags.loading')" />
 
     <template v-else>
       <section v-if="featuredTags.length > 0" class="space-y-4 animate-in slide-in-from-bottom-4">

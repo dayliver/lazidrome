@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ListMusic, Heart, Star, Radio, MonitorSpeaker } from 'lucide-vue-next'
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ListMusic, Radio, MonitorSpeaker } from 'lucide-vue-next'
 import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
 import { splitTrailingParentheticals } from '@/lib/titleParts'
@@ -9,6 +9,8 @@ import { usePlayerPresentation } from '@/composables/usePlayerPresentation.js'
 import { formatTrackTime } from '@/lib/audio'
 import ConnectedDevicesTrigger from '@/components/player/ConnectedDevicesTrigger.vue'
 import TrackTagsPopover from '@/components/shared/TrackTagsPopover.vue'
+import FavoriteButton from '@/components/shared/FavoriteButton.vue'
+import StarRating from '@/components/shared/StarRating.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const {
@@ -49,10 +51,7 @@ async function toggleFavorite() {
 
 async function changeRating(rate) {
   const tr = currentTrack.value
-  if (!tr?.id) return
-  // 같은 별을 다시 탭하면 해제
-  const nextRating = (currentTrack.value?.rating || 0) === rate ? 0 : rate
-  await library.updateTrackRating(tr.id, nextRating)
+  if (tr?.id) await library.updateTrackRating(tr.id, rate)
 }
 </script>
 
@@ -64,13 +63,13 @@ async function changeRating(rate) {
         v-if="coverUrl"
         :src="coverUrl"
         crossorigin="anonymous"
-        class="aspect-square w-full max-w-[min(100%,22rem)] max-h-full md:w-64 md:max-w-none lg:w-80 rounded-2xl md:rounded-3xl object-cover shadow-[0_20px_50px_rgba(0,0,0,0.35)] border border-white/10 ring-1 ring-black/5 transition-[transform,opacity] duration-700"
+        class="aspect-square w-full max-w-[min(100%,22rem)] max-h-full md:w-64 md:max-w-none lg:w-80 rounded-2xl md:rounded-3xl object-cover shadow-[0_20px_50px_rgba(0,0,0,0.35)] border border-border/60 ring-1 ring-black/5 transition-[transform,opacity] duration-700"
         :class="isPlaying ? '' : 'scale-[0.97] opacity-90'"
         alt=""
       />
       <div
         v-else
-        class="aspect-square w-full max-w-[min(100%,22rem)] max-h-full md:w-64 md:max-w-none lg:w-80 rounded-2xl md:rounded-3xl bg-muted border border-white/10 flex items-center justify-center text-2xl md:text-3xl font-black text-muted-foreground/20 italic text-center px-6"
+        class="aspect-square w-full max-w-[min(100%,22rem)] max-h-full md:w-64 md:max-w-none lg:w-80 rounded-2xl md:rounded-3xl bg-muted border border-border/60 flex items-center justify-center text-2xl md:text-3xl font-black text-muted-foreground/20 italic text-center px-6"
       >
         {{ t('app.name') }}
       </div>
@@ -117,20 +116,12 @@ async function changeRating(rate) {
             {{ currentTrack?.artist || t('player.noArtist') }}
           </p>
         </div>
-        <Button
+        <FavoriteButton
           v-if="canEditTrackMeta"
-          variant="ghost"
-          size="icon"
-          class="h-12 w-12 rounded-full shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
-          :aria-pressed="!!currentTrack?.starred"
-          :aria-label="currentTrack?.starred ? t('player.favoriteRemove') : t('player.favoriteAdd')"
-          @click="toggleFavorite()"
-        >
-          <Heart
-            class="w-7 h-7"
-            :class="currentTrack?.starred ? 'fill-red-500 text-red-500' : ''"
-          />
-        </Button>
+          :starred="!!currentTrack?.starred"
+          size="lg"
+          @toggle="toggleFavorite()"
+        />
       </div>
 
       <!-- 진행 바 -->
@@ -168,25 +159,13 @@ async function changeRating(rate) {
 
       <!-- 하단 액션 바: 별점 · 태그 · 큐 -->
       <div class="flex items-center justify-between gap-2 border-t border-border/50 pt-3 md:pt-5">
-        <div
+        <StarRating
           v-if="canEditTrackMeta"
-          class="flex items-center"
-          role="group"
-          :aria-label="t('player.trackRating')"
-        >
-          <button
-            v-for="i in 5"
-            :key="i"
-            type="button"
-            class="p-1.5 rounded-md transition-transform active:scale-110 hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            @click="changeRating(i)"
-          >
-            <Star
-              class="w-6 h-6 md:w-7 md:h-7"
-              :class="i <= (currentTrack?.rating || 0) ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground/35'"
-            />
-          </button>
-        </div>
+          :rating="currentTrack?.rating || 0"
+          interactive
+          size="lg"
+          @change="changeRating"
+        />
         <div v-else />
 
         <div class="flex items-center gap-1">

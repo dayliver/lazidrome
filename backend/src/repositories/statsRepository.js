@@ -2,9 +2,9 @@ import { getDB } from '../db.js';
 import {
   aggregateListenHabits,
   countPlaysByTrack,
-  filterEventsByRange,
   getPlayHistoryStorageZone,
   parsePlayedAt,
+  rangeStartInZone,
   resolveStatsTimezone,
   sumListenSecByTrack,
 } from '../lib/playHistoryTime.js';
@@ -215,15 +215,37 @@ export function getTotalListenSeconds(range) {
   return Number(row?.listen_sec) || 0;
 }
 
-function loadPlayHistoryEvents() {
-  const rows = db
-    .prepare(
-      `
+/**
+ * range 컷오프 인스턴트를 저장 타임존의 로컬 문자열('YYYY-MM-DD HH:MM:SS')로 변환.
+ * DB의 played_at 문자열(저장 타임존 기준)과 사전순 비교가 시각 비교와 동일해진다.
+ */
+function cutoffStringForRange(range, statsZone) {
+  const start = rangeStartInZone(range, statsZone);
+  if (!start) return null;
+  return start.setZone(getPlayHistoryStorageZone()).toFormat('yyyy-MM-dd HH:mm:ss');
+}
+
+/** 기간 내 이벤트만 SQL에서 필터해 로드 (기존 filterEventsByRange와 동일한 인스턴트 컷오프) */
+function loadPlayHistoryEvents(range = 'all', statsZone = 'UTC') {
+  const cutoff = cutoffStringForRange(range, statsZone);
+  const rows = cutoff
+    ? db
+        .prepare(
+          `
+    SELECT h.played_at, h.track_id AS track_id, COALESCE(h.listened_sec, 0) AS listen_sec
+    FROM play_history h
+    WHERE h.played_at >= ?
+  `
+        )
+        .all(cutoff)
+    : db
+        .prepare(
+          `
     SELECT h.played_at, h.track_id AS track_id, COALESCE(h.listened_sec, 0) AS listen_sec
     FROM play_history h
   `
-    )
-    .all();
+        )
+        .all();
   return rows
     .map((r) => {
       const playedAt = parsePlayedAt(r.played_at);
@@ -237,17 +259,12 @@ function loadPlayHistoryEvents() {
     .filter(Boolean);
 }
 
-function getPlayHistoryEvents() {
-  return loadPlayHistoryEvents();
-}
-
 /** 습관·순위 차트: 사용자 IANA 타임존 기준 집계 */
 export function getHabitStatsPayload(range, timezoneRaw) {
   if (!HABIT_RANGES.has(range)) return null;
   const statsZone = resolveStatsTimezone(timezoneRaw);
   const storageZone = getPlayHistoryStorageZone();
-  const all = getPlayHistoryEvents();
-  const inRange = filterEventsByRange(all, range, statsZone);
+  const inRange = loadPlayHistoryEvents(range, statsZone);
   const { totalListenSec, dayOfWeek, timeOfDay } = aggregateListenHabits(inRange, statsZone);
   return {
     range,
@@ -320,28 +337,47 @@ function fetchTracksByIdsOrdered(trackIds) {
   return trackIds.map((id) => byId[id]).filter(Boolean);
 }
 
+/** 상위 후보 트랙만 통산 재생/청취를 SQL 집계 (전 이력 로드 대체) */
+function fetchAllTimeStatsForTracks(trackIds) {
+  const map = new Map();
+  if (!trackIds.length) return map;
+  const placeholders = trackIds.map(() => '?').join(',');
+  const rows = db
+    .prepare(
+      `
+    SELECT track_id, COUNT(*) AS plays, SUM(COALESCE(listened_sec, 0)) AS listen_sec
+    FROM play_history
+    WHERE track_id IN (${placeholders})
+    GROUP BY track_id
+  `
+    )
+    .all(...trackIds);
+  for (const r of rows) {
+    map.set(String(r.track_id), {
+      plays: Number(r.plays) || 0,
+      listenSec: Number(r.listen_sec) || 0,
+    });
+  }
+  return map;
+}
+
 /** play_history 기간 내 청취 초 합 → 별점 → 통산 청취 초 */
-export function getTopTracksByPlayEvents(range, limit = 20, timezoneRaw) {
-  if (!CHART_RANGES.has(range) && !RANGES.has(range)) return [];
-  const statsZone = resolveStatsTimezone(timezoneRaw);
-  const all = getPlayHistoryEvents();
-  const periodEv = filterEventsByRange(all, range, statsZone);
-  const allTimeListen = sumListenSecByTrack(all);
+function topTracksFromEvents(periodEv, limit = 20) {
   const periodListen = sumListenSecByTrack(periodEv);
-  const allTimePlays = countPlaysByTrack(all);
   const periodPlays = countPlaysByTrack(periodEv);
 
-  const ranked = [...periodListen.entries()]
-    .map(([trackId, periodListenSec]) => ({
-      trackId,
-      periodListenSec,
-      allTimeListenSec: allTimeListen.get(trackId) || 0,
-      periodPlays: periodPlays.get(trackId) || 0,
-      allTimePlays: allTimePlays.get(trackId) || 0,
-    }))
-    .sort((a, b) => b.periodListenSec - a.periodListenSec);
+  const preRanked = [...periodListen.entries()].sort((a, b) => b[1] - a[1]);
+  const topIds = preRanked.slice(0, Math.min(limit * 3, preRanked.length)).map(([id]) => id);
+  const allTime = fetchAllTimeStatsForTracks(topIds);
 
-  const topIds = ranked.slice(0, Math.min(limit * 3, ranked.length)).map((r) => r.trackId);
+  const ranked = topIds.map((trackId) => ({
+    trackId,
+    periodListenSec: periodListen.get(trackId) || 0,
+    allTimeListenSec: allTime.get(trackId)?.listenSec || 0,
+    periodPlays: periodPlays.get(trackId) || 0,
+    allTimePlays: allTime.get(trackId)?.plays || 0,
+  }));
+
   const tracks = fetchTracksByIdsOrdered(topIds);
   const meta = Object.fromEntries(ranked.map((r) => [r.trackId, r]));
 
@@ -367,15 +403,10 @@ export function getTopTracksByPlayEvents(range, limit = 20, timezoneRaw) {
 
 /**
  * 기간 합계(차트 헤더용): 총 재생 수, 청취 초, 고유 트랙 수.
- * `getTopTracksByPlayEvents`가 잘라 보내는 limit과 무관하게
+ * top tracks가 잘라 보내는 limit과 무관하게
  * 그 기간의 모든 play_history 이벤트를 집계한다.
  */
-export function getChartTotals(range, timezoneRaw) {
-  if (!CHART_RANGES.has(range) && !RANGES.has(range)) {
-    return { totalPlays: 0, totalListenSec: 0, uniqueTrackCount: 0, uniqueArtistCount: 0 };
-  }
-  const statsZone = resolveStatsTimezone(timezoneRaw);
-  const periodEv = filterEventsByRange(getPlayHistoryEvents(), range, statsZone);
+function chartTotalsFromEvents(periodEv) {
   const periodListen = sumListenSecByTrack(periodEv);
   let totalListenSec = 0;
   for (const sec of periodListen.values()) totalListenSec += sec;
@@ -454,10 +485,7 @@ function countUniqueArtistsInPeriod(trackIds) {
  * 기간 내 play_history: 재생 1회의 listened_sec를 해당 곡 참여 아티스트(곡+대표앨범 합집합)마다 합산.
  * 동일 아티스트가 곡·앨범 양쪽에 있어도 그 재생에서는 1회만 집계.
  */
-export function getTopArtistsByPlayEvents(range, limit = 20, timezoneRaw) {
-  if (!CHART_RANGES.has(range) && !RANGES.has(range)) return [];
-  const statsZone = resolveStatsTimezone(timezoneRaw);
-  const periodEv = filterEventsByRange(getPlayHistoryEvents(), range, statsZone);
+function topArtistsFromEvents(periodEv, limit = 20) {
   if (!periodEv.length) return [];
 
   const trackIds = [...new Set(periodEv.map((ev) => ev.trackId))];
@@ -515,10 +543,7 @@ export function getTopArtistsByPlayEvents(range, limit = 20, timezoneRaw) {
 }
 
 /** 대표 앨범 기준으로 롤업 */
-export function getTopAlbumsByPlayEvents(range, limit = 20, timezoneRaw) {
-  if (!CHART_RANGES.has(range) && !RANGES.has(range)) return [];
-  const statsZone = resolveStatsTimezone(timezoneRaw);
-  const periodEv = filterEventsByRange(getPlayHistoryEvents(), range, statsZone);
+function topAlbumsFromEvents(periodEv, limit = 20) {
   const periodListen = sumListenSecByTrack(periodEv);
   if (!periodListen.size) return [];
 
@@ -562,6 +587,22 @@ export function getTopAlbumsByPlayEvents(range, limit = 20, timezoneRaw) {
     ...byId[id],
     period_listen_sec: albumListenSec.get(id) || 0,
   }));
+}
+
+/**
+ * `/api/stats/top` 통합 페이로드.
+ * 기간 이벤트를 SQL 필터로 1회만 로드해 tracks/albums/artists/totals를 모두 계산한다.
+ */
+export function getStatsTopPayload(range, limit = 20, timezoneRaw) {
+  if (!CHART_RANGES.has(range) && !RANGES.has(range)) return null;
+  const statsZone = resolveStatsTimezone(timezoneRaw);
+  const periodEv = loadPlayHistoryEvents(range, statsZone);
+  return {
+    tracks: topTracksFromEvents(periodEv, limit),
+    albums: topAlbumsFromEvents(periodEv, limit),
+    artists: topArtistsFromEvents(periodEv, limit),
+    totals: chartTotalsFromEvents(periodEv),
+  };
 }
 
 export { RANGES };

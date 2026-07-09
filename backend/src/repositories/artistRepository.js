@@ -3,7 +3,8 @@ import { getDB } from '../db.js';
 const db = getDB();
 
 export function findAllArtists() {
-  return db.prepare(`
+  return db
+    .prepare(`
     SELECT a.id, a.name, a.cover_type, a.tags,
       COUNT(DISTINCT ta.track_id) as trackCount,
       ROUND(AVG(NULLIF(t.rating, 0)), 1) as avgRating
@@ -12,20 +13,67 @@ export function findAllArtists() {
     LEFT JOIN track_metadata t ON ta.track_id = t.id
     GROUP BY a.id
     ORDER BY a.name COLLATE NOCASE ASC
-  `).all();
+  `)
+    .all();
+}
+
+function artistSearchClause(q) {
+  const term = String(q ?? '').trim();
+  if (!term) return { sql: '', params: [] };
+  return { sql: 'WHERE a.name LIKE ?', params: [`%${term}%`] };
+}
+
+export function countArtists({ q } = {}) {
+  const search = artistSearchClause(q);
+  const row = db
+    .prepare(`SELECT COUNT(*) AS n FROM artists a ${search.sql}`)
+    .get(...search.params);
+  return Number(row?.n) || 0;
+}
+
+export function findArtistsPage(offset, limit, { q } = {}) {
+  const search = artistSearchClause(q);
+  return db
+    .prepare(`
+    SELECT a.id, a.name, a.cover_type, a.tags,
+      COUNT(DISTINCT ta.track_id) as trackCount,
+      ROUND(AVG(NULLIF(t.rating, 0)), 1) as avgRating
+    FROM artists a
+    LEFT JOIN track_artists ta ON a.id = ta.artist_id
+    LEFT JOIN track_metadata t ON ta.track_id = t.id
+    ${search.sql}
+    GROUP BY a.id
+    ORDER BY a.name COLLATE NOCASE ASC
+    LIMIT ? OFFSET ?
+  `)
+    .all(...search.params, limit, offset);
 }
 
 export function findTopTracksForArtists() {
-  return db.prepare(`
+  return findTopTracksForArtistIds(null);
+}
+
+/** @param {string[]|null} artistIds null이면 전체(레거시) */
+export function findTopTracksForArtistIds(artistIds) {
+  if (Array.isArray(artistIds) && artistIds.length === 0) return [];
+  const idFilter =
+    Array.isArray(artistIds) && artistIds.length
+      ? `WHERE ta.artist_id IN (${artistIds.map(() => '?').join(',')})`
+      : '';
+  const params = Array.isArray(artistIds) && artistIds.length ? artistIds : [];
+  return db
+    .prepare(`
     SELECT artist_id, track_id, title
     FROM (
-      SELECT ta.artist_id, t.id as track_id, t.title, 
+      SELECT ta.artist_id, t.id as track_id, t.title,
         ROW_NUMBER() OVER(PARTITION BY ta.artist_id ORDER BY t.play_count DESC, t.rating DESC) as rn
       FROM track_artists ta
       JOIN track_metadata t ON ta.track_id = t.id
+      ${idFilter}
     )
     WHERE rn <= 3
-  `).all();
+  `)
+    .all(...params);
 }
 
 export function findArtistDetail(id) {

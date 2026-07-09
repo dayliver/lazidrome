@@ -70,6 +70,7 @@
   "trackList": {
     "summary": "전체 {total}곡 · {shown}곡 표시",
     "searchPlaceholder": "제목, 아티스트, 앨범 검색…",
+    "filterFavorite": "즐겨찾기만 보기",
     "sort": {
       "label": "정렬",
       "scannedAt": "추가된 순",
@@ -168,6 +169,7 @@
     "previous": "이전",
     "next": "다음",
     "close": "플레이어 닫기",
+    "moreActions": "더 보기",
     "queueTitle": "대기열",
     "queueEmpty": "대기열이 비어 있습니다",
     "clearQueue": "대기열 비우기",

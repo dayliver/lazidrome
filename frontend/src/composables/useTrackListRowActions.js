@@ -26,8 +26,8 @@ export function useTrackListRowActions(localTracks) {
 
   const goToArtist = async (artistName) => {
     if (!artistName) return
-    const allArtists = await library.getArtists()
-    const targetArtist = allArtists.find((a) => a.name === artistName)
+    const matches = await library.searchArtists(artistName, 5)
+    const targetArtist = matches.find((a) => a.name === artistName) || matches[0]
     if (targetArtist) router.push({ name: 'artist-detail', params: { id: targetArtist.id } })
   }
 
@@ -62,8 +62,6 @@ export function useTrackListRowActions(localTracks) {
     return artistString.split(', ')
   }
 
-  const renderStars = (rating) => '★'.repeat(rating || 0) + '☆'.repeat(5 - (rating || 0))
-
   return {
     getTrackImageUrl,
     prefetchTrackStream,
@@ -75,6 +73,5 @@ export function useTrackListRowActions(localTracks) {
     updateRating,
     fetchMetadata,
     getArtistList,
-    renderStars
   }
 }

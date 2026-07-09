@@ -8,6 +8,7 @@ import PlaylistDialog from '@/components/playlist/PlaylistDialog.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 
 const { t } = useI18n()
 const playlistStore = usePlaylistStore()
@@ -59,15 +60,9 @@ watch(showAuthEmpty, () => {
 
     <AuthEmptyState v-if="showAuthEmpty" />
 
-    <div
-      v-else-if="isLoading"
-      class="p-16 flex flex-col items-center gap-4 text-muted-foreground"
-    >
-      <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      <p>{{ t('pages.playlists.loading') }}</p>
-    </div>
+    <LoadingSpinner v-else-if="isLoading" :label="t('pages.playlists.loading')" />
 
-    <div v-else class="bg-card overflow-hidden pb-4">
+    <div v-else class="bg-card overflow-hidden pb-4 rounded-xl border">
       <PlaylistListTable
         :playlists="playlistStore.playlists"
         @edit="openEditModal"

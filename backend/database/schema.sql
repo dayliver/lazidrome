@@ -17,6 +17,7 @@ CREATE TABLE track_filedata (
     bitrate INTEGER,
     format TEXT,
     source TEXT DEFAULT 'scan',
+    mtime_ms INTEGER,                -- 파일 수정 시각(ms) — 스캐너 변경 감지용
     scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -153,3 +154,10 @@ CREATE INDEX idx_album_track_lookup ON album_tracks(track_id);
 CREATE INDEX idx_playlist_track_lookup ON playlist_tracks(track_id);
 CREATE INDEX idx_page_visits_time ON page_visits(visited_at);
 CREATE INDEX idx_page_visits_entity ON page_visits(entity_type, entity_id, visited_at);
+CREATE INDEX idx_artists_name ON artists(name);
+CREATE INDEX idx_albums_name ON albums(name);
+CREATE INDEX idx_track_metadata_file ON track_metadata(file_id);
+CREATE INDEX idx_history_track_time ON play_history(track_id, played_at);
+CREATE INDEX idx_album_tracks_album ON album_tracks(album_id);
+CREATE INDEX idx_playlist_tracks_playlist ON playlist_tracks(playlist_id, position);
+CREATE INDEX idx_track_artists_artist ON track_artists(artist_id);

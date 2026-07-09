@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { UserPlus, Trash2, User, Mic, Search } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -21,12 +21,7 @@ const { t } = useI18n()
 
 const searchQuery = ref('')
 const searchResults = ref([])
-const allArtists = ref([])
 const isFocused = ref(false)
-
-onMounted(async () => {
-  allArtists.value = await library.getArtists()
-})
 
 const ROLE_MAP = computed(() => [
   { value: 1, label: t('metadata.roleVocal') },
@@ -37,15 +32,13 @@ const ROLE_MAP = computed(() => [
   { value: 32, label: t('metadata.roleProducer') }
 ])
 
-const handleSearch = () => {
-  const query = searchQuery.value.trim().toLowerCase()
+const handleSearch = async () => {
+  const query = searchQuery.value.trim()
   if (!query) {
     searchResults.value = []
     return
   }
-  searchResults.value = allArtists.value
-    .filter(a => a.name.toLowerCase().includes(query))
-    .slice(0, 5)
+  searchResults.value = await library.searchArtists(query, 5)
 }
 
 const addArtist = (artistOrName) => {

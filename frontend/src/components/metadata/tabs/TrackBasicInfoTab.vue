@@ -23,15 +23,13 @@ const emit = defineEmits(['update:modelValue'])
 const library = useLibraryStore()
 const auth = useAuthStore()
 
-const allAlbums = ref([])
 const albumSearchResults = ref([])
 const isAlbumFocused = ref(false)
 
 onMounted(async () => {
-  allAlbums.value = await library.getAlbums()
   const id = props.modelValue.albumId
   if (id && !props.modelValue.albumArtistName) {
-    const alb = allAlbums.value.find((a) => a.id === id)
+    const alb = await library.getAlbumById(id)
     if (alb) {
       emit('update:modelValue', {
         ...props.modelValue,
@@ -47,15 +45,13 @@ const handleAlbumBlur = () => {
   }, 200)
 }
 
-const handleAlbumSearch = () => {
-  const query = props.modelValue.albumName.trim().toLowerCase()
+const handleAlbumSearch = async () => {
+  const query = props.modelValue.albumName.trim()
   if (!query) {
     albumSearchResults.value = []
     return
   }
-  albumSearchResults.value = allAlbums.value
-    .filter(a => a.name.toLowerCase().includes(query))
-    .slice(0, 5)
+  albumSearchResults.value = await library.searchAlbums(query, 5)
 }
 
 // 💡 앨범 선택 시 albumArtistName(displayArtist)도 함께 잡아옵니다!

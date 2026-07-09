@@ -1,9 +1,10 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Search, Heart } from 'lucide-vue-next'
+import { Search } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import FavoriteButton from '@/components/shared/FavoriteButton.vue'
+import StarRating from '@/components/shared/StarRating.vue'
 
 const props = defineProps({
   searchInput: { type: String, default: '' },
@@ -35,33 +36,19 @@ const searchModel = computed({
         />
       </div>
 
-      <Button
-        type="button"
+      <FavoriteButton
+        :starred="starred"
         variant="outline"
-        size="icon"
-        class="shrink-0 border-red-500/50 bg-background shadow-none"
-        :aria-pressed="starred"
-        @click="emit('toggle-starred')"
-      >
-        <Heart
-          class="w-5 h-5"
-          :class="starred ? 'text-red-500 fill-red-500' : 'text-red-500 fill-none'"
-        />
-      </Button>
+        size="md"
+        @toggle="emit('toggle-starred')"
+      />
 
-      <div class="flex items-center gap-0.5">
-        <button
-          v-for="star in 5"
-          :key="star"
-          type="button"
-          class="text-xl leading-none px-0.5 focus:outline-none transition-transform hover:scale-110"
-          @click="emit('set-min-rating', star)"
-        >
-          <span :class="minRating != null && star <= minRating ? 'text-yellow-500' : 'text-muted-foreground/40'">
-            {{ minRating != null && star <= minRating ? '★' : '☆' }}
-          </span>
-        </button>
-      </div>
+      <StarRating
+        :rating="minRating || 0"
+        interactive
+        size="sm"
+        @change="emit('set-min-rating', $event === 0 ? null : $event)"
+      />
 
       <slot name="extra" />
     </div>

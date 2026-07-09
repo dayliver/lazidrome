@@ -70,6 +70,7 @@
   "trackList": {
     "summary": "{total} tracks · showing {shown}",
     "searchPlaceholder": "Search title, artist, album…",
+    "filterFavorite": "Favorites only",
     "sort": {
       "label": "Sort by",
       "scannedAt": "Date added",
@@ -168,6 +169,7 @@
     "previous": "Previous",
     "next": "Next",
     "close": "Close player",
+    "moreActions": "More actions",
     "queueTitle": "Queue",
     "queueEmpty": "Queue is empty",
     "clearQueue": "Clear queue",

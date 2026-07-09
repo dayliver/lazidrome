@@ -16,6 +16,7 @@ import {
   MIN_AUDIO_BYTES,
 } from '../lib/audioExtensions.js';
 import { setPrimaryAlbumForTrack } from '../repositories/albumRepository.js';
+import { markScanCompleted, shouldSkipRecentScan } from '../lib/recentIngestPaths.js';
 
 /** 스캔·감시 제외 폴더명 (경로 어디에든 동일하게 적용) */
 export const SCAN_EXCLUDED_DIR = '_excluded';
@@ -58,11 +59,27 @@ export function startScanner(watchPath) {
 
   const handleFile = async (filePath) => {
     if (!isAudioFilePath(filePath)) return;
+    if (shouldSkipRecentScan(filePath)) return;
 
     try {
       const stats = fs.statSync(filePath);
       if (stats.size < MIN_AUDIO_BYTES) {
         console.warn(`⚠️ 스캔 스킵 (파일 너무 작음): ${filePath}`);
+        return;
+      }
+
+      const mtimeMs = Math.round(stats.mtimeMs);
+
+      // 변경 감지: 같은 경로가 같은 size·mtime이면 해싱/파싱 전에 스킵.
+      // mtime_ms가 NULL(마이그레이션 이전 행)이면 size만 비교하고 mtime을 백필한다.
+      const known = db
+        .prepare('SELECT id, size, mtime_ms FROM track_filedata WHERE path = ?')
+        .get(filePath);
+      if (known && known.size === stats.size && (known.mtime_ms == null || known.mtime_ms === mtimeMs)) {
+        if (known.mtime_ms == null) {
+          db.prepare('UPDATE track_filedata SET mtime_ms = ? WHERE id = ?').run(mtimeMs, known.id);
+        }
+        markScanCompleted(filePath);
         return;
       }
 
@@ -110,9 +127,9 @@ export function startScanner(watchPath) {
         if (existingByHash) {
           db.prepare(`
             UPDATE track_filedata
-            SET path = ?, size = ?, duration = ?, bitrate = ?, format = ?
+            SET path = ?, size = ?, duration = ?, bitrate = ?, format = ?, mtime_ms = ?
             WHERE id = ?
-          `).run(filePath, stats.size, durationSec, bitrateKbps, format, newHash);
+          `).run(filePath, stats.size, durationSec, bitrateKbps, format, mtimeMs, newHash);
 
           const metaRecord = db.prepare('SELECT id FROM track_metadata WHERE file_id = ?').get(newHash);
           if (metaRecord) {
@@ -186,9 +203,9 @@ export function startScanner(watchPath) {
 
           if (currentTrackId) {
             db.prepare(`
-              INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source)
-              VALUES (?, ?, ?, ?, ?, ?, 'scan')
-            `).run(newHash, filePath, stats.size, durationSec, bitrateKbps, format);
+              INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source, mtime_ms)
+              VALUES (?, ?, ?, ?, ?, ?, 'scan', ?)
+            `).run(newHash, filePath, stats.size, durationSec, bitrateKbps, format, mtimeMs);
 
             db.prepare('UPDATE track_metadata SET file_id = ?, title = ?, year = ?, genre = ? WHERE id = ?').run(
               newHash,
@@ -203,9 +220,9 @@ export function startScanner(watchPath) {
             db.prepare('DELETE FROM track_filedata WHERE id = ?').run(existingByPath.hash);
             currentTrackId = ulid();
             db.prepare(`
-              INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source)
-              VALUES (?, ?, ?, ?, ?, ?, 'scan')
-            `).run(newHash, filePath, stats.size, durationSec, bitrateKbps, format);
+              INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source, mtime_ms)
+              VALUES (?, ?, ?, ?, ?, ?, 'scan', ?)
+            `).run(newHash, filePath, stats.size, durationSec, bitrateKbps, format, mtimeMs);
             db.prepare('INSERT INTO track_metadata (id, file_id, title, year, genre) VALUES (?, ?, ?, ?, ?)').run(
               currentTrackId,
               newHash,
@@ -217,9 +234,9 @@ export function startScanner(watchPath) {
         } else {
           currentTrackId = ulid();
           db.prepare(`
-            INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source)
-            VALUES (?, ?, ?, ?, ?, ?, 'scan')
-          `).run(newHash, filePath, stats.size, durationSec, bitrateKbps, format);
+            INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source, mtime_ms)
+            VALUES (?, ?, ?, ?, ?, ?, 'scan', ?)
+          `).run(newHash, filePath, stats.size, durationSec, bitrateKbps, format, mtimeMs);
 
           db.prepare('INSERT INTO track_metadata (id, file_id, title, year, genre) VALUES (?, ?, ?, ?, ?)').run(
             currentTrackId,
@@ -248,6 +265,8 @@ export function startScanner(watchPath) {
       });
 
       transaction();
+
+      markScanCompleted(filePath);
 
       if (albumId && metadata.common.picture && metadata.common.picture.length > 0) {
         const albumCover = db.prepare('SELECT cover_type FROM albums WHERE id = ?').get(albumId);

@@ -96,19 +96,68 @@ export function findOrCreateArtist(artist) {
 }
 
 export function findAllAlbums() {
-  return db.prepare(`
-    SELECT 
-      a.id, a.name, a.description, a.year, a.cover_type, a.tags,
-      (SELECT GROUP_CONCAT(ar.name, ', ') FROM album_artists aa JOIN artists ar ON aa.artist_id = ar.id WHERE aa.album_id = a.id) as displayArtist,
-      COUNT(DISTINCT t.id) as trackCount,
-      SUM(f.duration) as totalDuration
-    FROM albums a
-    LEFT JOIN album_tracks at ON a.id = at.album_id
-    LEFT JOIN track_metadata t ON at.track_id = t.id
-    LEFT JOIN track_filedata f ON t.file_id = f.id
+  return db
+    .prepare(`
+    ${ALBUM_LIST_SELECT}
+    ${ALBUM_LIST_FROM}
     GROUP BY a.id
     ORDER BY a.year DESC, a.name ASC
-  `).all();
+  `)
+    .all();
+}
+
+function albumSearchClause(q) {
+  const term = String(q ?? '').trim();
+  if (!term) return { sql: '', params: [] };
+  const like = `%${term}%`;
+  return {
+    sql: `WHERE (
+      a.name LIKE ?
+      OR EXISTS (
+        SELECT 1 FROM album_artists aa
+        JOIN artists ar ON aa.artist_id = ar.id
+        WHERE aa.album_id = a.id AND ar.name LIKE ?
+      )
+    )`,
+    params: [like, like],
+  };
+}
+
+const ALBUM_LIST_FROM = `
+  FROM albums a
+  LEFT JOIN album_tracks at ON a.id = at.album_id
+  LEFT JOIN track_metadata t ON at.track_id = t.id
+  LEFT JOIN track_filedata f ON t.file_id = f.id
+`;
+
+const ALBUM_LIST_SELECT = `
+  SELECT
+    a.id, a.name, a.description, a.year, a.cover_type, a.tags,
+    (SELECT GROUP_CONCAT(ar.name, ', ') FROM album_artists aa JOIN artists ar ON aa.artist_id = ar.id WHERE aa.album_id = a.id) as displayArtist,
+    COUNT(DISTINCT t.id) as trackCount,
+    SUM(f.duration) as totalDuration
+`;
+
+export function countAlbums({ q } = {}) {
+  const search = albumSearchClause(q);
+  const row = db
+    .prepare(`SELECT COUNT(DISTINCT a.id) AS n ${ALBUM_LIST_FROM} ${search.sql}`)
+    .get(...search.params);
+  return Number(row?.n) || 0;
+}
+
+export function findAlbumsPage(offset, limit, { q } = {}) {
+  const search = albumSearchClause(q);
+  return db
+    .prepare(`
+    ${ALBUM_LIST_SELECT}
+    ${ALBUM_LIST_FROM}
+    ${search.sql}
+    GROUP BY a.id
+    ORDER BY a.year DESC, a.name ASC
+    LIMIT ? OFFSET ?
+  `)
+    .all(...search.params, limit, offset);
 }
 
 export function findAlbumDetailWithTracks(id) {
@@ -136,7 +185,20 @@ export function findAlbumDetailWithTracks(id) {
     ORDER BY at.disc_number ASC, at.track_number ASC, t.title ASC
   `).all(id);
 
-  return { ...album, tracks };
+  const artists = db.prepare(`
+    SELECT a.id, a.name, a.cover_type, a.tags,
+      COUNT(DISTINCT ta.track_id) as trackCount,
+      ROUND(AVG(NULLIF(t.rating, 0)), 1) as avgRating
+    FROM album_artists aa
+    JOIN artists a ON aa.artist_id = a.id
+    LEFT JOIN track_artists ta ON a.id = ta.artist_id
+    LEFT JOIN track_metadata t ON ta.track_id = t.id
+    WHERE aa.album_id = ?
+    GROUP BY a.id
+    ORDER BY a.name COLLATE NOCASE ASC
+  `).all(id);
+
+  return { ...album, tracks, artists };
 }
 
 export function findAlbumForEnrich(id) {

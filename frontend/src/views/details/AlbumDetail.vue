@@ -23,6 +23,7 @@ import TrackListTable from '@/components/shared/TrackListTable.vue'
 import TrackListToolbar from '@/components/shared/TrackListToolbar.vue'
 import ArtistListTable from '@/components/shared/ArtistListTable.vue'
 import SectionHeader from '@/components/shared/SectionHeader.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 const { t } = useI18n()
 const durationLabel = useDurationLabel()
 
@@ -36,13 +37,13 @@ const auth = useAuthStore()
 const { data, isLoading } = useAsyncResource(
   () => route.params.id,
   async (id) => {
-    const [albumData, artistsData] = await Promise.all([library.getAlbumById(id), library.getArtists()])
-    return { album: albumData, allArtists: artistsData || [] }
-  }
+    const albumData = await library.getAlbumById(id)
+    return { album: albumData }
+  },
 )
 
 const album = computed(() => data.value?.album ?? null)
-const allArtists = computed(() => data.value?.allArtists ?? [])
+const albumArtists = computed(() => data.value?.album?.artists ?? [])
 
 useDocumentTitle(
   computed(() => {
@@ -88,19 +89,6 @@ const albumCoverUrl = computed(() => {
   return getAlbumImageUrl(a.id)
 })
 
-const albumArtists = computed(() => {
-  if (!album.value?.tracks || !allArtists.value.length) return []
-
-  const artistNames = new Set()
-  album.value.tracks.forEach((t) => {
-    if (t.artist) {
-      t.artist.split(', ').forEach((name) => artistNames.add(name))
-    }
-  })
-
-  return allArtists.value.filter((a) => artistNames.has(a.name))
-})
-
 const playSequential = () => {
   if (displayTracks.value.length > 0) {
     player.playNewQueue(displayTracks.value, 0)
@@ -122,10 +110,7 @@ const handleEdit = async () => {
 </script>
 
 <template>
-  <div v-if="isLoading" class="p-16 flex flex-col items-center gap-4 text-muted-foreground">
-    <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-    <p>{{ t('pages.details.albumLoading') }}</p>
-  </div>
+  <LoadingSpinner v-if="isLoading" :label="t('pages.details.albumLoading')" />
 
   <DetailLayout
     v-else-if="album"

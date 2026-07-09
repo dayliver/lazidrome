@@ -1,11 +1,11 @@
 <script setup>
 import { computed } from 'vue'
+import { useVirtualList } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import {
-  Heart,
   MoreVertical,
   Disc,
   ListMusic,
@@ -14,6 +14,8 @@ import {
   X,
 } from 'lucide-vue-next'
 import SafeImage from '@/components/shared/SafeImage.vue'
+import FavoriteButton from '@/components/shared/FavoriteButton.vue'
+import StarRating from '@/components/shared/StarRating.vue'
 import TrackPlayingMarker from '@/components/shared/TrackPlayingMarker.vue'
 import TrackContextMenuHost from '@/components/shared/TrackContextMenuHost.vue'
 import PlaylistSelectModal from '@/components/playlist/PlaylistSelectModal.vue'
@@ -59,7 +61,6 @@ const {
   updateRating,
   fetchMetadata,
   getArtistList,
-  renderStars,
 } = useTrackListTable(props)
 
 const player = usePlayerStore()
@@ -68,6 +69,13 @@ const { t } = useI18n()
 const nowPlayingTrackId = computed(() => player.currentTrack?.id ?? null)
 const playerIsPlaying = computed(() => player.isPlaying)
 const togglePlayerPlay = () => player.togglePlay()
+
+const trackRows = computed(() => localTracks.value ?? [])
+
+const { list, containerProps, wrapperProps } = useVirtualList(trackRows, {
+  itemHeight: 56,
+  overscan: 8,
+})
 
 const {
   open: contextMenuOpen,
@@ -114,9 +122,9 @@ function formatScannedAt(value) {
 
 <template>
   <div class="w-full relative">
-    <div class="hidden md:block pb-2">
+    <div v-bind="containerProps" class="hidden md:block pb-2 max-h-[min(70vh,calc(100dvh-14rem))] overflow-y-auto">
       <Table class="border-b table-fixed">
-        <TableHeader>
+        <TableHeader class="sticky top-0 z-10 bg-background shadow-[0_1px_0_hsl(var(--border))]">
           <TableRow class="bg-muted/30">
             <TableHead class="w-10 text-center">
               <input
@@ -168,9 +176,9 @@ function formatScannedAt(value) {
           </TableRow>
         </TableHeader>
 
-        <tbody class="[&_tr:last-child]:border-0">
+        <tbody v-bind="wrapperProps" class="[&_tr:last-child]:border-0">
           <TableRow
-            v-for="(item, index) in localTracks"
+            v-for="{ data: item, index } in list"
             :key="item.id"
             class="hover:bg-muted/50 transition-colors group cursor-pointer"
             :class="{
@@ -257,26 +265,15 @@ function formatScannedAt(value) {
             <TableCell class="text-center shrink-0 whitespace-nowrap" @click.stop>
               <Popover>
                 <PopoverTrigger as-child>
-                  <button type="button" class="text-yellow-500 text-sm tracking-widest hover:scale-105 transition-transform focus:outline-none">
-                    {{ renderStars(item.rating) }}
+                  <button type="button" class="align-middle hover:scale-105 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md" :aria-label="t('trackTable.rating')">
+                    <StarRating :rating="item.rating || 0" size="sm" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent class="w-auto p-2" align="center">
-                  <div class="flex gap-1">
-                    <button
-                      v-for="star in 5"
-                      :key="star"
-                      type="button"
-                      class="text-2xl hover:scale-125 transition-transform focus:outline-none"
-                      :class="star <= (item.rating || 0) ? 'text-yellow-500' : 'text-muted'"
-                      @click="updateRating(item, star)"
-                    >★</button>
-                  </div>
+                  <StarRating :rating="item.rating || 0" interactive size="lg" @change="updateRating(item, $event)" />
                 </PopoverContent>
               </Popover>
-              <button type="button" class="ml-2 align-middle focus:outline-none" @click.stop="toggleStar(item)">
-                <Heart class="w-3.5 h-3.5 inline" :class="item.starred ? 'text-red-500 fill-red-500' : 'text-muted-foreground'" />
-              </button>
+              <FavoriteButton :starred="!!item.starred" size="sm" class="ml-1 align-middle" @click.stop @toggle="toggleStar(item)" />
             </TableCell>
 
             <TableCell class="text-center font-bold text-primary tabular-nums text-sm shrink-0 whitespace-nowrap">{{ item.play_count || 0 }}</TableCell>

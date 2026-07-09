@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import SafeImage from '@/components/shared/SafeImage.vue'
 import { formatChartListenWithPlays } from '@/lib/listenTime'
 import { useHomePage } from '@/composables/useHomePage'
@@ -129,10 +130,7 @@ const bleedRightClass = 'w-[calc(100%+1rem)] max-w-none -mr-4 md:w-[calc(100%+3r
           {{ t('pages.home.topHint') }}
         </p>
 
-        <div v-if="topLoading && !top20.length" class="flex items-center gap-3 py-6 text-sm text-muted-foreground">
-          <div class="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          {{ t('pages.home.topLoading') }}
-        </div>
+        <LoadingSpinner v-if="topLoading && !top20.length" inline size="sm" :label="t('pages.home.topLoading')" />
         <div
           v-else-if="topError"
           class="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
@@ -185,10 +183,7 @@ const bleedRightClass = 'w-[calc(100%+1rem)] max-w-none -mr-4 md:w-[calc(100%+3r
           {{ t('pages.home.topArtistsHint') }}
         </p>
 
-        <div v-if="topLoading && !topArtists.length" class="flex items-center gap-3 py-6 text-sm text-muted-foreground">
-          <div class="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          {{ t('pages.home.topLoading') }}
-        </div>
+        <LoadingSpinner v-if="topLoading && !topArtists.length" inline size="sm" :label="t('pages.home.topLoading')" />
         <div
           v-else-if="topError"
           class="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"

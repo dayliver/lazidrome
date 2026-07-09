@@ -1,11 +1,12 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, defineAsyncComponent } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, RouterLink } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import { useAuthStore } from '@/stores/auth'
+import { useMetadataEditStore } from '@/stores/metadataEdit'
 import PlayerWrapper from '@/components/player/PlayerWrapper.vue'
 import AppSidebarNav from '@/components/layout/AppSidebarNav.vue'
 import AppGlobalSearch from '@/components/layout/AppGlobalSearch.vue'
@@ -14,15 +15,19 @@ import AppLogo from '@/components/shared/AppLogo.vue'
 import ConnectedDevicesTrigger from '@/components/player/ConnectedDevicesTrigger.vue'
 import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-vue-next'
-import MetadataEditDialog from '@/components/metadata/MetadataEditDialog.vue'
 import { useYoutubePaste } from '@/composables/useYoutubePaste'
 import { useNavItems } from '@/composables/useNavItems'
+
+const MetadataEditDialog = defineAsyncComponent(
+  () => import('@/components/metadata/MetadataEditDialog.vue'),
+)
 
 import 'vue-sonner/style.css'
 import { Toaster } from '@/components/ui/sonner'
 
 const { t } = useI18n()
 const library = useLibraryStore()
+const metadataEdit = useMetadataEditStore()
 const player = usePlayerStore()
 const auth = useAuthStore()
 const playbackSync = usePlaybackSyncStore()
@@ -156,7 +161,7 @@ watch(
 
     <PlayerWrapper :is-sidebar-expanded="isSidebarExpanded" />
 
-    <MetadataEditDialog />
+    <MetadataEditDialog v-if="metadataEdit.hasItemsInQueue" />
 
     <Toaster />
   </div>

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { getCoverUrl } from '@/lib/image'
 import { t } from '@/i18n/t'
 import { formatMediaQuery, imageResourceKey, streamResourceKey } from '@/lib/mediaSign'
@@ -10,9 +10,25 @@ export const useAuthStore = defineStore('auth', () => {
   const serverUrl = ref(localStorage.getItem('lz_server_url') || '')
   const token = ref(localStorage.getItem('lz_token') || '')
 
-  /** 서명 캐시 갱신 시 커버 URL computed 재계산 */
-  const mediaCacheVersion = ref(0)
+  /**
+   * 리소스 키별 반응형 버전: 서명이 갱신된 리소스를 읽는 computed만 재계산된다.
+   * (전역 카운터를 쓰면 배치 서명 한 번에 앱 전체 커버 URL이 재평가되는 문제가 있었음)
+   */
+  const resourceVersions = reactive(new Map())
   const signatureCache = new Map()
+
+  function trackResourceKey(key) {
+    // reactive Map.get은 해당 키만 의존성으로 추적한다
+    void resourceVersions.get(key)
+  }
+
+  function bumpResourceKey(key) {
+    resourceVersions.set(key, (resourceVersions.get(key) || 0) + 1)
+  }
+
+  function bumpAllResources() {
+    for (const key of [...resourceVersions.keys()]) bumpResourceKey(key)
+  }
   const pendingResources = new Map()
   let flushTimer = null
   let signInFlight = null
@@ -26,7 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!t) {
       signatureCache.clear()
       pendingResources.clear()
-      mediaCacheVersion.value++
+      bumpAllResources()
     }
   })
 
@@ -68,7 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = ''
     signatureCache.clear()
     pendingResources.clear()
-    mediaCacheVersion.value++
+    bumpAllResources()
   }
 
   const fetchWithAuth = async (endpoint, options = {}) => {
@@ -154,8 +170,8 @@ export const useAuthStore = defineStore('auth', () => {
           sig,
           expiresAtMs: Number(exp) * 1000,
         })
+        bumpResourceKey(key)
       }
-      mediaCacheVersion.value++
     })()
 
     try {
@@ -188,9 +204,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function getImageMediaQuerySync(type, id) {
-    void mediaCacheVersion.value
     if (!id) return ''
-    return getMediaQueryByKey(imageResourceKey(type, id))
+    const key = imageResourceKey(type, id)
+    trackResourceKey(key)
+    return getMediaQueryByKey(key)
   }
 
   async function ensureImageSignature(type, id) {
@@ -209,9 +226,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function getStreamMediaQuerySync(trackId) {
-    void mediaCacheVersion.value
     if (!trackId) return ''
-    return getMediaQueryByKey(streamResourceKey(trackId))
+    const key = streamResourceKey(trackId)
+    trackResourceKey(key)
+    return getMediaQueryByKey(key)
   }
 
   async function ensureStreamSignature(trackId) {
@@ -250,9 +268,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** 템플릿·목록용: 서명 요청 후 캐시되면 URL 반환 (반응형 bump) */
+  /** 템플릿·목록용: 서명 요청 후 캐시되면 URL 반환 (해당 리소스 키만 반응형 추적) */
   function coverSrc(type, id) {
-    void mediaCacheVersion.value
     if (!id || !token.value) return ''
     if (type === 'tag') {
       scheduleMediaSign({ kind: 'image', imageType: 'tag', name: id })
@@ -268,14 +285,13 @@ export const useAuthStore = defineStore('auth', () => {
     const key = imageResourceKey(type, id)
     signatureCache.delete(key)
     pendingResources.delete(key)
-    mediaCacheVersion.value++
+    bumpResourceKey(key)
   }
 
   return {
     serverUrl,
     token,
     isAuthenticated,
-    mediaCacheVersion,
     login,
     logout,
     fetchWithAuth,

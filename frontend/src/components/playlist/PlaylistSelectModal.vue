@@ -84,7 +84,7 @@ const handleSelect = async (playlistId) => {
 
       <div class="flex-1 overflow-y-auto p-2 custom-scrollbar relative">
         <div v-if="isSubmitting" class="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
-          <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <span class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin" aria-hidden="true" />
         </div>
 
         <div v-if="filteredPlaylists.length > 0" class="space-y-1">

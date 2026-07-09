@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useBreakpoints, breakpointsTailwind } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
 import { formatTrackTime } from '@/lib/audio'
@@ -41,7 +42,6 @@ const {
   updateRating,
   fetchMetadata,
   getArtistList,
-  renderStars,
   removeTrackFromPlaylist,
   removeSelectedFromPlaylist,
   onDragEnd
@@ -61,11 +61,15 @@ const {
   openAt,
   openFromTrigger,
 } = useTrackContextMenu()
+
+const breakpoints = useBreakpoints(breakpointsTailwind)
+const isMd = breakpoints.greaterOrEqual('md')
 </script>
 
 <template>
   <div class="w-full relative">
     <TrackListTableDesktop
+      v-if="isMd"
       v-model:local-tracks="localTracks"
       :selected-track-ids="selectedTrackIds"
       :show-cover="showCover"
@@ -87,7 +91,6 @@ const {
       :go-to-album="goToAlbum"
       :go-to-track="goToTrack"
       :format-track-time="formatTrackTime"
-      :render-stars="renderStars"
       :update-rating="updateRating"
       :remove-track-from-playlist="removeTrackFromPlaylist"
       :open-playlist-modal="openPlaylistModal"
@@ -100,6 +103,7 @@ const {
     />
 
     <TrackListTableMobile
+      v-else
       v-model:local-tracks="localTracks"
       :selected-track-ids="selectedTrackIds"
       :show-cover="showCover"
@@ -121,7 +125,6 @@ const {
       :go-to-album="goToAlbum"
       :go-to-track="goToTrack"
       :format-track-time="formatTrackTime"
-      :render-stars="renderStars"
       :update-rating="updateRating"
       :remove-track-from-playlist="removeTrackFromPlaylist"
       :open-playlist-modal="openPlaylistModal"

@@ -6,6 +6,8 @@ import { History } from 'lucide-vue-next'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import EmptyState from '@/components/shared/EmptyState.vue'
 import SafeImage from '@/components/shared/SafeImage.vue'
 import { Button } from '@/components/ui/button'
 import { useLibraryStore } from '@/stores/library'
@@ -113,10 +115,7 @@ watch(
     />
 
     <template v-else>
-      <div v-if="loading && !items.length" class="py-16 text-center text-muted-foreground">
-        <div class="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        {{ t('history.loading') }}
-      </div>
+      <LoadingSpinner v-if="loading && !items.length" :label="t('history.loading')" />
 
       <div
         v-else-if="error && !items.length"
@@ -125,14 +124,12 @@ watch(
         {{ t('history.error') }}
       </div>
 
-      <div
+      <EmptyState
         v-else-if="!items.length"
-        class="py-16 text-center text-muted-foreground flex flex-col items-center gap-3 border-2 border-dashed rounded-2xl"
-      >
-        <History class="w-12 h-12 opacity-25" />
-        <p class="font-semibold text-foreground">{{ t('history.empty') }}</p>
-        <p class="text-sm">{{ t('history.emptyHint') }}</p>
-      </div>
+        :icon="History"
+        :title="t('history.empty')"
+        :description="t('history.emptyHint')"
+      />
 
       <template v-else>
         <p class="text-xs text-muted-foreground px-1">

@@ -5,6 +5,7 @@ import { t } from '@/i18n/t'
 import { aggregateGenresFromTracks } from '@/lib/libraryAggregates'
 import { normalizeTracksResponse } from '@/lib/tracksApi'
 import { loadLibraryCache, saveLibraryCache, clearLibraryCache } from '@/lib/libraryCache'
+import { normalizeCatalogResponse } from '@/lib/catalogApi'
 
 export const useLibraryStore = defineStore('library', () => {
   const auth = useAuthStore()
@@ -102,6 +103,46 @@ export const useLibraryStore = defineStore('library', () => {
     return normalizeTracksResponse(body).items
   }
 
+  const fetchAlbumsPage = async ({ offset = 0, limit = 60, q } = {}) => {
+    const params = new URLSearchParams({
+      offset: String(offset),
+      limit: String(limit),
+    })
+    const trimmedQ = String(q ?? '').trim()
+    if (trimmedQ) params.set('q', trimmedQ)
+    const res = await auth.fetchWithAuth(`/api/albums?${params}`)
+    if (!res.ok) throw new Error(t('library.albumsFetchFailed'))
+    const body = await res.json()
+    return normalizeCatalogResponse(body)
+  }
+
+  const fetchArtistsPage = async ({ offset = 0, limit = 60, q } = {}) => {
+    const params = new URLSearchParams({
+      offset: String(offset),
+      limit: String(limit),
+    })
+    const trimmedQ = String(q ?? '').trim()
+    if (trimmedQ) params.set('q', trimmedQ)
+    const res = await auth.fetchWithAuth(`/api/artists?${params}`)
+    if (!res.ok) throw new Error(t('library.artistsFetchFailed'))
+    const body = await res.json()
+    return normalizeCatalogResponse(body)
+  }
+
+  const searchAlbums = async (query, limit = 12) => {
+    const trimmed = String(query ?? '').trim()
+    if (!trimmed) return []
+    const page = await fetchAlbumsPage({ offset: 0, limit, q: trimmed })
+    return page.items
+  }
+
+  const searchArtists = async (query, limit = 12) => {
+    const trimmed = String(query ?? '').trim()
+    if (!trimmed) return []
+    const page = await fetchArtistsPage({ offset: 0, limit, q: trimmed })
+    return page.items
+  }
+
   const createAlbum = async (name, year = null) => {
     const res = await auth.fetchWithAuth('/api/albums', {
       method: 'POST',
@@ -125,10 +166,8 @@ export const useLibraryStore = defineStore('library', () => {
     return res.json()
   }
 
-  const applyLibrarySnapshot = ({ revision, artists: nextArtists, albums: nextAlbums, trackCount, settings }) => {
+  const applyLibrarySnapshot = ({ revision, trackCount, settings }) => {
     if (revision) libraryRevision.value = revision
-    if (Array.isArray(nextArtists)) artists.value = nextArtists
-    if (Array.isArray(nextAlbums)) albums.value = nextAlbums
     tracks.value = []
     if (trackCount != null) tracksTotal.value = Number(trackCount) || 0
     if (settings) serverSettings.value = settings
@@ -137,12 +176,9 @@ export const useLibraryStore = defineStore('library', () => {
   const hydrateLibraryFromCache = (revisionData) => {
     const cached = loadLibraryCache()
     if (!cached || cached.revision !== revisionData.revision) return false
-    if (!Array.isArray(cached.artists) || !cached.artists.length) return false
 
     applyLibrarySnapshot({
       revision: revisionData.revision,
-      artists: cached.artists,
-      albums: cached.albums ?? [],
       trackCount: revisionData.trackCount ?? cached.trackCount,
       settings: cached.serverSettings,
     })
@@ -170,12 +206,11 @@ export const useLibraryStore = defineStore('library', () => {
       try {
         const revisionData = await fetchLibraryRevision()
         const revision = revisionData.revision
-        const sessionHasCatalog = artists.value.length > 0 || albums.value.length > 0
 
         if (
           !force &&
           libraryRevision.value === revision &&
-          sessionHasCatalog
+          libraryRevision.value != null
         ) {
           if (revisionData.trackCount != null) {
             tracksTotal.value = Number(revisionData.trackCount) || 0
@@ -185,56 +220,29 @@ export const useLibraryStore = defineStore('library', () => {
         }
 
         if (!force && hydrateLibraryFromCache(revisionData)) {
-          if (!serverSettings.value) {
-            try {
-              await fetchServerSettings()
-            } catch {
-              /* settings optional for catalog cache */
-            }
-          }
-          saveLibraryCache({
-            revision,
-            artists: artists.value,
-            albums: albums.value,
-            trackCount: tracksTotal.value,
-            serverSettings: serverSettings.value,
-          })
           syncStatusKey.value = 'library.syncDone'
           return
         }
 
-        const [artistRes, albumRes, settingsRes] = await Promise.all([
-          auth.fetchWithAuth('/api/artists'),
-          auth.fetchWithAuth('/api/albums'),
-          auth.fetchWithAuth('/api/settings'),
-        ])
-
-        if (!artistRes.ok) throw new Error(t('library.artistsFetchFailed'))
-        if (!albumRes.ok) throw new Error(t('library.albumsFetchFailed'))
-
-        const nextArtists = await artistRes.json()
-        const nextAlbums = await albumRes.json()
-        let nextSettings = null
-
-        if (settingsRes.ok) {
-          nextSettings = await settingsRes.json()
-        } else {
-          const meta = await fetchTracksPage({ offset: 0, limit: 1 })
-          revisionData.trackCount = meta.total
+        try {
+          await fetchServerSettings()
+        } catch {
+          try {
+            const meta = await fetchTracksPage({ offset: 0, limit: 1 })
+            revisionData.trackCount = meta.total
+          } catch {
+            /* ignore */
+          }
         }
 
         applyLibrarySnapshot({
           revision,
-          artists: nextArtists,
-          albums: nextAlbums,
-          trackCount: revisionData.trackCount,
-          settings: nextSettings,
+          trackCount: revisionData.trackCount ?? tracksTotal.value,
+          settings: serverSettings.value,
         })
 
         saveLibraryCache({
           revision,
-          artists: artists.value,
-          albums: albums.value,
           trackCount: tracksTotal.value,
           serverSettings: serverSettings.value,
         })
@@ -252,20 +260,21 @@ export const useLibraryStore = defineStore('library', () => {
     return fetchPromise
   }
 
-  /** 인메모리 캐시(목록 페이지·로컬 패치용). 전체 라이브러리는 자동 로드하지 않음 */
-  const getTracks = async () => {
-    if (artists.value.length === 0 && albums.value.length === 0) await fetchLibrary()
-    return tracks.value
+  /** @deprecated 페이지 API 사용 권장 */
+  const getTracks = async () => tracks.value
+
+  const getArtists = async ({ q, limit = 200 } = {}) => {
+    if (q) return searchArtists(q, limit)
+    const page = await fetchArtistsPage({ offset: 0, limit })
+    artists.value = page.items
+    return page.items
   }
 
-  const getArtists = async () => {
-    if (artists.value.length === 0) await fetchLibrary()
-    return artists.value
-  }
-
-  const getAlbums = async () => {
-    if (albums.value.length === 0) await fetchLibrary()
-    return albums.value
+  const getAlbums = async ({ q, limit = 200 } = {}) => {
+    if (q) return searchAlbums(q, limit)
+    const page = await fetchAlbumsPage({ offset: 0, limit })
+    albums.value = page.items
+    return page.items
   }
 
   const updateTrackRating = async (trackId, rating) => {
@@ -662,6 +671,10 @@ export const useLibraryStore = defineStore('library', () => {
     fetchServerSettings,
     clearLibrarySession,
     fetchTracksPage,
+    fetchAlbumsPage,
+    fetchArtistsPage,
+    searchAlbums,
+    searchArtists,
     fetchTracksByIds,
     searchTracks,
     createAlbum,

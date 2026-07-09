@@ -9,6 +9,7 @@ import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ChartRankRow from '@/components/charts/ChartRankRow.vue'
 import ChartArtistRankRow from '@/components/charts/ChartArtistRankRow.vue'
 import ChartPodium from '@/components/charts/ChartPodium.vue'
@@ -99,10 +100,7 @@ function playTrackAt(index) {
     <AuthEmptyState v-if="showAuthEmpty" :description="t('charts.authEmpty')" />
 
     <template v-else>
-      <div v-if="loading" class="py-16 flex flex-col items-center gap-3 text-muted-foreground">
-        <div class="w-9 h-9 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p class="text-sm">{{ t('charts.loading') }}</p>
-      </div>
+      <LoadingSpinner v-if="loading" size="lg" :label="t('charts.loading')" />
 
       <div
         v-else-if="error"

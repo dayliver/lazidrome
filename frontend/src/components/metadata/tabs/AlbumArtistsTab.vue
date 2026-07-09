@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { UserPlus, Trash2, User, Search, Users } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -21,25 +21,15 @@ const library = useLibraryStore()
 // 검색 및 자동완성 상태
 const searchQuery = ref('')
 const searchResults = ref([])
-const allArtists = ref([])
 const isFocused = ref(false)
 
-// 마운트 시 라이브러리 전체 아티스트 목록을 가져와 캐싱합니다.
-onMounted(async () => {
-  allArtists.value = await library.getArtists()
-})
-
-// 💡 아티스트 검색 로직
-const handleSearch = () => {
-  const query = searchQuery.value.trim().toLowerCase()
+const handleSearch = async () => {
+  const query = searchQuery.value.trim()
   if (!query) {
     searchResults.value = []
     return
   }
-  // 이름에 검색어가 포함된 아티스트 최대 5명 추출
-  searchResults.value = allArtists.value
-    .filter(a => a.name.toLowerCase().includes(query))
-    .slice(0, 5)
+  searchResults.value = await library.searchArtists(query, 5)
 }
 
 // 💡 아티스트 추가 로직 (기존 아티스트 객체 OR 신규 이름 문자열)

@@ -12,9 +12,12 @@ import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import { useAuthStore } from '@/stores/auth'
 import { formatTrackTime, parseRoles } from '@/lib/audio'
 
-import { Play, Edit, Disc, Users, ListMusic, Zap, FolderOpen, Heart, RefreshCw } from 'lucide-vue-next'
+import { Play, Edit, Disc, Users, ListMusic, Zap, FolderOpen, RefreshCw } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import FavoriteButton from '@/components/shared/FavoriteButton.vue'
+import StarRating from '@/components/shared/StarRating.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import DetailLayout from '@/components/layout/DetailLayout.vue'
 import AlbumGrid from '@/components/shared/AlbumGrid.vue'
 import ArtistListTable from '@/components/shared/ArtistListTable.vue'
@@ -41,16 +44,24 @@ const auth = useAuthStore()
 const { data, isLoading, reload } = useAsyncResource(
   () => route.params.id,
   async (id) => {
-    const [trackData, artistsData] = await Promise.all([
-      library.getTrackById(id),
-      library.getArtists(),
-    ])
-    return { track: trackData, allArtists: artistsData || [] }
-  }
+    const trackData = await library.getTrackById(id)
+    return { track: trackData }
+  },
 )
 
 const track = computed(() => data.value?.track ?? null)
-const allArtists = computed(() => data.value?.allArtists ?? [])
+
+const trackArtists = computed(() => {
+  if (!track.value?.artists?.length) return []
+  return track.value.artists.map((a) => ({
+    id: a.id,
+    name: a.name,
+    cover_type: a.cover_type ?? null,
+    trackCount: a.trackCount ?? 0,
+    topTags: [],
+    topTracks: [],
+  }))
+})
 
 useDocumentTitle(
   computed(() => {
@@ -90,12 +101,6 @@ const trackStats = computed(() => {
   ]
 })
 
-const trackArtists = computed(() => {
-  if (!track.value?.artists?.length || !allArtists.value.length) return []
-  const ids = new Set(track.value.artists.map((a) => a.id))
-  return allArtists.value.filter((a) => ids.has(a.id))
-})
-
 const trackAlbums = computed(() => {
   if (!track.value?.albums?.length) return []
   const artistLabel = track.value.artist || t('common.unknownArtist')
@@ -117,8 +122,6 @@ const fileDirPath = computed(() => {
   parts.pop()
   return parts.join('/')
 })
-
-const renderStars = (rating) => '★'.repeat(rating || 0) + '☆'.repeat(5 - (rating || 0))
 
 const playTrack = async () => {
   if (!track.value?.id) return
@@ -168,10 +171,7 @@ const onAudioReplaced = async () => {
 </script>
 
 <template>
-  <div v-if="isLoading" class="p-16 flex flex-col items-center gap-4 text-muted-foreground">
-    <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-    <p>{{ t('pages.details.trackLoading') }}</p>
-  </div>
+  <LoadingSpinner v-if="isLoading" :label="t('pages.details.trackLoading')" />
 
   <DetailLayout
     v-else-if="track"
@@ -185,35 +185,18 @@ const onAudioReplaced = async () => {
   >
     <template #actions>
       <div class="flex items-center gap-2">
-        <button
-          class="p-2 rounded-full hover:bg-muted transition-colors focus:outline-none"
-          @click="toggleStar"
-        >
-          <Heart
-            class="w-5 h-5"
-            :class="track.starred ? 'text-red-500 fill-current' : 'text-muted-foreground'"
-          />
-        </button>
+        <FavoriteButton :starred="!!track.starred" size="md" @toggle="toggleStar" />
         <Popover>
           <PopoverTrigger as-child>
             <button
-              class="px-3 py-2 rounded-full hover:bg-muted transition-colors focus:outline-none text-yellow-500 text-sm tracking-widest"
+              class="px-2 py-1.5 rounded-full hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              :aria-label="t('trackTable.rating')"
             >
-              {{ renderStars(track.rating) }}
+              <StarRating :rating="track.rating || 0" size="sm" />
             </button>
           </PopoverTrigger>
           <PopoverContent class="w-auto p-2" align="end">
-            <div class="flex gap-1">
-              <button
-                v-for="star in 5"
-                :key="star"
-                class="text-2xl hover:scale-125 transition-transform focus:outline-none"
-                :class="star <= (track.rating || 0) ? 'text-yellow-500' : 'text-muted'"
-                @click="updateRating(star)"
-              >
-                ★
-              </button>
-            </div>
+            <StarRating :rating="track.rating || 0" interactive size="lg" @change="updateRating" />
           </PopoverContent>
         </Popover>
         <Button variant="outline" size="sm" @click="handleEdit">

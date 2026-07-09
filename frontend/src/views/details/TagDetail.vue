@@ -21,6 +21,7 @@ import TrackListToolbar from '@/components/shared/TrackListToolbar.vue'
 import { Users, Disc, Music, Hash, Edit } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import TagEditDialog from '@/components/tags/TagEditDialog.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 const { t } = useI18n()
 
 const route = useRoute()
@@ -112,10 +113,7 @@ const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
 </script>
 
 <template>
-  <div v-if="isLoading" class="p-16 flex flex-col items-center gap-4 text-muted-foreground">
-    <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-    <p>{{ t('pages.details.tagLoading') }}</p>
-  </div>
+  <LoadingSpinner v-if="isLoading" :label="t('pages.details.tagLoading')" />
 
   <div v-else-if="loadError" class="p-16 text-center text-muted-foreground space-y-4 max-w-lg mx-auto">
     <Hash class="w-12 h-12 mx-auto opacity-30" />

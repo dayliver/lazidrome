@@ -52,6 +52,38 @@ export function initDB() {
   normalizeEmptyMbids();
   ensurePageVisitsTable();
   ensurePlayHistoryListenedSec();
+  ensurePerformanceIndexes();
+  ensureTrackFiledataMtime();
+}
+
+/** track_filedata.mtime_ms: 스캐너 변경 감지용 (기존 DB 마이그레이션) */
+function ensureTrackFiledataMtime() {
+  const cols = db.prepare('PRAGMA table_info(track_filedata)').all();
+  if (cols.some((c) => c.name === 'mtime_ms')) return;
+  try {
+    db.exec('ALTER TABLE track_filedata ADD COLUMN mtime_ms INTEGER');
+    console.log('📌 track_filedata.mtime_ms 컬럼 추가됨 (마이그레이션)');
+  } catch (err) {
+    console.error('❌ track_filedata.mtime_ms 마이그레이션 실패:', err.message);
+  }
+}
+
+/** 스캐너·통계·상세 조회 hot path 인덱스 (기존 DB 마이그레이션) */
+function ensurePerformanceIndexes() {
+  const statements = [
+    'CREATE INDEX IF NOT EXISTS idx_artists_name ON artists(name)',
+    'CREATE INDEX IF NOT EXISTS idx_albums_name ON albums(name)',
+    'CREATE INDEX IF NOT EXISTS idx_track_metadata_file ON track_metadata(file_id)',
+    'CREATE INDEX IF NOT EXISTS idx_history_track_time ON play_history(track_id, played_at)',
+    'CREATE INDEX IF NOT EXISTS idx_album_tracks_album ON album_tracks(album_id)',
+    'CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks(playlist_id, position)',
+    'CREATE INDEX IF NOT EXISTS idx_track_artists_artist ON track_artists(artist_id)',
+  ];
+  try {
+    for (const sql of statements) db.exec(sql);
+  } catch (err) {
+    console.error('❌ 성능 인덱스 마이그레이션 실패:', err.message);
+  }
 }
 
 /** play_history.listened_sec: 기존 행은 지수 추정 백필, 이후 신규 행은 실측값 저장 */
