@@ -87,12 +87,32 @@ export function updateAlbumCoverType(albumId, ext) {
 }
 
 export function findOrCreateArtist(artist) {
-  if (artist.id) return artist.id;
-  const existing = db.prepare('SELECT id FROM artists WHERE name = ?').get(artist.name);
+  const name = String(artist?.name ?? '').trim();
+  if (artist?.id) {
+    const byId = db.prepare('SELECT id FROM artists WHERE id = ?').get(artist.id);
+    if (byId) return byId.id;
+  }
+  if (!name) {
+    const err = new Error('Artist name is required');
+    err.statusCode = 400;
+    throw err;
+  }
+  const existing = db
+    .prepare('SELECT id FROM artists WHERE name = ? COLLATE NOCASE')
+    .get(name);
   if (existing) return existing.id;
   const id = ulid();
-  db.prepare('INSERT INTO artists (id, name) VALUES (?, ?)').run(id, artist.name);
-  return id;
+  try {
+    db.prepare('INSERT INTO artists (id, name) VALUES (?, ?)').run(id, name);
+    return id;
+  } catch (err) {
+    // UNIQUE 레이스: 다시 조회
+    const again = db
+      .prepare('SELECT id FROM artists WHERE name = ? COLLATE NOCASE')
+      .get(name);
+    if (again) return again.id;
+    throw err;
+  }
 }
 
 export function findAllAlbums() {

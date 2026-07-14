@@ -3,6 +3,7 @@
  *
  * - 트랙이 0인 앨범 → 앨범 행과 album_artists 링크, 디스크 커버 파일까지 제거
  * - 트랙·앨범 어디서도 참조되지 않는 아티스트 → 아티스트 행과 커버 파일 제거
+ * - 동일 이름(대소문자 무시) 아티스트 중복 → 하나로 병합
  *
  * 스캐너의 파일 unlink, 사용자가 일괄 정리 실행 시 모두 동일 로직을 사용한다.
  */
@@ -11,6 +12,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { getDB } from '../db.js';
 import { pruneOrphanVisits } from '../repositories/pageVisitsRepository.js';
+import { mergeDuplicateArtistsByName } from './artistDedup.js';
+
+export { mergeDuplicateArtistsByName } from './artistDedup.js';
 
 const IMAGES_PATH = process.env.IMAGES_PATH || './storage/images';
 
@@ -104,11 +108,13 @@ export function countOrphanArtists() {
 }
 
 /**
- * 트랙이 사라진 뒤 호출. 빈 앨범·고아 아티스트를 한번에 정리한다.
- * @returns {{ albumsRemoved: number, artistsRemoved: number }}
+ * 트랙이 사라진 뒤 호출. 빈 앨범·고아 아티스트·이름 중복을 정리한다.
+ * @returns {{ albumsRemoved: number, artistsRemoved: number, artistsMerged: number }}
  */
 export function cleanupOrphans() {
   const db = getDB();
+
+  const artistsMerged = mergeDuplicateArtistsByName();
 
   const emptyAlbums = findEmptyAlbums(10000);
   for (const row of emptyAlbums) {
@@ -116,7 +122,6 @@ export function cleanupOrphans() {
   }
   const albumIds = emptyAlbums.map((r) => r.id);
 
-  // 두 단계를 한 트랜잭션으로 묶어 일관성 유지 (FK CASCADE가 album_artists/album_tracks 제거).
   const tx = db.transaction(() => {
     if (albumIds.length) {
       const placeholders = albumIds.map(() => '?').join(',');
@@ -141,5 +146,5 @@ export function cleanupOrphans() {
   } catch (err) {
     console.error('❌ orphan visit 정리 중 오류:', err?.message || err);
   }
-  return result;
+  return { ...result, artistsMerged };
 }

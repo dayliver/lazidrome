@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { mergeDuplicateArtistsByName } from './lib/artistDedup.js';
 
 // ES Module에서 __dirname 사용을 위한 설정
 const __filename = fileURLToPath(import.meta.url);
@@ -54,6 +55,7 @@ export function initDB() {
   ensurePlayHistoryListenedSec();
   ensurePerformanceIndexes();
   ensureTrackFiledataMtime();
+  ensureUniqueArtistNames();
 }
 
 /** track_filedata.mtime_ms: 스캐너 변경 감지용 (기존 DB 마이그레이션) */
@@ -83,6 +85,19 @@ function ensurePerformanceIndexes() {
     for (const sql of statements) db.exec(sql);
   } catch (err) {
     console.error('❌ 성능 인덱스 마이그레이션 실패:', err.message);
+  }
+}
+
+/** 동일 이름 아티스트 병합 후 UNIQUE(name COLLATE NOCASE) — 0트랙 고스트 아티스트 재발 방지 */
+function ensureUniqueArtistNames() {
+  try {
+    const merged = mergeDuplicateArtistsByName();
+    if (merged) console.log(`📌 중복 아티스트 병합: ${merged}건 제거`);
+    db.exec(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_artists_name_unique ON artists(name COLLATE NOCASE)',
+    );
+  } catch (err) {
+    console.error('❌ 아티스트 이름 UNIQUE 마이그레이션 실패:', err.message);
   }
 }
 

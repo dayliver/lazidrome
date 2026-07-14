@@ -114,6 +114,14 @@ export function updateArtistMeta(id, { name, tags, mbid }) {
   if (name !== undefined) {
     const trimmed = String(name).trim();
     if (trimmed) {
+      const clash = db
+        .prepare('SELECT id FROM artists WHERE name = ? COLLATE NOCASE AND id != ?')
+        .get(trimmed, id);
+      if (clash) {
+        const err = new Error('An artist with this name already exists');
+        err.statusCode = 409;
+        throw err;
+      }
       fields.push('name = ?');
       values.push(trimmed);
     }

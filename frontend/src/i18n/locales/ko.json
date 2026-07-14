@@ -36,7 +36,7 @@
     "cleanup": "{count}개 정리하기",
     "cleanupHint": "트랙이 0인 앨범과 어디에도 연결되지 않은 아티스트만 삭제합니다. 트랙·파일은 보존됩니다.",
     "cleanupConfirm": "{count}개의 빈 앨범·고아 아티스트를 삭제할까요? 되돌릴 수 없습니다.",
-    "cleanupDone": "정리 완료 · 앨범 {albums}개, 아티스트 {artists}개 삭제",
+    "cleanupDone": "정리 완료 · 앨범 {albums}개, 아티스트 {artists}개 삭제 · 이름 중복 {merged}건 병합",
     "cleanupFailed": "정리 작업에 실패했습니다.",
     "truncated": "최근 {shown}개 표시 / 총 {total}개",
     "emptyAlbums": {

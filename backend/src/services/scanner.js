@@ -144,15 +144,27 @@ export function startScanner(watchPath) {
         }
 
         const getOrCreateArtistIds = (names) => {
-          return names.map((name) => {
-            let artist = db.prepare('SELECT id FROM artists WHERE name = ?').get(name);
+          return names.map((rawName) => {
+            const name = String(rawName || '').trim();
+            if (!name) return null;
+            let artist = db
+              .prepare('SELECT id FROM artists WHERE name = ? COLLATE NOCASE')
+              .get(name);
             if (!artist) {
               const newId = ulid();
-              db.prepare('INSERT INTO artists (id, name) VALUES (?, ?)').run(newId, name);
-              return newId;
+              try {
+                db.prepare('INSERT INTO artists (id, name) VALUES (?, ?)').run(newId, name);
+                return newId;
+              } catch {
+                artist = db
+                  .prepare('SELECT id FROM artists WHERE name = ? COLLATE NOCASE')
+                  .get(name);
+                if (artist) return artist.id;
+                throw new Error(`Failed to create artist: ${name}`);
+              }
             }
             return artist.id;
-          });
+          }).filter(Boolean);
         };
 
         const albumArtistIds = getOrCreateArtistIds(albumNamesForAlbum);
@@ -356,10 +368,11 @@ export function startScanner(watchPath) {
         if (!row) return;
         db.prepare('DELETE FROM track_filedata WHERE id = ?').run(row.id);
         try {
-          const { albumsRemoved, artistsRemoved } = cleanupOrphans();
-          if (albumsRemoved || artistsRemoved) {
+          const { albumsRemoved, artistsRemoved, artistsMerged } = cleanupOrphans();
+          if (albumsRemoved || artistsRemoved || artistsMerged) {
             console.log(
-              `🧹 [Scanner] orphan 정리: 앨범 ${albumsRemoved}개 · 아티스트 ${artistsRemoved}개 제거`,
+              `🧹 [Scanner] orphan 정리: 앨범 ${albumsRemoved}개 · 아티스트 ${artistsRemoved}개 제거` +
+                (artistsMerged ? ` · 이름 중복 ${artistsMerged}건 병합` : ''),
             );
           }
         } catch (cleanupErr) {

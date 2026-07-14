@@ -52,6 +52,7 @@ const runCleanup = async () => {
       t('admin.cleanupDone', {
         albums: body.albumsRemoved ?? 0,
         artists: body.artistsRemoved ?? 0,
+        merged: body.artistsMerged ?? 0,
       }),
     )
     await fetchOrphans()

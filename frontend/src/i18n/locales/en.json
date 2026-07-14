@@ -36,7 +36,7 @@
     "cleanup": "Clean up {count}",
     "cleanupHint": "Only albums with zero tracks and artists with no links are removed. Tracks and audio files stay intact.",
     "cleanupConfirm": "Delete {count} empty albums / orphan artists? This cannot be undone.",
-    "cleanupDone": "Done — removed {albums} albums and {artists} artists.",
+    "cleanupDone": "Done — removed {albums} albums and {artists} artists; merged {merged} duplicate names.",
     "cleanupFailed": "Cleanup failed.",
     "truncated": "Showing {shown} of {total}",
     "emptyAlbums": {

@@ -155,6 +155,7 @@ CREATE INDEX idx_playlist_track_lookup ON playlist_tracks(track_id);
 CREATE INDEX idx_page_visits_time ON page_visits(visited_at);
 CREATE INDEX idx_page_visits_entity ON page_visits(entity_type, entity_id, visited_at);
 CREATE INDEX idx_artists_name ON artists(name);
+CREATE UNIQUE INDEX idx_artists_name_unique ON artists(name COLLATE NOCASE);
 CREATE INDEX idx_albums_name ON albums(name);
 CREATE INDEX idx_track_metadata_file ON track_metadata(file_id);
 CREATE INDEX idx_history_track_time ON play_history(track_id, played_at);
