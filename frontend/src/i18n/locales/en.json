@@ -34,8 +34,8 @@
     "fetchFailed": "Could not load the library state.",
     "refresh": "Refresh",
     "cleanup": "Clean up {count}",
-    "cleanupHint": "Only albums with zero tracks and artists with no links are removed. Tracks and audio files stay intact.",
-    "cleanupConfirm": "Delete {count} empty albums / orphan artists? This cannot be undone.",
+    "cleanupHint": "Removes albums with zero tracks and artists with no tracks (including album-only credits). Audio files are kept.",
+    "cleanupConfirm": "Delete {count} empty albums / trackless artists? This cannot be undone.",
     "cleanupDone": "Done — removed {albums} albums and {artists} artists; merged {merged} duplicate names.",
     "cleanupFailed": "Cleanup failed.",
     "truncated": "Showing {shown} of {total}",
@@ -45,9 +45,10 @@
       "count": "album(s)"
     },
     "orphanArtists": {
-      "title": "Unreferenced artists",
-      "description": "Artist rows that no track or album refers to anymore.",
-      "count": "artist(s)"
+      "title": "Artists without tracks",
+      "description": "Artists not linked to any track — including those that remain only on albums.",
+      "count": "artist(s)",
+      "albumOnly": "{count} album(s)"
     }
   },
   "files": {

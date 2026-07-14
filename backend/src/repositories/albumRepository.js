@@ -243,7 +243,17 @@ export function findAlbumForEnrich(id) {
     SELECT ar.id, ar.name FROM album_artists aa JOIN artists ar ON aa.artist_id = ar.id WHERE aa.album_id = ?
   `).all(id);
 
-  return { ...album, tracks, albumArtists };
+  return { ...album, tracks, albumArtists, trackCount: tracks.length };
+}
+
+export function countAlbumTracks(id) {
+  return Number(
+    db.prepare('SELECT COUNT(*) AS c FROM album_tracks WHERE album_id = ?').get(id)?.c,
+  ) || 0;
+}
+
+export function deleteAlbumById(id) {
+  return db.prepare('DELETE FROM albums WHERE id = ?').run(id);
 }
 
 export function updateAlbumMeta(id, { title, year, mbid, tags, description }) {

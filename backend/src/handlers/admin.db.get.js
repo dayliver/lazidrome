@@ -8,7 +8,7 @@ import {
 /**
  * GET /api/admin/db/orphans
  *
- * 트랙이 0인 앨범, 트랙·앨범 어디에도 안 묶인 고아 아티스트를 한 페이지에 묶어 반환.
+ * 트랙이 0인 앨범, 트랙이 없는 아티스트(앨범에만 묶인 경우 포함)를 한 페이지에 묶어 반환.
  * 현재는 한 사용자(관리자) 전용이므로 단순한 평면 응답으로 두었다.
  */
 export async function getAdminDbOrphansHandler(_request, _reply) {
@@ -31,6 +31,7 @@ export async function getAdminDbOrphansHandler(_request, _reply) {
         id: row.id,
         name: row.name,
         coverType: row.cover_type ?? null,
+        albumCount: Number(row.album_count) || 0,
       })),
     },
   };

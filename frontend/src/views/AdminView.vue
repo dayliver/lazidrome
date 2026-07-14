@@ -156,6 +156,12 @@ onMounted(() => {
                 class="px-3 py-2 flex items-center gap-3"
               >
                 <span class="flex-1 font-medium truncate" :title="row.name">{{ row.name }}</span>
+                <span
+                  v-if="row.albumCount > 0"
+                  class="text-xs text-muted-foreground shrink-0"
+                >
+                  {{ t('admin.orphanArtists.albumOnly', { count: row.albumCount }) }}
+                </span>
                 <span class="text-[10px] text-muted-foreground font-mono opacity-60">{{ row.id }}</span>
               </div>
             </div>

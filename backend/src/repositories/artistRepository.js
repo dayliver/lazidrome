@@ -2,17 +2,56 @@ import { getDB } from '../db.js';
 
 const db = getDB();
 
-export function findAllArtists() {
-  return db
-    .prepare(`
+/** @typedef {'listenDesc'|'tracksDesc'|'nameAsc'|'addedAsc'|'addedDesc'} ArtistSort */
+
+const ARTIST_SORTS = new Set(['listenDesc', 'tracksDesc', 'nameAsc', 'addedAsc', 'addedDesc']);
+
+export function parseArtistSort(raw) {
+  const s = String(raw || '').trim();
+  return ARTIST_SORTS.has(s) ? s : 'listenDesc';
+}
+
+function artistOrderSql(sort) {
+  switch (sort) {
+    case 'tracksDesc':
+      return 'trackCount DESC, a.name COLLATE NOCASE ASC';
+    case 'nameAsc':
+      return 'a.name COLLATE NOCASE ASC';
+    case 'addedAsc':
+      return 'a.id ASC';
+    case 'addedDesc':
+      return 'a.id DESC';
+    case 'listenDesc':
+    default:
+      return 'listenSec DESC, trackCount DESC, a.name COLLATE NOCASE ASC';
+  }
+}
+
+const ARTIST_LIST_SELECT = `
     SELECT a.id, a.name, a.cover_type, a.tags,
       COUNT(DISTINCT ta.track_id) as trackCount,
-      ROUND(AVG(NULLIF(t.rating, 0)), 1) as avgRating
+      ROUND(AVG(NULLIF(t.rating, 0)), 1) as avgRating,
+      COALESCE((
+        SELECT SUM(COALESCE(h.listened_sec, 0))
+        FROM track_artists tax
+        JOIN play_history h ON h.track_id = tax.track_id
+        WHERE tax.artist_id = a.id
+      ), 0) as listenSec
+`;
+
+const ARTIST_LIST_FROM = `
     FROM artists a
     LEFT JOIN track_artists ta ON a.id = ta.artist_id
     LEFT JOIN track_metadata t ON ta.track_id = t.id
+`;
+
+export function findAllArtists() {
+  return db
+    .prepare(`
+    ${ARTIST_LIST_SELECT}
+    ${ARTIST_LIST_FROM}
     GROUP BY a.id
-    ORDER BY a.name COLLATE NOCASE ASC
+    ORDER BY ${artistOrderSql('listenDesc')}
   `)
     .all();
 }
@@ -31,19 +70,16 @@ export function countArtists({ q } = {}) {
   return Number(row?.n) || 0;
 }
 
-export function findArtistsPage(offset, limit, { q } = {}) {
+export function findArtistsPage(offset, limit, { q, sort } = {}) {
   const search = artistSearchClause(q);
+  const order = artistOrderSql(parseArtistSort(sort));
   return db
     .prepare(`
-    SELECT a.id, a.name, a.cover_type, a.tags,
-      COUNT(DISTINCT ta.track_id) as trackCount,
-      ROUND(AVG(NULLIF(t.rating, 0)), 1) as avgRating
-    FROM artists a
-    LEFT JOIN track_artists ta ON a.id = ta.artist_id
-    LEFT JOIN track_metadata t ON ta.track_id = t.id
+    ${ARTIST_LIST_SELECT}
+    ${ARTIST_LIST_FROM}
     ${search.sql}
     GROUP BY a.id
-    ORDER BY a.name COLLATE NOCASE ASC
+    ORDER BY ${order}
     LIMIT ? OFFSET ?
   `)
     .all(...search.params, limit, offset);
@@ -100,7 +136,17 @@ export function findArtistTracks(id) {
 }
 
 export function findArtistForEnrich(id) {
-  return db.prepare('SELECT id, name, tags, mbid FROM artists WHERE id = ?').get(id);
+  return db.prepare('SELECT id, name, tags, mbid, cover_type FROM artists WHERE id = ?').get(id);
+}
+
+export function countArtistTracks(id) {
+  return Number(
+    db.prepare('SELECT COUNT(*) AS c FROM track_artists WHERE artist_id = ?').get(id)?.c,
+  ) || 0;
+}
+
+export function deleteArtistById(id) {
+  return db.prepare('DELETE FROM artists WHERE id = ?').run(id);
 }
 
 export function findArtistBio(id, lang = 'en') {

@@ -62,10 +62,19 @@ const {
   toggleStarredFilter: toggleTrackStarredFilter,
   setMinRating: setTrackMinRating,
   resetFilters: resetTrackFilters,
+  hasActiveFilters: hasActiveTrackFilters,
 } = useScopedTracksPageQuery(artistScope, { presetKey: 'artist' })
 
 const showTracksSection = computed(
-  () => Boolean(artist.value && (trackTotal.value > 0 || tracksLoading.value || artist.value.tracks?.length)),
+  () =>
+    Boolean(
+      artist.value &&
+        (trackTotal.value > 0 ||
+          tracksLoading.value ||
+          artist.value.tracks?.length ||
+          (artist.value.trackCount ?? 0) > 0 ||
+          hasActiveTrackFilters.value),
+    ),
 )
 
 const imageUrl = useCoverUrl('artist', () => artist.value?.id)
@@ -176,9 +185,15 @@ const handleEdit = async () => {
       />
       <div
         v-else-if="!tracksLoading"
-        class="py-12 text-center text-sm font-medium text-muted-foreground border rounded-xl"
+        class="py-12 text-center space-y-3 border rounded-xl"
       >
-        {{ t('trackList.noResults') }}
+        <p class="text-sm font-medium text-muted-foreground">{{ t('trackList.noResults') }}</p>
+        <template v-if="hasActiveTrackFilters">
+          <p class="text-xs text-muted-foreground px-4">{{ t('trackList.filteredEmptyHint') }}</p>
+          <Button variant="outline" class="rounded-full" @click="resetTrackFilters">
+            {{ t('trackList.resetFilters') }}
+          </Button>
+        </template>
       </div>
       <div v-if="tracksHasMore" class="flex justify-center pt-2">
         <Button variant="outline" class="rounded-full" :disabled="tracksLoadMore" @click="loadMoreTracks">

@@ -27,7 +27,15 @@
       "loading": "Loading artists…",
       "empty": "No artists to show.",
       "coverAlt": "{name} profile",
-      "cardNoTags": "No tags"
+      "cardNoTags": "No tags",
+      "sortLabel": "Sort",
+      "sort": {
+        "listenDesc": "Most listened",
+        "tracksDesc": "Most tracks",
+        "nameAsc": "Name (A–Z)",
+        "addedDesc": "Recently added",
+        "addedAsc": "Oldest first"
+      }
     },
     "albums": {
       "title": "Albums",
@@ -110,7 +118,6 @@
       "backToPlaylists": "Back to playlists",
       "playlistManual": "Manual playlist",
       "playlistSmartMix": "Smart mix",
-      "playlistEditSoon": "Playlist edit dialog coming soon.",
       "statType": "Type",
       "playlistTypeManual": "Playlist 🎵",
       "playlistTypeMix": "Smart mix ⚡",

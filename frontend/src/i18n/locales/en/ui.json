@@ -95,6 +95,7 @@
     },
     "resetFilters": "Clear filters",
     "noResults": "No tracks match your filters.",
+    "filteredEmptyHint": "Favorites, rating, or search filters may be hiding tracks.",
     "playlistOrderLocked": "Drag reorder is available only in playlist order."
   },
   "albumGrid": {
@@ -259,6 +260,15 @@
     "playlistTracksEmptyTitle": "No tracks yet",
     "playlistTracksEmpty": "Search above to fill this playlist.",
     "saveFailed": "Failed to save metadata.",
+    "delete": "Delete",
+    "deleteConfirmArtist": "Delete artist “{name}”? This also removes album-only credits.",
+    "deleteConfirmArtistWithTracks": "Artist “{name}” is linked to {count} track(s).\nDeleting removes this artist’s credits from those tracks and albums. Track files stay.\nContinue?",
+    "deleteConfirmArtistFinal": "This cannot be undone. Delete “{name}” and unlink {count} track(s)?",
+    "deleteConfirmAlbum": "Delete album “{name}”?",
+    "cannotDeleteHasTracks": "Cannot delete — {count} track(s) are still linked. Move or remove them first.",
+    "deleteFailed": "Could not delete.",
+    "deleted": "Deleted.",
+    "deletedArtistWithTracks": "Artist deleted and unlinked from {count} track(s).",
     "imageTooLarge": "Image is too large",
     "serverError": "Server communication failed",
     "albumArtistNone": "No album artists specified. Search above to add.",

@@ -122,13 +122,14 @@ export const useLibraryStore = defineStore('library', () => {
     return normalizeCatalogResponse(body)
   }
 
-  const fetchArtistsPage = async ({ offset = 0, limit = 60, q } = {}) => {
+  const fetchArtistsPage = async ({ offset = 0, limit = 60, q, sort } = {}) => {
     const params = new URLSearchParams({
       offset: String(offset),
       limit: String(limit),
     })
     const trimmedQ = String(q ?? '').trim()
     if (trimmedQ) params.set('q', trimmedQ)
+    if (sort) params.set('sort', String(sort))
     const res = await auth.fetchWithAuth(`/api/artists?${params}`)
     if (!res.ok) throw new Error(t('library.artistsFetchFailed'))
     const body = await res.json()

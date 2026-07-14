@@ -176,9 +176,44 @@ export const useMetadataEditStore = defineStore('metadataEdit', () => {
     }
   }
 
+  /**
+   * 앨범/아티스트 삭제.
+   * - 앨범: 곡이 있으면 { ok:false, reason:'HAS_TRACKS', trackCount }
+   * - 아티스트: 곡 크레딧 unlink 후 삭제 가능. data에 unlinkedTracks 등 포함.
+   * @returns {Promise<{ ok: boolean, reason?: string, trackCount?: number, data?: object }>}
+   */
+  const deleteEntity = async (item) => {
+    if (!item?.id || (item.type !== 'album' && item.type !== 'artist')) {
+      return { ok: false, reason: 'UNSUPPORTED' }
+    }
+    if (item.type === 'album') {
+      const localCount = Number(item.local?.trackCount)
+      if (Number.isFinite(localCount) && localCount > 0) {
+        return { ok: false, reason: 'HAS_TRACKS', trackCount: localCount }
+      }
+    }
+    isFetching.value = true
+    try {
+      const res = await auth.fetchWithAuth(`/api/${item.type}s/${item.id}`, { method: 'DELETE' })
+      const body = await res.json().catch(() => ({}))
+      if (res.status === 409 || body?.error === 'HAS_TRACKS') {
+        return { ok: false, reason: 'HAS_TRACKS', trackCount: Number(body?.trackCount) || 0 }
+      }
+      if (!res.ok || !body?.success) {
+        return { ok: false, reason: 'FAILED' }
+      }
+      return { ok: true, data: body?.data }
+    } catch (err) {
+      console.error('삭제 실패:', err)
+      return { ok: false, reason: 'FAILED' }
+    } finally {
+      isFetching.value = false
+    }
+  }
+
   return {
     reviewQueue, isFetching, hasItemsInQueue, currentItem,
     fetchPreview, shiftQueue, clearQueue, applyFromExternal, reFetchPreview,
-    updateMetadata, saveMetadata
+    updateMetadata, saveMetadata, deleteEntity,
   }
 })

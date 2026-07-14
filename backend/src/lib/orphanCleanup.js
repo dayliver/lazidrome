@@ -2,7 +2,7 @@
  * 라이브러리 정리(고아 레코드 제거).
  *
  * - 트랙이 0인 앨범 → 앨범 행과 album_artists 링크, 디스크 커버 파일까지 제거
- * - 트랙·앨범 어디서도 참조되지 않는 아티스트 → 아티스트 행과 커버 파일 제거
+ * - 트랙이 0인 아티스트(앨범에만 묶인 경우 포함) → 아티스트 행과 커버 파일 제거
  * - 동일 이름(대소문자 무시) 아티스트 중복 → 하나로 병합
  *
  * 스캐너의 파일 unlink, 사용자가 일괄 정리 실행 시 모두 동일 로직을 사용한다.
@@ -60,18 +60,19 @@ export function findEmptyAlbums(limit = 500) {
     .all(limit);
 }
 
-/** 트랙·앨범 어디에도 등장하지 않는 아티스트. */
+/** 트랙이 0인 아티스트 (앨범에만 묶인 경우 포함). */
 export function findOrphanArtists(limit = 500) {
   const db = getDB();
   return db
     .prepare(
       `
-      SELECT ar.id, ar.name, ar.cover_type
+      SELECT ar.id, ar.name, ar.cover_type,
+        (SELECT COUNT(*) FROM album_artists aa WHERE aa.artist_id = ar.id) AS album_count
       FROM artists ar
-      LEFT JOIN album_artists aa ON aa.artist_id = ar.id
-      LEFT JOIN track_artists ta ON ta.artist_id = ar.id
-      WHERE aa.album_id IS NULL AND ta.track_id IS NULL
-      ORDER BY ar.name ASC
+      WHERE NOT EXISTS (
+        SELECT 1 FROM track_artists ta WHERE ta.artist_id = ar.id
+      )
+      ORDER BY album_count DESC, ar.name ASC
       LIMIT ?
     `,
     )
@@ -99,9 +100,9 @@ export function countOrphanArtists() {
       `
       SELECT COUNT(*) as c
       FROM artists ar
-      LEFT JOIN album_artists aa ON aa.artist_id = ar.id
-      LEFT JOIN track_artists ta ON ta.artist_id = ar.id
-      WHERE aa.album_id IS NULL AND ta.track_id IS NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM track_artists ta WHERE ta.artist_id = ar.id
+      )
     `,
     )
     .get().c;

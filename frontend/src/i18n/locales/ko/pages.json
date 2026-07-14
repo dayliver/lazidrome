@@ -27,7 +27,15 @@
       "loading": "아티스트 목록을 불러오는 중…",
       "empty": "표시할 아티스트가 없습니다.",
       "coverAlt": "{name} 프로필",
-      "cardNoTags": "태그 없음"
+      "cardNoTags": "태그 없음",
+      "sortLabel": "정렬",
+      "sort": {
+        "listenDesc": "청취 시간 많은 순",
+        "tracksDesc": "곡 많은 순",
+        "nameAsc": "이름 (가나다)",
+        "addedDesc": "추가 늦은 순",
+        "addedAsc": "추가 이른 순"
+      }
     },
     "albums": {
       "title": "앨범",
@@ -110,7 +118,6 @@
       "backToPlaylists": "목록으로 돌아가기",
       "playlistManual": "수동 재생목록",
       "playlistSmartMix": "스마트 믹스",
-      "playlistEditSoon": "재생목록 편집 다이얼로그는 곧 지원됩니다.",
       "statType": "유형",
       "playlistTypeManual": "재생목록 🎵",
       "playlistTypeMix": "스마트 믹스 ⚡",

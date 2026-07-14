@@ -11,7 +11,6 @@ import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useCoverUrl } from '@/composables/useCoverUrl'
 import { usePlaylistStore } from '@/stores/playlist'
 import { usePlayerStore } from '@/stores/player'
-import { toast } from 'vue-sonner'
 
 import { useDurationLabel } from '@/composables/useDurationLabel'
 
@@ -21,6 +20,7 @@ import DetailLayout from '@/components/layout/DetailLayout.vue'
 import TrackListTable from '@/components/shared/TrackListTable.vue'
 import TrackListToolbar from '@/components/shared/TrackListToolbar.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import PlaylistDialog from '@/components/playlist/PlaylistDialog.vue'
 
 const { t } = useI18n()
 const durationLabel = useDurationLabel()
@@ -33,6 +33,7 @@ const player = usePlayerStore()
 const isRefreshing = ref(false)
 const forceFreshNextMix = ref(false)
 const effectiveTracks = ref([])
+const isEditOpen = ref(false)
 
 const { data: playlist, isLoading, reload: reloadPlaylist } = useAsyncResource(
   () => route.params.id,
@@ -144,7 +145,13 @@ const refreshMix = async () => {
 }
 
 const handleEdit = () => {
-  toast.info(t('pages.details.playlistEditSoon'))
+  if (!playlist.value) return
+  isEditOpen.value = true
+}
+
+const onEditSuccess = async () => {
+  forceFreshNextMix.value = playlist.value?.type === 'mix'
+  await reloadPlaylist()
 }
 </script>
 
@@ -250,4 +257,9 @@ const handleEdit = () => {
     <Button variant="outline" class="mt-2" @click="router.push('/playlists')">{{ t('pages.details.backToPlaylists') }}</Button>
   </div>
 
+  <PlaylistDialog
+    v-model:is-open="isEditOpen"
+    :edit-target="playlist"
+    @success="onEditSuccess"
+  />
 </template>

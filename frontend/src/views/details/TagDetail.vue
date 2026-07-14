@@ -83,10 +83,15 @@ const {
   toggleStarredFilter: toggleTrackStarredFilter,
   setMinRating: setTrackMinRating,
   resetFilters: resetTrackFilters,
+  hasActiveFilters: hasActiveTrackFilters,
 } = useScopedTracksPageQuery(tagScope, { presetKey: 'tag' })
 
 const showTracksSection = computed(
-  () => trackTotal.value > 0 || tracksLoading.value || detailTrackCount.value > 0,
+  () =>
+    trackTotal.value > 0 ||
+    tracksLoading.value ||
+    detailTrackCount.value > 0 ||
+    hasActiveTrackFilters.value,
 )
 
 const editOpen = ref(false)
@@ -188,9 +193,15 @@ const onEditSuccess = ({ renamed, newName, imageUpdated }) => {
         <TrackListTable v-else-if="displayTracks.length" :tracks="displayTracks" />
         <div
           v-else-if="!tracksLoading"
-          class="py-12 text-center text-sm font-medium text-muted-foreground"
+          class="py-12 text-center space-y-3"
         >
-          {{ t('trackList.noResults') }}
+          <p class="text-sm font-medium text-muted-foreground">{{ t('trackList.noResults') }}</p>
+          <template v-if="hasActiveTrackFilters">
+            <p class="text-xs text-muted-foreground px-4">{{ t('trackList.filteredEmptyHint') }}</p>
+            <Button variant="outline" class="rounded-full" @click="resetTrackFilters">
+              {{ t('trackList.resetFilters') }}
+            </Button>
+          </template>
         </div>
       </div>
       <div v-if="tracksHasMore" class="flex justify-center pt-2">

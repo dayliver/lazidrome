@@ -129,8 +129,16 @@
 - PWA `globIgnores: ['**/hls*.js']` — precache에서 제외
 - 문서: [MOBILE-BACKGROUND-PLAYBACK.md](./MOBILE-BACKGROUND-PLAYBACK.md)
 
+## 11. 0.7.4 — 아티스트/앨범 삭제 · 라이브러리 정리 UX
+
+- `DELETE /api/artists/:id` — 곡·앨범 크레딧 unlink 후 아티스트 삭제 (이중 확인 UI)
+- `DELETE /api/albums/:id` — 수록곡 0일 때만
+- 고아 아티스트 = `track_artists` 없음 · `/artists` 정렬
+- 상세 스코프 트랙 목록: 필터로 0건이면 자동 해제 + 빈 목록 안내
+- 재생목록 상세 Edit → `PlaylistDialog`
+
 ## 남은 우선 과제
 
-- **0.7.4+:** B9+, F7–F8, F10 · stats 타임존 (/stats)
+- **0.7.5+:** B9+, F7–F8, F10 · stats 타임존 (/stats)
 - 모바일 HLS Phase C(트랜스코드 등)는 선택·보장 없음 — 문서 참고
 - B9~B25, F7–F10 백로그 — [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)

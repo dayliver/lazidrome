@@ -3,6 +3,7 @@ import {
   findAllArtists,
   findArtistsPage,
   findTopTracksForArtistIds,
+  parseArtistSort,
 } from '../repositories/artistRepository.js';
 import { parsePageQuery, parseSearchQuery } from '../lib/pageQuery.js';
 
@@ -27,6 +28,7 @@ function attachTopTracks(artists, topTracksData) {
     name: artist.name,
     cover_type: artist.cover_type,
     trackCount: artist.trackCount,
+    listenSec: Number(artist.listenSec) || 0,
     avgRating: artist.avgRating || 0,
     topTags: parseArtistTags(artist),
     topTracks: topTracksMap[artist.id] || [],
@@ -37,11 +39,12 @@ export async function getArtistsHandler(request, reply) {
   try {
     const page = parsePageQuery(request.query ?? {});
     const q = parseSearchQuery(request.query ?? {});
+    const sort = parseArtistSort(request.query?.sort);
 
     if (page) {
       const { offset, limit } = page;
       const total = countArtists({ q });
-      const rows = findArtistsPage(offset, limit, { q });
+      const rows = findArtistsPage(offset, limit, { q, sort });
       const artistIds = rows.map((a) => a.id);
       const topTracksData = findTopTracksForArtistIds(artistIds);
       const items = attachTopTracks(rows, topTracksData);
@@ -50,6 +53,7 @@ export async function getArtistsHandler(request, reply) {
         total,
         offset,
         limit,
+        sort,
         hasMore: offset + items.length < total,
       };
     }

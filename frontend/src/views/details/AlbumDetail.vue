@@ -81,10 +81,19 @@ const {
   toggleStarredFilter: toggleTrackStarredFilter,
   setMinRating: setTrackMinRating,
   resetFilters: resetTrackFilters,
+  hasActiveFilters: hasActiveTrackFilters,
 } = useScopedTracksPageQuery(albumScope, { presetKey: 'album' })
 
 const showTracksSection = computed(
-  () => Boolean(album.value && (trackTotal.value > 0 || tracksLoading.value || album.value.tracks?.length)),
+  () =>
+    Boolean(
+      album.value &&
+        (trackTotal.value > 0 ||
+          tracksLoading.value ||
+          album.value.tracks?.length ||
+          (album.value.trackCount ?? 0) > 0 ||
+          hasActiveTrackFilters.value),
+    ),
 )
 
 /** AlbumGrid와 동일: `cover_type`이 있을 때만 이미지 URL 부여 (불필요한 404·@error 방지) */
@@ -184,9 +193,15 @@ const handleEdit = async () => {
         />
         <div
           v-else-if="!tracksLoading"
-          class="py-12 text-center text-sm font-medium text-muted-foreground border-t"
+          class="py-12 text-center space-y-3 border-t"
         >
-          {{ t('trackList.noResults') }}
+          <p class="text-sm font-medium text-muted-foreground">{{ t('trackList.noResults') }}</p>
+          <template v-if="hasActiveTrackFilters">
+            <p class="text-xs text-muted-foreground px-4">{{ t('trackList.filteredEmptyHint') }}</p>
+            <Button variant="outline" class="rounded-full" @click="resetTrackFilters">
+              {{ t('trackList.resetFilters') }}
+            </Button>
+          </template>
         </div>
       </div>
       <div v-if="tracksHasMore" class="flex justify-center pt-2">

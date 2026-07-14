@@ -40,8 +40,18 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
 
   let searchTimer = null
   let loadGeneration = 0
+  /** 필터로 0건인데 스코프에 곡이 있으면 한 번만 자동 해제 */
+  let didAutoClearFilters = false
 
   const sortOptions = preset.sortOptions
+
+  const hasActiveFilters = computed(() =>
+    Boolean(
+      query.value.starred ||
+        query.value.minRating != null ||
+        String(query.value.q ?? '').trim(),
+    ),
+  )
 
   const persistFilters = () => {
     persistTrackListQuery(
@@ -66,6 +76,16 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
   const hasScope = () => {
     const { artistId, albumId, tag } = scopeParams()
     return Boolean(artistId || albumId || tag)
+  }
+
+  const clearListFilters = () => {
+    searchInput.value = ''
+    query.value = {
+      ...query.value,
+      q: '',
+      starred: false,
+      minRating: null,
+    }
   }
 
   const loadTracks = async (append = false) => {
@@ -104,6 +124,29 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
       } else {
         tracks.value = page.items
       }
+
+      // 즐겨찾기/별점/검색이 전부 가린 경우 → 필터 해제 후 다시 로드
+      if (
+        !append &&
+        !didAutoClearFilters &&
+        page.total === 0 &&
+        hasActiveFilters.value
+      ) {
+        const probe = await library.fetchTracksPage({
+          offset: 0,
+          limit: 1,
+          sorts: sortsFromDetailQuery(query.value),
+          artistId,
+          albumId,
+          tag,
+        })
+        if (generation !== loadGeneration) return
+        if (probe.total > 0) {
+          didAutoClearFilters = true
+          clearListFilters()
+          return
+        }
+      }
     } catch (error) {
       if (generation !== loadGeneration) return
       console.error(error)
@@ -132,6 +175,7 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
   watch(
     () => [toValue(scope)?.artistId, toValue(scope)?.albumId, toValue(scope)?.tag],
     () => {
+      didAutoClearFilters = false
       void reload()
     },
   )
@@ -189,13 +233,7 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
   }
 
   const resetFilters = () => {
-    searchInput.value = ''
-    query.value = {
-      ...query.value,
-      q: '',
-      starred: false,
-      minRating: null,
-    }
+    clearListFilters()
   }
 
   const displayTracks = computed(() => tracks.value)
@@ -218,5 +256,6 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
     toggleStarredFilter,
     setMinRating,
     resetFilters,
+    hasActiveFilters,
   }
 }
