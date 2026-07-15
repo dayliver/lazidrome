@@ -48,10 +48,37 @@ const { player, coverUrl, isQueueView, toggleQueueView } = usePlayerPresentation
 </template>
 
 <style scoped>
-:deep(.relative.h-1\.5) { height: 8px; }
-:deep([role="slider"]) { width: 18px; height: 18px; border: 4px solid var(--color-background); }
+:deep(.relative.h-1\.5) {
+  height: 8px;
+}
+/* 진행 썸: 배경색 테두리는 안 보임 → 라이트 검정 / 다크 흰색 */
+:deep([data-slot="slider-thumb"]),
+:deep([role="slider"]) {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+  border-style: solid;
+  border-color: #000;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+}
+:global(html.dark) :deep([data-slot="slider-thumb"]),
+:global(html.dark) :deep([role="slider"]),
+:global(.dark) :deep([data-slot="slider-thumb"]),
+:global(.dark) :deep([role="slider"]) {
+  border-color: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.45);
+}
 
-.slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.3s ease-out; }
-.slide-fade-enter-from { opacity: 0; transform: translateX(20px); }
-.slide-fade-leave-to { opacity: 0; transform: translateX(-20px); }
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease-out;
+}
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
 </style>

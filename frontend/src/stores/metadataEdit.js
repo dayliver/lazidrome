@@ -98,13 +98,18 @@ export const useMetadataEditStore = defineStore('metadataEdit', () => {
         payload = new FormData()
         payload.append('title', formData.title || '')
         if (formData.mbid) payload.append('mbid', formData.mbid)
-        if (formData.year) payload.append('year', formData.year)
+        if (formData.year !== undefined && formData.year !== null && formData.year !== '') {
+          payload.append('year', formData.year)
+        } else if (type === 'track') {
+          payload.append('year', '')
+        }
         payload.append('newCoverFile', formData.newCoverFile)
       } else {
+        const yearEmpty = formData.year === '' || formData.year == null
         payload = {
           title: formData.title,
           mbid: formData.mbid || null,
-          year: formData.year ? parseInt(formData.year, 10) : null,
+          year: yearEmpty ? null : parseInt(formData.year, 10),
           newCoverUrl: formData.newCoverUrl
         }
       }
@@ -127,16 +132,22 @@ export const useMetadataEditStore = defineStore('metadataEdit', () => {
     const safeTags = Array.isArray(formData.tags) ? formData.tags : []
     const albumId = formData.albumId != null ? String(formData.albumId).trim() : ''
     const albumName = formData.albumName != null ? String(formData.albumName).trim() : ''
+    const volRaw = Number(formData.volume_pct)
+    const volume_pct = Number.isFinite(volRaw)
+      ? Math.min(150, Math.max(50, Math.round(volRaw)))
+      : 100
     if (isMultipart) {
       payload.append('tags', JSON.stringify(safeTags))
       payload.append('genre', formData.genre || '')
       payload.append('artists', JSON.stringify(formData.artists || []))
+      payload.append('volume_pct', String(volume_pct))
       if (albumId) payload.append('albumId', albumId)
       else if (albumName) payload.append('albumName', albumName)
     } else {
       payload.tags = safeTags
       payload.genre = formData.genre
       payload.artists = formData.artists || []
+      payload.volume_pct = volume_pct
       if (albumId) payload.albumId = albumId
       else if (albumName) payload.albumName = albumName
     }

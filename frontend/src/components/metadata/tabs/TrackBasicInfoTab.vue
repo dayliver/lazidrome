@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { Search, Calendar, Tag as TagIcon, Check, Image as ImageIcon } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
 import { getCoverUrl } from '@/lib/image'
@@ -26,14 +28,27 @@ const auth = useAuthStore()
 const albumSearchResults = ref([])
 const isAlbumFocused = ref(false)
 
+const volumeSlider = computed({
+  get: () => {
+    const n = Number(props.modelValue.volume_pct)
+    const v = Number.isFinite(n) ? Math.min(150, Math.max(50, Math.round(n))) : 100
+    return [v]
+  },
+  set: (val) => {
+    const n = Array.isArray(val) ? Number(val[0]) : Number(val)
+    updateField('volume_pct', Number.isFinite(n) ? Math.min(150, Math.max(50, Math.round(n))) : 100)
+  },
+})
+
 onMounted(async () => {
   const id = props.modelValue.albumId
-  if (id && !props.modelValue.albumArtistName) {
+  if (id && (!props.modelValue.albumArtistName || props.modelValue.albumYear == null)) {
     const alb = await library.getAlbumById(id)
     if (alb) {
       emit('update:modelValue', {
         ...props.modelValue,
-        albumArtistName: alb.displayArtist || t('common.unknownArtist'),
+        albumArtistName: props.modelValue.albumArtistName || alb.displayArtist || t('common.unknownArtist'),
+        albumYear: props.modelValue.albumYear ?? alb.year ?? null,
       })
     }
   }
@@ -54,13 +69,12 @@ const handleAlbumSearch = async () => {
   albumSearchResults.value = await library.searchAlbums(query, 5)
 }
 
-// 💡 앨범 선택 시 albumArtistName(displayArtist)도 함께 잡아옵니다!
 const selectAlbum = (album) => {
   const updated = { 
     ...props.modelValue, 
     albumName: album.name, 
     albumId: album.id, 
-    year: album.year || props.modelValue.year,
+    albumYear: album.year ?? null,
     albumArtistName: album.displayArtist || t('common.unknownArtist')
   }
   emit('update:modelValue', updated)
@@ -93,10 +107,12 @@ const updateField = (field, value) => {
   emit('update:modelValue', { ...props.modelValue, [field]: value })
 }
 
+const resetVolume = () => updateField('volume_pct', 100)
+
 const showUseTypedAlbum = computed(() => {
   const q = props.modelValue.albumName.trim().toLowerCase()
   if (!q || !isAlbumFocused.value) return false
-  return !allAlbums.value.some((a) => a.name.toLowerCase() === q)
+  return !albumSearchResults.value.some((a) => a.name.toLowerCase() === q)
 })
 </script>
 
@@ -201,18 +217,48 @@ const showUseTypedAlbum = computed(() => {
               />
             </div>
             <div class="space-y-2 w-28 shrink-0">
-              <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider">{{ t('metadata.releaseYear') }}</Label>
+              <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider">{{ t('metadata.trackYear') }}</Label>
               <Input 
                 :model-value="modelValue.year" 
                 @input="e => updateField('year', e.target.value)"
-                type="number" 
+                type="number"
+                :placeholder="modelValue.albumYear ? String(modelValue.albumYear) : ''"
                 class="bg-background font-black text-center text-lg h-11"
               />
+              <p class="text-[10px] text-muted-foreground leading-snug">
+                <template v-if="modelValue.albumYear && (modelValue.year === '' || modelValue.year == null)">
+                  {{ t('metadata.trackYearInherit', { year: modelValue.albumYear }) }}
+                </template>
+                <template v-else>
+                  {{ t('metadata.trackYearHint') }}
+                </template>
+              </p>
             </div>
           </div>
           
         </div>
       </div>
+    </div>
+
+    <div class="space-y-3 pt-2">
+      <div class="flex items-center justify-between gap-3">
+        <Label class="text-[11px] font-black text-muted-foreground uppercase ml-1">{{ t('metadata.trackVolume') }}</Label>
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-black tabular-nums w-12 text-right">{{ volumeSlider[0] }}%</span>
+          <Button
+            v-if="volumeSlider[0] !== 100"
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="h-8 text-xs"
+            @click="resetVolume"
+          >
+            {{ t('metadata.trackVolumeReset') }}
+          </Button>
+        </div>
+      </div>
+      <Slider v-model="volumeSlider" :min="50" :max="150" :step="1" class="py-2" />
+      <p class="text-[10px] text-muted-foreground leading-snug">{{ t('metadata.trackVolumeHint') }}</p>
     </div>
 
     <div class="space-y-3 pt-2">

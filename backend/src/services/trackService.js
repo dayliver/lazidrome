@@ -16,11 +16,25 @@ import { bumpLibraryRevisionNow } from '../lib/libraryRevision.js';
 const db = getDB();
 
 export function editTrack(id, data, fileBuffer) {
-  const { title, year, genre, tags, artists, albumId, albumName, newCoverUrl } = data;
+  const { title, year, genre, tags, artists, albumId, albumName, newCoverUrl, volume_pct } = data;
   let targetAlbumId = null;
+  const yearProvided = Object.prototype.hasOwnProperty.call(data, 'year');
+  const normalizedYear =
+    !yearProvided || year === '' || year == null
+      ? null
+      : Number.isFinite(Number(year))
+        ? Number(year)
+        : null;
+  const volumeProvided = Object.prototype.hasOwnProperty.call(data, 'volume_pct');
 
   db.transaction(() => {
-    updateTrackMeta(id, { title, genre, tags });
+    updateTrackMeta(id, {
+      title,
+      genre,
+      tags,
+      ...(yearProvided ? { year: normalizedYear } : {}),
+      ...(volumeProvided ? { volume_pct } : {}),
+    });
 
     if (Array.isArray(artists)) {
       const resolved = artists.map((a) => ({
@@ -41,7 +55,7 @@ export function editTrack(id, data, fileBuffer) {
       }
       targetAlbumId = trimmedAlbumId;
     } else if (trimmedAlbum) {
-      targetAlbumId = createAlbum(trimmedAlbum, year);
+      targetAlbumId = createAlbum(trimmedAlbum, normalizedYear);
     }
 
     if (targetAlbumId) setPrimaryAlbumForTrack(id, targetAlbumId);

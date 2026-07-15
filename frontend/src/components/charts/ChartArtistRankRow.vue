@@ -33,6 +33,7 @@ function goToArtist() {
     :period-listen-sec="artist.period_listen_sec"
     :period-plays="artist.period_plays"
     :compact="compact"
+    :split-parenthetical-title="false"
     @click="goToArtist"
   />
 </template>

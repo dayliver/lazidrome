@@ -12,11 +12,13 @@ const emit = defineEmits(['update:activeTab'])
 const localData = ref({
   title: '',
   year: '',
+  albumYear: null,
+  volume_pct: 100,
   tags: [],
   genre: '',
   albumName: '',
   albumId: '',
-  albumArtistName: '', // 💉 추가됨
+  albumArtistName: '',
   artists: [],
   mbid: '',
   newCoverFile: null,
@@ -25,14 +27,29 @@ const localData = ref({
 
 watch(() => props.item, (newItem) => {
   if (newItem?.local) {
+    let parsedTags = []
+    const rawTags = newItem.local.tags
+    if (Array.isArray(rawTags)) {
+      parsedTags = rawTags
+    } else if (typeof rawTags === 'string' && rawTags.trim()) {
+      try {
+        const parsed = JSON.parse(rawTags)
+        parsedTags = Array.isArray(parsed) ? parsed : []
+      } catch {
+        parsedTags = []
+      }
+    }
+    const vol = Number(newItem.local.volume_pct)
     localData.value = {
       title: newItem.local.title || newItem.local.name || '',
-      year: newItem.local.year || '',
-      tags: newItem.local.tags ? JSON.parse(newItem.local.tags) : [],
+      year: newItem.local.year ?? '',
+      albumYear: newItem.local.albumYear ?? null,
+      volume_pct: Number.isFinite(vol) ? Math.min(150, Math.max(50, Math.round(vol))) : 100,
+      tags: parsedTags,
       genre: newItem.local.genre || '',
       albumName: newItem.local.albumName || '',
       albumId: newItem.local.currentAlbumId || '',
-      albumArtistName: '', // 초기 로드 시에는 비워둠 (선택 시 채워짐)
+      albumArtistName: '',
       artists: newItem.local.artists || [],
       mbid: newItem.local.mbid || '',
       newCoverFile: null,

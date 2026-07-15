@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import SafeImage from '@/components/shared/SafeImage.vue'
 import { formatChartListenWithPlays } from '@/lib/listenTime'
+import { splitTrailingParentheticals } from '@/lib/titleParts'
 import { Crown, Medal, Award } from 'lucide-vue-next'
 
 /**
@@ -24,6 +25,10 @@ const top3 = computed(() => props.tracks.slice(0, 3))
 const first = computed(() => top3.value[0] ?? null)
 const second = computed(() => top3.value[1] ?? null)
 const third = computed(() => top3.value[2] ?? null)
+
+const firstTitle = computed(() => splitTrailingParentheticals(first.value?.title))
+const secondTitle = computed(() => splitTrailingParentheticals(second.value?.title))
+const thirdTitle = computed(() => splitTrailingParentheticals(third.value?.title))
 
 function trigger(rank) {
   emit('play', rank - 1)
@@ -46,7 +51,12 @@ function trigger(rank) {
         class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl ring-1 ring-border object-cover"
       />
       <div class="text-center min-w-0 w-full">
-        <p class="truncate text-sm font-semibold">{{ second.title }}</p>
+        <p class="truncate text-sm font-semibold">
+          <template v-if="secondTitle.suffix">
+            {{ secondTitle.main }}<span class="ms-1 text-xs font-medium text-muted-foreground/90">{{ secondTitle.suffix }}</span>
+          </template>
+          <template v-else>{{ second.title }}</template>
+        </p>
         <p class="truncate text-[11px] text-muted-foreground min-h-[1rem]">{{ second.artist || '—' }}</p>
         <p class="text-[10px] text-muted-foreground tabular-nums mt-1">
           {{ formatChartListenWithPlays(second.period_listen_sec ?? 0, second.period_plays ?? 0) }}
@@ -68,7 +78,12 @@ function trigger(rank) {
         class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl ring-2 ring-primary/30 object-cover"
       />
       <div class="text-center min-w-0 w-full">
-        <p class="truncate text-sm font-bold">{{ first.title }}</p>
+        <p class="truncate text-sm font-bold">
+          <template v-if="firstTitle.suffix">
+            {{ firstTitle.main }}<span class="ms-1 text-xs font-medium text-muted-foreground/90">{{ firstTitle.suffix }}</span>
+          </template>
+          <template v-else>{{ first.title }}</template>
+        </p>
         <p class="truncate text-xs text-muted-foreground min-h-[1rem]">{{ first.artist || '—' }}</p>
         <p class="text-[11px] text-primary tabular-nums mt-1 font-semibold">
           {{ formatChartListenWithPlays(first.period_listen_sec ?? 0, first.period_plays ?? 0) }}
@@ -91,7 +106,12 @@ function trigger(rank) {
         class="w-14 h-14 sm:w-16 sm:h-16 rounded-xl ring-1 ring-border object-cover"
       />
       <div class="text-center min-w-0 w-full">
-        <p class="truncate text-sm font-semibold">{{ third.title }}</p>
+        <p class="truncate text-sm font-semibold">
+          <template v-if="thirdTitle.suffix">
+            {{ thirdTitle.main }}<span class="ms-1 text-xs font-medium text-muted-foreground/90">{{ thirdTitle.suffix }}</span>
+          </template>
+          <template v-else>{{ third.title }}</template>
+        </p>
         <p class="truncate text-[11px] text-muted-foreground min-h-[1rem]">{{ third.artist || '—' }}</p>
         <p class="text-[10px] text-muted-foreground tabular-nums mt-1">
           {{ formatChartListenWithPlays(third.period_listen_sec ?? 0, third.period_plays ?? 0) }}

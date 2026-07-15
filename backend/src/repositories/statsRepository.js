@@ -303,7 +303,9 @@ export function getPlayStatsPayload(range) {
 }
 
 const TRACK_LIST_COLUMNS = `
-    t.id, t.title, t.rating, t.starred, t.year, t.tags, t.play_count, t.last_played,
+    t.id, t.title, t.rating, t.starred,
+    COALESCE(t.year, alb.year) AS year, t.tags, t.play_count, t.last_played,
+    COALESCE(t.volume_pct, 100) AS volume_pct,
     t.custom_cover_type, f.duration, f.format, f.bitrate,
     alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
     GROUP_CONCAT(a.name, ', ') as artist

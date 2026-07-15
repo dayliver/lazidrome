@@ -137,8 +137,15 @@
 - 상세 스코프 트랙 목록: 필터로 0건이면 자동 해제 + 빈 목록 안내
 - 재생목록 상세 Edit → `PlaylistDialog`
 
+## 12. 0.7.5 — 트랙 음량·연도 · FullPlayer·차트 UX
+
+- `track_metadata.volume_pct` (기본 100) — DB 저장, 재생 시 기기 볼륨과 곱
+- 트랙 year 편집·저장, 목록/정렬 `COALESCE(t.year, alb.year)`
+- FullPlayer: 진행 썸 라이트/다크 테두리, ⋮ 메뉴에서 곡 음량 조절
+- `/charts` 트랙 제목 끝 괄호 연하게·작게 (`splitTrailingParentheticals`)
+
 ## 남은 우선 과제
 
-- **0.7.5+:** B9+, F7–F8, F10 · stats 타임존 (/stats)
+- **0.7.6+:** B9+, F7–F8, F10 · stats 타임존 (/stats)
 - 모바일 HLS Phase C(트랜스코드 등)는 선택·보장 없음 — 문서 참고
 - B9~B25, F7–F10 백로그 — [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)

@@ -100,8 +100,19 @@ export const usePlayerStore = defineStore('player', () => {
 
   const userVolumeLinear = () => Math.max(0, Math.min(1, volume.value / 100))
 
+  const trackVolumeFactor = () => {
+    const raw = currentTrack.value?.volume_pct
+    const n = raw == null || raw === '' ? 100 : Number(raw)
+    if (!Number.isFinite(n)) return 1
+    return Math.min(150, Math.max(50, n)) / 100
+  }
+
+  /** 기기 마스터 × 트랙 게인 (페이드 전). HTMLAudio max 1.0이므로 clamp. */
+  const effectiveVolumeLinear = () =>
+    Math.min(1, Math.max(0, userVolumeLinear() * trackVolumeFactor()))
+
   const syncUserVolumeToAudio = () => {
-    audio.value.volume = userVolumeLinear()
+    audio.value.volume = effectiveVolumeLinear()
   }
 
   const hasNextTrackAutoplay = () => {
@@ -119,7 +130,7 @@ export const usePlayerStore = defineStore('player', () => {
     const ct = audio.value.currentTime
     if (!Number.isFinite(dur) || dur <= 0 || !Number.isFinite(ct)) return
     const remaining = dur - ct
-    const u = userVolumeLinear()
+    const u = effectiveVolumeLinear()
     if (!hasNextTrackAutoplay() || remaining > FADE_BEFORE_END_SEC) {
       if (audio.value.volume !== u) audio.value.volume = u
       return
@@ -671,10 +682,18 @@ export const usePlayerStore = defineStore('player', () => {
       currentTrack.value?.title,
       currentTrack.value?.artist,
       currentTrack.value?.album,
+      currentTrack.value?.volume_pct,
       isPlaying.value,
       volume.value,
     ],
     () => syncMediaSession(),
+  )
+
+  watch(
+    () => [currentTrack.value?.id, currentTrack.value?.volume_pct, volume.value],
+    () => {
+      syncUserVolumeToAudio()
+    },
   )
 
   const initAudio = () => {

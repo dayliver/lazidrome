@@ -322,6 +322,26 @@ export const useLibraryStore = defineStore('library', () => {
     }
   }
 
+  const updateTrackVolumePct = async (trackId, volumePct) => {
+    const n = Number(volumePct)
+    const volume_pct = Number.isFinite(n) ? Math.min(150, Math.max(50, Math.round(n))) : 100
+    try {
+      const res = await auth.fetchWithAuth(`/api/tracks/${encodeURIComponent(trackId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ volume_pct }),
+      })
+      if (!res.ok) throw new Error('volume_pct update failed')
+      const track = tracks.value.find((t) => String(t.id) === String(trackId))
+      if (track) track.volume_pct = volume_pct
+      emitTrackExternalSync({ id: trackId, volume_pct })
+      return true
+    } catch (err) {
+      console.error('트랙 음량 저장 실패:', err)
+      return false
+    }
+  }
+
   const updateTrackTags = async (trackId, tags) => {
     const res = await auth.fetchWithAuth(`/api/tracks/${trackId}/rate`, {
       method: 'PATCH',
@@ -706,6 +726,7 @@ export const useLibraryStore = defineStore('library', () => {
     getTracks,
     updateTrackRating,
     toggleTrackStar,
+    updateTrackVolumePct,
     updateTrackTags,
     getArtistById,
     getAlbumById,

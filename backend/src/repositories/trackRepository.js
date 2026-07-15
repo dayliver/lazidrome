@@ -17,7 +17,9 @@ const TRACK_LIST_FROM = `
 
 const TRACK_LIST_SELECT = `
     SELECT 
-      t.id, t.title, t.rating, t.starred, t.year, t.tags, t.play_count, t.last_played,
+      t.id, t.title, t.rating, t.starred,
+      COALESCE(t.year, alb.year) AS year, t.tags, t.play_count, t.last_played,
+      COALESCE(t.volume_pct, 100) AS volume_pct,
       t.custom_cover_type, f.duration, f.format, f.bitrate, f.scanned_at,
       alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
       at.track_number, at.disc_number,
@@ -35,7 +37,9 @@ const TRACK_LIST_FROM_ALBUM = `
 
 const TRACK_LIST_SELECT_ALBUM = `
     SELECT 
-      t.id, t.title, t.rating, t.starred, t.year, t.tags, t.play_count, t.last_played,
+      t.id, t.title, t.rating, t.starred,
+      COALESCE(t.year, alb.year) AS year, t.tags, t.play_count, t.last_played,
+      COALESCE(t.volume_pct, 100) AS volume_pct,
       t.custom_cover_type, f.duration, f.format, f.bitrate, f.scanned_at,
       alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
       at.track_number, at.disc_number,
@@ -166,7 +170,12 @@ export function findTrackById(id) {
 export function findTrackDetailById(id) {
   return db.prepare(`
     SELECT
-      t.id, t.title, t.rating, t.starred, t.tags, t.genre, t.year, t.play_count, t.last_played, t.custom_cover_type,
+      t.id, t.title, t.rating, t.starred, t.tags, t.genre,
+      COALESCE(t.year, alb.year) AS year,
+      t.year AS trackYear,
+      alb.year AS albumYear,
+      COALESCE(t.volume_pct, 100) AS volume_pct,
+      t.play_count, t.last_played, t.custom_cover_type,
       f.duration, f.format, f.bitrate, f.path AS filePath, f.size AS fileSize,
       alb.id AS albumId, alb.name AS albumName, alb.cover_type AS albumCoverType,
       (SELECT json_group_array(json_object('id', a.id, 'name', a.name, 'role_mask', ta.role_mask))
@@ -187,8 +196,12 @@ export function findTrackDetailById(id) {
 
 export function findTrackForEnrich(id) {
   return db.prepare(`
-    SELECT t.id, t.title, t.tags, alb.year as year, alb.id as currentAlbumId,
-      alb.name as albumName, alb.cover_type as albumCoverType,
+    SELECT t.id, t.title, t.tags, t.genre,
+      t.year AS year,
+      alb.year AS albumYear,
+      COALESCE(t.volume_pct, 100) AS volume_pct,
+      alb.id AS currentAlbumId,
+      alb.name AS albumName, alb.cover_type AS albumCoverType,
       (SELECT json_group_array(json_object('id', a.id, 'name', a.name, 'role_mask', ta.role_mask))
         FROM track_artists ta JOIN artists a ON ta.artist_id = a.id WHERE ta.track_id = t.id) as artists_json
     FROM track_metadata t
@@ -305,14 +318,40 @@ export function updateTrackRating(id, { rating, tags, starred }) {
   return result.changes;
 }
 
-export function updateTrackMeta(id, { title, genre, tags }) {
+export function updateTrackMeta(id, { title, genre, tags, year, volume_pct }) {
+  const yearProvided = year !== undefined;
+  const yearValue =
+    year == null || year === ''
+      ? null
+      : Number.isFinite(Number(year))
+        ? Number(year)
+        : null;
+
+  const volumeProvided = volume_pct !== undefined;
+  let volumeValue = 100;
+  if (volumeProvided) {
+    const n = Number(volume_pct);
+    volumeValue = Number.isFinite(n) ? Math.min(150, Math.max(50, Math.round(n))) : 100;
+  }
+
   db.prepare(`
     UPDATE track_metadata 
     SET title = COALESCE(?, title),
         genre = COALESCE(?, genre),
-        tags = COALESCE(?, tags)
+        tags = COALESCE(?, tags),
+        year = CASE WHEN ? = 1 THEN ? ELSE year END,
+        volume_pct = CASE WHEN ? = 1 THEN ? ELSE volume_pct END
     WHERE id = ?
-  `).run(title, genre || null, tags ? JSON.stringify(tags) : null, id);
+  `).run(
+    title,
+    genre || null,
+    tags ? JSON.stringify(tags) : null,
+    yearProvided ? 1 : 0,
+    yearValue,
+    volumeProvided ? 1 : 0,
+    volumeValue,
+    id,
+  );
 }
 
 export function replaceTrackArtists(trackId, artists) {

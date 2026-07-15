@@ -12,7 +12,17 @@ export async function patchTrackHandler(request, reply) {
 
   try {
     if (isMultipart) {
-      const ALLOWED_FIELDS = new Set(['title', 'year', 'genre', 'tags', 'artists', 'albumId', 'albumName', 'newCoverUrl']);
+      const ALLOWED_FIELDS = new Set([
+        'title',
+        'year',
+        'genre',
+        'tags',
+        'artists',
+        'albumId',
+        'albumName',
+        'newCoverUrl',
+        'volume_pct',
+      ]);
       const parts = request.parts();
       for await (const part of parts) {
         if (part.type === 'file' && part.fieldname === 'newCoverFile') {
@@ -23,9 +33,22 @@ export async function patchTrackHandler(request, reply) {
       }
       if (data.tags) data.tags = JSON.parse(data.tags);
       if (data.artists) data.artists = JSON.parse(data.artists);
-      if (data.year) data.year = parseInt(data.year, 10);
+      if (Object.prototype.hasOwnProperty.call(data, 'year')) {
+        data.year =
+          data.year === '' || data.year == null ? null : parseInt(data.year, 10);
+      }
+      if (Object.prototype.hasOwnProperty.call(data, 'volume_pct')) {
+        data.volume_pct = parseInt(data.volume_pct, 10);
+      }
     } else {
-      data = request.body;
+      data = request.body || {};
+      if (Object.prototype.hasOwnProperty.call(data, 'year')) {
+        data.year =
+          data.year === '' || data.year == null ? null : parseInt(data.year, 10);
+      }
+      if (Object.prototype.hasOwnProperty.call(data, 'volume_pct')) {
+        data.volume_pct = parseInt(data.volume_pct, 10);
+      }
     }
 
     const { targetAlbumId, newCoverUrl } = editTrack(id, data, fileBuffer);

@@ -15,7 +15,7 @@ const SORT_SQL = {
   title: 't.title COLLATE NOCASE',
   artist: 'MIN(a.name) COLLATE NOCASE',
   album: 'MIN(alb.name) COLLATE NOCASE',
-  year: 't.year',
+  year: 'COALESCE(t.year, alb.year)',
   duration: 'f.duration',
   rating: 't.rating',
   play_count: 't.play_count',

@@ -61,6 +61,7 @@ CREATE TABLE track_metadata (
     rating INTEGER DEFAULT 0,
     starred INTEGER DEFAULT 0,
     play_count INTEGER DEFAULT 0,
+    volume_pct INTEGER NOT NULL DEFAULT 100, -- 트랙 상대 음량 (100 = unity, 기기 마스터와 곱)
     custom_cover_type TEXT,          -- 💉 수정됨: 기존 has_custom_cover 대체 (track_{id}{ext} 확인용)
     tags TEXT,                       -- JSON: ["신남", "드라이브"]
     last_played DATETIME,

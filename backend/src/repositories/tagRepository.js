@@ -70,7 +70,9 @@ export function findTracksWithTag(tagName) {
   const db = getDB();
   return db.prepare(`
     SELECT
-      t.id, t.title, t.rating, t.starred, t.year, t.tags, t.play_count, t.last_played,
+      t.id, t.title, t.rating, t.starred,
+      COALESCE(t.year, alb.year) AS year, t.tags, t.play_count, t.last_played,
+      COALESCE(t.volume_pct, 100) AS volume_pct,
       t.custom_cover_type, f.duration, f.format, f.bitrate,
       alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
       GROUP_CONCAT(ar.name, ', ') as artist

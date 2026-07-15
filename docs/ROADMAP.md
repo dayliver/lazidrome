@@ -117,6 +117,7 @@
 | 0.7.2 | ✅ | B8 home dashboard, F6 deep watch |
 | 0.7.3 | ✅ | 2.3b HLS CDN + hls.light |
 | 0.7.4 | ✅ | 아티스트/앨범 삭제, 정렬·고아·상세 필터 |
+| 0.7.5 | ✅ | 트랙 volume_pct·year, FullPlayer·차트 UX |
 
 상세 일정·체크리스트: **[ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)**
 

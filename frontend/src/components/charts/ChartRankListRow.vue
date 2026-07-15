@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import SafeImage from '@/components/shared/SafeImage.vue'
 import { formatChartListenWithPlays } from '@/lib/listenTime'
+import { splitTrailingParentheticals } from '@/lib/titleParts'
 
 const props = defineProps({
   rank: { type: Number, required: true },
@@ -18,11 +19,19 @@ const props = defineProps({
   allTimePlays: { type: Number, default: null },
   rating: { type: Number, default: 0 },
   compact: { type: Boolean, default: false },
+  /** 트랙 제목 끝 괄호를 연하게 (아티스트 행은 false) */
+  splitParentheticalTitle: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['click'])
 
 const { t } = useI18n()
+
+const titleParts = computed(() =>
+  props.splitParentheticalTitle
+    ? splitTrailingParentheticals(props.title)
+    : { main: props.title, suffix: '' },
+)
 
 const periodDetail = computed(() =>
   formatChartListenWithPlays(props.periodListenSec, props.periodPlays),
@@ -57,7 +66,12 @@ const coverClass =
       ]"
     />
     <div class="min-w-0 flex-1">
-      <p class="truncate text-sm font-medium leading-snug">{{ title }}</p>
+      <p class="truncate text-sm font-medium leading-snug">
+        <template v-if="titleParts.suffix">
+          {{ titleParts.main }}<span class="ms-1 text-xs font-medium text-muted-foreground/90">{{ titleParts.suffix }}</span>
+        </template>
+        <template v-else>{{ title }}</template>
+      </p>
       <p class="truncate text-xs text-muted-foreground leading-snug mt-0.5 min-h-[1rem]">
         {{ subtitle || '\u00a0' }}
       </p>

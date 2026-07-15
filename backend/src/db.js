@@ -55,6 +55,7 @@ export function initDB() {
   ensurePlayHistoryListenedSec();
   ensurePerformanceIndexes();
   ensureTrackFiledataMtime();
+  ensureTrackVolumePct();
   ensureUniqueArtistNames();
 }
 
@@ -67,6 +68,20 @@ function ensureTrackFiledataMtime() {
     console.log('📌 track_filedata.mtime_ms 컬럼 추가됨 (마이그레이션)');
   } catch (err) {
     console.error('❌ track_filedata.mtime_ms 마이그레이션 실패:', err.message);
+  }
+}
+
+/** track_metadata.volume_pct: 트랙 상대 음량 (100 = unity) */
+function ensureTrackVolumePct() {
+  const cols = db.prepare('PRAGMA table_info(track_metadata)').all();
+  if (cols.some((c) => c.name === 'volume_pct')) return;
+  try {
+    db.exec(
+      'ALTER TABLE track_metadata ADD COLUMN volume_pct INTEGER NOT NULL DEFAULT 100',
+    );
+    console.log('📌 track_metadata.volume_pct 컬럼 추가됨 (마이그레이션)');
+  } catch (err) {
+    console.error('❌ track_metadata.volume_pct 마이그레이션 실패:', err.message);
   }
 }
 
