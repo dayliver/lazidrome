@@ -1,6 +1,7 @@
 import { ref, watch, onMounted, computed } from 'vue'
 import { useLibraryStore } from '@/stores/library'
 import { useRequiresAuth } from '@/composables/useRequiresAuth'
+import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import {
   DEFAULT_TRACK_LIST_QUERY,
   loadPersistedTrackListQuery,
@@ -30,6 +31,10 @@ export function useTracksPageQuery({ limit = 50 } = {}) {
   const hasMore = ref(true)
   const isLoading = ref(false)
   const isLoadMore = ref(false)
+
+  // 이 목록은 서버 페이지네이션 결과라 Pinia `library.tracks`와 별개 배열이다.
+  // 구독해두지 않으면 메타데이터를 저장해도 배경의 목록이 그대로 남는다.
+  useSyncTrackListWithLibrary(() => tracks.value)
 
   let searchTimer = null
   let loadGeneration = 0

@@ -1,5 +1,6 @@
 import { ref, watch, onMounted, computed, toValue } from 'vue'
 import { useLibraryStore } from '@/stores/library'
+import { useSyncTrackListWithLibrary } from '@/composables/useSyncTrackListWithLibrary'
 import {
   TRACK_SORT_PRESETS,
   loadPersistedTrackListQuery,
@@ -37,6 +38,10 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
   const hasMore = ref(true)
   const isLoading = ref(false)
   const isLoadMore = ref(false)
+
+  // 서버 페이지네이션 결과라 Pinia `library.tracks`와 별개 배열이다 — 메타데이터
+  // 저장 시 앨범·아티스트·태그 상세의 트랙 목록도 같이 갱신되도록 구독한다.
+  useSyncTrackListWithLibrary(() => tracks.value)
 
   let searchTimer = null
   let loadGeneration = 0
