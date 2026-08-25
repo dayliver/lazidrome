@@ -1,9 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Speaker, WifiOff, Loader2 } from 'lucide-vue-next'
+import { Speaker, WifiOff, Loader2, AlertTriangle, Square } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
 import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import { deviceIconForName, sortConnectedDevices } from '@/lib/deviceDisplay.js'
+import { notify } from '@/lib/notify'
 
 defineProps({
   compact: { type: Boolean, default: false },
@@ -19,6 +21,25 @@ const sortedDevices = computed(() =>
 const otherDeviceCount = computed(() =>
   Math.max(0, sortedDevices.value.length - 1),
 )
+
+/** 마스터 state 신선도 — "지금 보이는 게 진짜냐"를 알려주는 유일한 단서 */
+const freshnessLabel = computed(() => {
+  if (!sync.masterDeviceId || sync.isMaster) return ''
+  const secs = sync.secondsSinceStateUpdate
+  if (secs == null) return ''
+  if (secs < 3) return t('player.devices.lastUpdateJustNow')
+  return t('player.devices.lastUpdate', { secs })
+})
+
+// 재생 중인 기기가 있을 때만 의미가 있다
+const canStopAll = computed(() => sync.connected && !!sync.masterDeviceId)
+
+function onStopAll() {
+  if (!canStopAll.value) return
+  if (!confirm(t('player.devices.stopAllConfirm'))) return
+  sync.stopAllDevices()
+  notify.success(t('player.devices.stopAllDone'))
+}
 </script>
 
 <template>
@@ -74,6 +95,14 @@ const otherDeviceCount = computed(() =>
               {{ t('player.devices.master') }}
             </span>
             <span
+              v-if="device.stale"
+              class="connected-devices__badge connected-devices__badge--stale"
+              :title="t('player.devices.staleHint')"
+            >
+              <AlertTriangle class="w-3 h-3 shrink-0" aria-hidden="true" />
+              {{ t('player.devices.stale') }}
+            </span>
+            <span
               v-else-if="device.deviceId !== sync.deviceId"
               class="connected-devices__badge connected-devices__badge--remote"
             >
@@ -94,6 +123,14 @@ const otherDeviceCount = computed(() =>
     >
       {{ t('player.devices.waitForOthers') }}
     </p>
+
+    <div v-if="canStopAll" class="connected-devices__actions">
+      <span v-if="freshnessLabel" class="connected-devices__freshness">{{ freshnessLabel }}</span>
+      <Button variant="outline" size="sm" class="h-7 text-[11px] font-bold" @click="onStopAll">
+        <Square class="w-3 h-3 mr-1.5" aria-hidden="true" />
+        {{ t('player.devices.stopAll') }}
+      </Button>
+    </div>
   </section>
 </template>
 
@@ -211,6 +248,27 @@ const otherDeviceCount = computed(() =>
 .connected-devices__badge--master {
   background: color-mix(in oklab, var(--primary) 15%, transparent);
   color: var(--primary);
+}
+
+.connected-devices__badge--stale {
+  background: color-mix(in oklab, var(--destructive) 15%, transparent);
+  color: var(--destructive);
+}
+
+.connected-devices__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+}
+
+.connected-devices__freshness {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
 }
 
 .connected-devices__badge--remote {

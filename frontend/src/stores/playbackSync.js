@@ -4,8 +4,8 @@ import { useAuthStore } from './auth'
 import { usePlayerStore } from './player'
 import { useLibraryStore } from './library'
 import { resolveNextIndex, resolvePrevIndex, trackSummaryAt } from '@/lib/playbackSyncUtils.js'
+import { getDeviceId, guessDeviceName } from '@/lib/deviceIdentity.js'
 
-const DEVICE_STORAGE_KEY = 'lazidrome.device.v1'
 const STATE_PUSH_MS = 2500
 const RECONNECT_MS = 3500
 
@@ -22,38 +22,6 @@ function emptyRemoteState() {
   }
 }
 
-function readDeviceId() {
-  if (typeof localStorage === 'undefined') return crypto.randomUUID()
-  try {
-    const raw = localStorage.getItem(DEVICE_STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (parsed?.id) return String(parsed.id)
-    }
-  } catch {
-    /* ignore */
-  }
-  const id = crypto.randomUUID()
-  try {
-    localStorage.setItem(DEVICE_STORAGE_KEY, JSON.stringify({ id }))
-  } catch {
-    /* ignore */
-  }
-  return id
-}
-
-function guessDeviceName() {
-  if (typeof navigator === 'undefined') return 'Browser'
-  const ua = navigator.userAgent
-  if (/iPhone/.test(ua)) return 'iPhone'
-  if (/iPad/.test(ua)) return 'iPad'
-  if (/Android/.test(ua)) return 'Android'
-  if (/Mac OS X/.test(ua)) return 'Mac'
-  if (/Windows/.test(ua)) return 'Windows'
-  if (/Linux/.test(ua)) return 'Linux'
-  return 'Browser'
-}
-
 function buildWsUrl(serverUrl, token) {
   const origin =
     serverUrl?.replace(/\/$/, '') ||
@@ -67,13 +35,19 @@ export const usePlaybackSyncStore = defineStore('playbackSync', () => {
   const player = usePlayerStore()
   const library = useLibraryStore()
 
-  const deviceId = ref(readDeviceId())
+  const deviceId = ref(getDeviceId())
   const deviceName = ref(guessDeviceName())
   const connected = ref(false)
   const masterDeviceId = ref(null)
   const masterDeviceName = ref(null)
   const remoteState = ref(emptyRemoteState())
   const connectedDevices = ref([])
+  /** 마스터 state가 마지막으로 갱신된 서버 시각(ms) */
+  const stateUpdatedAt = ref(0)
+  /** 서버 시각 − 로컬 시각. 클라이언트 시계가 틀어져도 "N초 전"이 맞도록 보정 */
+  const serverClockSkewMs = ref(0)
+  /** 화면 갱신용 tick — 1초마다 올려서 경과 시간 표시를 흐르게 한다 */
+  const nowTick = ref(Date.now())
 
   let ws = null
   let reconnectTimer = null
@@ -102,13 +76,43 @@ export const usePlaybackSyncStore = defineStore('playbackSync', () => {
     isRemoteMode.value ? remoteState.value.isPlaying : player.isPlaying,
   )
 
+  /**
+   * 원격 재생 위치(초). 마스터 state는 2.5초마다만 오므로 그대로 쓰면 진행바가 뚝뚝 끊긴다.
+   * 마지막 갱신 이후 흐른 시간을 더해 로컬에서 부드럽게 이어준다(재생 중일 때만).
+   */
+  const remotePositionSec = computed(() => {
+    const base = Number(remoteState.value.currentTime) || 0
+    if (!remoteState.value.isPlaying || !stateUpdatedAt.value) return base
+    const elapsed = (serverNowEstimate() - stateUpdatedAt.value) / 1000
+    if (!Number.isFinite(elapsed) || elapsed <= 0) return base
+    const dur = Number(remoteState.value.duration) || 0
+    const projected = base + elapsed
+    return dur > 0 ? Math.min(projected, dur) : projected
+  })
+
   const displayProgress = computed(() => {
     if (isRemoteMode.value) {
       const d = remoteState.value.duration
-      const t = remoteState.value.currentTime
-      return d > 0 ? (t / d) * 100 : 0
+      return d > 0 ? (remotePositionSec.value / d) * 100 : 0
     }
     return player.progress[0]
+  })
+
+  /** 마스터 state가 갱신된 지 몇 초 지났는지 (모르면 null) */
+  const secondsSinceStateUpdate = computed(() => {
+    if (!stateUpdatedAt.value) return null
+    const diff = Math.floor((serverNowEstimate() - stateUpdatedAt.value) / 1000)
+    return diff >= 0 ? diff : 0
+  })
+
+  /**
+   * 마스터가 재생 중이라고 표시되는데 state가 한동안 안 들어오는 상태.
+   * 서버 하트비트(15초 ping / 40초 타임아웃)보다 살짝 느슨하게 잡는다.
+   */
+  const isMasterStale = computed(() => {
+    if (!masterDeviceId.value || isMaster.value) return false
+    const secs = secondsSinceStateUpdate.value
+    return secs != null && secs > 20
   })
 
   const remoteQueueCount = computed(() => {
@@ -137,6 +141,16 @@ export const usePlaybackSyncStore = defineStore('playbackSync', () => {
   function send(payload) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return
     ws.send(JSON.stringify(payload))
+  }
+
+  function noteServerTime(serverNow) {
+    const t = Number(serverNow)
+    if (Number.isFinite(t) && t > 0) serverClockSkewMs.value = t - Date.now()
+  }
+
+  /** 서버 기준 현재 시각 추정치 */
+  function serverNowEstimate() {
+    return nowTick.value + serverClockSkewMs.value
   }
 
   function buildPlayerStatePayload() {
@@ -258,7 +272,14 @@ export const usePlaybackSyncStore = defineStore('playbackSync', () => {
     }
 
     switch (msg.type) {
+      case 'ping': {
+        noteServerTime(msg.at)
+        send({ type: 'pong' })
+        break
+      }
       case 'session': {
+        noteServerTime(msg.serverNow)
+        if (Number.isFinite(Number(msg.updatedAt))) stateUpdatedAt.value = Number(msg.updatedAt)
         masterDeviceId.value = msg.masterDeviceId || null
         masterDeviceName.value = msg.masterDeviceName || null
         if (msg.state && typeof msg.state === 'object') {
@@ -270,6 +291,8 @@ export const usePlaybackSyncStore = defineStore('playbackSync', () => {
         break
       }
       case 'state': {
+        noteServerTime(msg.serverNow)
+        if (Number.isFinite(Number(msg.updatedAt))) stateUpdatedAt.value = Number(msg.updatedAt)
         masterDeviceId.value = msg.masterDeviceId || masterDeviceId.value
         masterDeviceName.value = msg.masterDeviceName || masterDeviceName.value
         if (msg.state && typeof msg.state === 'object') {
@@ -283,6 +306,7 @@ export const usePlaybackSyncStore = defineStore('playbackSync', () => {
         masterDeviceName.value = msg.masterDeviceName || null
         if (!nextMaster) {
           remoteState.value = emptyRemoteState()
+          stateUpdatedAt.value = 0
         }
         if (nextMaster && nextMaster !== deviceId.value && player.isPlaying && !applyingRemoteCommand) {
           player.pause()
@@ -296,9 +320,22 @@ export const usePlaybackSyncStore = defineStore('playbackSync', () => {
         break
       }
       case 'command': {
-        if (masterDeviceId.value !== deviceId.value) return
         const command = String(msg.command || '')
         const payload = msg.payload && typeof msg.payload === 'object' ? msg.payload : {}
+        // "모든 기기 정지"는 마스터가 아닌 기기에도 적용되어야 한다.
+        // applyRemoteCommand를 거치면 끝에서 pushStateNow가 돌아 방금 비운 마스터를
+        // 이 기기가 도로 차지해버리므로, 여기서는 곧장 멈추기만 한다.
+        if (msg.broadcastStop) {
+          if (msg.fromDeviceId !== deviceId.value) {
+            player.pause()
+            masterDeviceId.value = null
+            masterDeviceName.value = null
+            remoteState.value = emptyRemoteState()
+            stateUpdatedAt.value = 0
+          }
+          break
+        }
+        if (masterDeviceId.value !== deviceId.value) return
         void applyRemoteCommand(command, payload)
         break
       }
@@ -364,18 +401,46 @@ export const usePlaybackSyncStore = defineStore('playbackSync', () => {
     connected.value = false
   }
 
+  let tickTimer = null
+
+  function startTick() {
+    if (tickTimer != null) return
+    tickTimer = setInterval(() => {
+      nowTick.value = Date.now()
+    }, 1000)
+  }
+
+  function stopTick() {
+    if (tickTimer == null) return
+    clearInterval(tickTimer)
+    tickTimer = null
+  }
+
   function start() {
     if (started) return
     started = true
+    startTick()
     connect()
   }
 
   function stop() {
     disconnect(true)
+    stopTick()
     masterDeviceId.value = null
     masterDeviceName.value = null
     remoteState.value = emptyRemoteState()
     connectedDevices.value = []
+    stateUpdatedAt.value = 0
+  }
+
+  /** 연결된 모든 기기에 정지를 보낸다 (마스터가 아니어도 호출 가능) */
+  function stopAllDevices() {
+    send({ type: 'stop_all' })
+    player.pause()
+    masterDeviceId.value = null
+    masterDeviceName.value = null
+    remoteState.value = emptyRemoteState()
+    stateUpdatedAt.value = 0
   }
 
   function optimisticApply(command, payload = {}) {
@@ -551,13 +616,17 @@ export const usePlaybackSyncStore = defineStore('playbackSync', () => {
     if (!ids?.length) return false
 
     const idx = Math.max(0, Number(remoteState.value.currentIndex) || 0)
+    // 이관 = 이어받기. 상대가 듣던 위치에서 시작해야 핸드오프답다.
+    const resumeAt = Number(remoteState.value.currentTime) || 0
     const tracks = await library.fetchTracksByIds(ids)
     const byId = new Map(tracks.map((t) => [String(t.id), t]))
     const resolved = ids.map((id) => byId.get(String(id))).filter(Boolean)
     if (!resolved.length) return false
 
     claimMaster()
-    await player.playNewQueue(resolved, Math.min(idx, resolved.length - 1))
+    await player.playNewQueue(resolved, Math.min(idx, resolved.length - 1), {
+      startPositionSec: resumeAt,
+    })
     pushStateNow()
     return true
   }
@@ -616,6 +685,11 @@ export const usePlaybackSyncStore = defineStore('playbackSync', () => {
     masterDeviceName,
     remoteState,
     connectedDevices,
+    stateUpdatedAt,
+    remotePositionSec,
+    secondsSinceStateUpdate,
+    isMasterStale,
+    stopAllDevices,
     isMaster,
     isRemoteMode,
     displayTrack,

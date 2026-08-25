@@ -26,7 +26,6 @@
     "unknownArtist": "Unknown artist",
     "unknownAlbum": "Unknown album",
     "noRating": "No ratings",
-    "edit": "Edit",
     "backToList": "Back to list",
     "close": "Close"
   },
@@ -205,7 +204,14 @@
       "onlyThisDevice": "Only this device is connected.",
       "waitForOthers": "Open Lazidrome on another device to see it here.",
       "openList": "View connected devices",
-      "openListWithCount": "{count} connected devices"
+      "openListWithCount": "{count} connected devices",
+      "lastUpdate": "updated {secs}s ago",
+      "lastUpdateJustNow": "just updated",
+      "stale": "Not responding",
+      "staleHint": "This device stopped responding. It may still be playing.",
+      "stopAll": "Stop all devices",
+      "stopAllConfirm": "Stop playback on every connected device?",
+      "stopAllDone": "Stop sent to all devices."
     }
   },
   "metadata": {

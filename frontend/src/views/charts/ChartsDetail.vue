@@ -8,6 +8,7 @@ import { usePreferencesStore } from '@/stores/preferences'
 import { useRequiresAuth } from '@/composables/useRequiresAuth'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
+import DeviceScopeSelect from '@/components/shared/DeviceScopeSelect.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ChartRankRow from '@/components/charts/ChartRankRow.vue'
@@ -62,7 +63,12 @@ const load = async () => {
   loading.value = true
   error.value = null
   try {
-    const data = await library.fetchStatsTop(meta.value.range, 50, prefs.effectiveTimezone)
+    const data = await library.fetchStatsTop(
+      meta.value.range,
+      50,
+      prefs.effectiveTimezone,
+      prefs.statsDeviceScope,
+    )
     tracks.value = Array.isArray(data?.tracks) ? data.tracks : []
     artists.value = Array.isArray(data?.artists) ? data.artists : []
     totals.value = data?.totals ?? null
@@ -78,7 +84,7 @@ const load = async () => {
 }
 
 onMounted(load)
-watch([meta, showAuthEmpty, () => prefs.effectiveTimezone], () => {
+watch([meta, showAuthEmpty, () => prefs.effectiveTimezone, () => prefs.statsDeviceScope], () => {
   void load()
 })
 
@@ -100,6 +106,8 @@ function playTrackAt(index) {
     <AuthEmptyState v-if="showAuthEmpty" :description="t('charts.authEmpty')" />
 
     <template v-else>
+      <DeviceScopeSelect />
+
       <LoadingSpinner v-if="loading" size="lg" :label="t('charts.loading')" />
 
       <div

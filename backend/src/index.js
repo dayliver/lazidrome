@@ -34,6 +34,7 @@ import adminRoutes from './routes/admin.js';
 import importRoutes from './routes/import.js';
 import filesRoutes from './routes/files.js';
 import playbackRoutes from './routes/playback.js';
+import deviceRoutes from './routes/devices.js';
 import playHistoryRoutes from './routes/playHistory.js';
 
 dotenv.config();
@@ -201,6 +202,7 @@ fastify.register(adminRoutes);
 fastify.register(importRoutes);
 fastify.register(filesRoutes);
 fastify.register(playbackRoutes);
+fastify.register(deviceRoutes);
 
 // 백그라운드 작업(스크롭·스캐너 등)에서 새는 예외로 프로세스가 죽지 않게 한다.
 // 배포가 프로세스 감시자 없이 `nohup node …`로 뜨므로, 죽으면 수동 재시작 전까지 전면 장애다.

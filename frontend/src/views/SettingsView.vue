@@ -32,6 +32,7 @@ import {
   Globe,
   Menu,
 } from 'lucide-vue-next'
+import PlaybackDevicesCard from '@/components/settings/PlaybackDevicesCard.vue'
 import {
   fetchFrontendBuildInfo,
   fetchBackendBuildFromHealth,
@@ -305,6 +306,8 @@ const handleRefresh = async () => {
         </p>
       </CardContent>
     </Card>
+
+    <PlaybackDevicesCard v-if="auth.isAuthenticated" />
 
     <Card>
       <CardHeader>

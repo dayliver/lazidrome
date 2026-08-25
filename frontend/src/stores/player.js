@@ -920,12 +920,55 @@ export const usePlayerStore = defineStore('player', () => {
     await startPlaybackDirect()
   }
 
-  const playNewQueue = async (newQueue, startIndex = 0) => {
+  /**
+   * @param {object[]} newQueue
+   * @param {number} startIndex
+   * @param {{ startPositionSec?: number }} [opts] 다른 기기에서 이관받을 때 그 위치에서 이어 재생
+   */
+  const playNewQueue = async (newQueue, startIndex = 0, opts = {}) => {
     flushPlaySessionToServer()
     resetPlaybackBuffers()
     queue.value = [...newQueue]
     currentIndex.value = startIndex
     await startPlayback()
+
+    const startAt = Number(opts.startPositionSec)
+    if (Number.isFinite(startAt) && startAt > 0) {
+      await seekToSeconds(startAt)
+    }
+  }
+
+  /**
+   * 절대 초 위치로 이동. duration은 loadedmetadata 이후에야 확정되므로 잠깐 기다린다.
+   * (progress setter는 %를 쓰기 때문에 duration이 0이면 무의미해진다)
+   */
+  const seekToSeconds = async (positionSec) => {
+    const target = Math.max(0, Number(positionSec) || 0)
+    if (!target) return
+
+    const el = audio.value
+    const ready = () => Number.isFinite(el.duration) && el.duration > 0
+    if (!ready()) {
+      await new Promise((resolve) => {
+        const done = () => {
+          el.removeEventListener('loadedmetadata', done)
+          resolve()
+        }
+        el.addEventListener('loadedmetadata', done, { once: true })
+        setTimeout(done, 3000)
+      })
+    }
+    if (!ready()) return
+
+    if (hlsQueueMode) {
+      const localIdx = currentIndex.value - hlsSliceBaseIndex
+      const segStart = hlsSegmentStarts[localIdx] ?? 0
+      el.currentTime = segStart + target
+      syncHlsPlaybackTimes()
+      return
+    }
+    el.currentTime = Math.min(target, el.duration)
+    currentTime.value = el.currentTime
   }
 
   const playAlbum = async (albumTracks, startTrackId = null, shuffle = false) => {
@@ -1123,6 +1166,7 @@ export const usePlayerStore = defineStore('player', () => {
     next,
     prev,
     playNewQueue,
+    seekToSeconds,
     toggleShuffle,
     toggleRepeat,
     toggleExpand,

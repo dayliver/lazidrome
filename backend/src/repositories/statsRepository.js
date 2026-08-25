@@ -1,4 +1,5 @@
 import { getDB } from '../db.js';
+import { listExcludedDeviceIds, normalizeDeviceId } from './deviceRepository.js';
 import {
   aggregateListenHabits,
   countPlaysByTrack,
@@ -16,14 +17,6 @@ const RANGES = new Set(['24h', '48h', '7d', '30d', 'all']);
 export const CHART_RANGES = new Set(['7d', '30d', 'all']);
 /** 습관 통계 기본 후보 */
 export const HABIT_RANGES = new Set(['7d', '30d', 'all']);
-
-const LISTEN_FROM = `
-  FROM play_history h
-`;
-
-function listenSecExpr() {
-  return 'SUM(COALESCE(h.listened_sec, 0))';
-}
 
 /**
  * @param {'24h'|'48h'|'7d'|'30d'|'all'} range
@@ -47,11 +40,34 @@ function cutoffFilter(range) {
 }
 
 /**
+ * 기기 스코프 필터.
+ * - `deviceId` 지정: 그 기기만. 사용자가 명시적으로 고른 것이므로 제외 플래그는 무시한다.
+ * - 미지정: `exclude_from_stats`로 표시된 기기의 재생만 뺀다.
+ *   `device_id IS NULL`(기기 미상 — 옛 기록·옛 클라이언트)은 항상 포함.
+ * @param {string | null | undefined} deviceId
+ * @param {string} column play_history의 device_id 컬럼 참조(별칭 포함)
+ * @returns {{ sql: string, params: unknown[] }}
+ */
+function deviceScopeFilter(deviceId, column = 'device_id') {
+  const id = normalizeDeviceId(deviceId);
+  if (id) return { sql: `${column} = ?`, params: [id] };
+
+  const excluded = listExcludedDeviceIds();
+  if (!excluded.length) return { sql: '1=1', params: [] };
+  const placeholders = excluded.map(() => '?').join(',');
+  return {
+    sql: `(${column} IS NULL OR ${column} NOT IN (${placeholders}))`,
+    params: excluded,
+  };
+}
+
+/**
  * 시간대(로컬 시각 기준): 아침 &lt;8, 오전 8–12, 오후 12–17, 저녁 17+
  */
-export function getPlayCountsByTimeOfDay(range) {
+export function getPlayCountsByTimeOfDay(range, deviceId = null) {
   const f = cutoffFilter(range);
   if (!f) return null;
+  const d = deviceScopeFilter(deviceId);
   const row = db
     .prepare(
       `
@@ -61,10 +77,10 @@ export function getPlayCountsByTimeOfDay(range) {
       SUM(CASE WHEN CAST(strftime('%H', played_at) AS INTEGER) >= 12 AND CAST(strftime('%H', played_at) AS INTEGER) < 17 THEN 1 ELSE 0 END) AS afternoon,
       SUM(CASE WHEN CAST(strftime('%H', played_at) AS INTEGER) >= 17 THEN 1 ELSE 0 END) AS evening
     FROM play_history
-    WHERE ${f.sql}
+    WHERE ${f.sql} AND ${d.sql}
   `
     )
-    .get(...f.params);
+    .get(...f.params, ...d.params);
 
   return {
     dawn: Number(row?.dawn) || 0,
@@ -75,144 +91,61 @@ export function getPlayCountsByTimeOfDay(range) {
 }
 
 /** 시간 단위 시리즈 (24h / 48h): 라벨 YYYY-MM-DD HH */
-export function getPlaySeriesHourly(range) {
+export function getPlaySeriesHourly(range, deviceId = null) {
   const f = cutoffFilter(range);
   if (!f || (range !== '24h' && range !== '48h')) return null;
+  const d = deviceScopeFilter(deviceId);
 
   const rows = db
     .prepare(
       `
     SELECT strftime('%Y-%m-%d %H', played_at) AS label, COUNT(*) AS cnt
     FROM play_history
-    WHERE ${f.sql}
+    WHERE ${f.sql} AND ${d.sql}
     GROUP BY strftime('%Y-%m-%d %H', played_at)
     ORDER BY label
   `
     )
-    .all(...f.params);
+    .all(...f.params, ...d.params);
 
   return rows.map((r) => ({ label: r.label, count: Number(r.cnt) || 0 }));
 }
 
 /** 일 단위 시리즈 (7d / 30d) */
-export function getPlaySeriesDaily(range) {
+export function getPlaySeriesDaily(range, deviceId = null) {
   const f = cutoffFilter(range);
   if (!f || (range !== '7d' && range !== '30d')) return null;
+  const d = deviceScopeFilter(deviceId);
 
   return db
     .prepare(
       `
     SELECT date(played_at) AS label, COUNT(*) AS cnt
     FROM play_history
-    WHERE ${f.sql}
+    WHERE ${f.sql} AND ${d.sql}
     GROUP BY date(played_at)
     ORDER BY label
   `
     )
-    .all(...f.params)
+    .all(...f.params, ...d.params)
     .map((r) => ({ label: r.label, count: Number(r.cnt) || 0 }));
 }
 
 /** 통산: 월 단위 */
-export function getPlaySeriesMonthlyAllTime() {
+export function getPlaySeriesMonthlyAllTime(deviceId = null) {
+  const d = deviceScopeFilter(deviceId);
   return db
     .prepare(
       `
     SELECT strftime('%Y-%m', played_at) AS label, COUNT(*) AS cnt
     FROM play_history
+    WHERE ${d.sql}
     GROUP BY strftime('%Y-%m', played_at)
     ORDER BY label
   `
     )
-    .all()
+    .all(...d.params)
     .map((r) => ({ label: r.label, count: Number(r.cnt) || 0 }));
-}
-
-/** 요일별 청취 시간 (월=1 … 일=0, SQLite %w) */
-export function getListenSecondsByDayOfWeek(range) {
-  const f = cutoffFilter(range);
-  if (!f) return null;
-  const rows = db
-    .prepare(
-      `
-    SELECT CAST(strftime('%w', h.played_at) AS INTEGER) AS dow,
-           ${listenSecExpr()} AS listen_sec
-    ${LISTEN_FROM}
-    WHERE ${f.sql.replaceAll('played_at', 'h.played_at')}
-    GROUP BY dow
-    ORDER BY dow
-  `
-    )
-    .all(...f.params);
-
-  const labels = ['일', '월', '화', '수', '목', '금', '토'];
-  const byDow = Object.fromEntries(rows.map((r) => [Number(r.dow), Number(r.listen_sec) || 0]));
-  return labels.map((label, dow) => ({
-    dow,
-    label,
-    listenSec: byDow[dow] ?? 0,
-  }));
-}
-
-const TIME_HABIT_BUCKETS = [
-  { key: 'early', label: '8시 이전', match: (h) => h < 8 },
-  { key: 'h08', label: '08시', match: (h) => h === 8 },
-  { key: 'h09', label: '09시', match: (h) => h === 9 },
-  { key: 'h10', label: '10시', match: (h) => h === 10 },
-  { key: 'h11', label: '11시', match: (h) => h === 11 },
-  { key: 'h12', label: '12시', match: (h) => h === 12 },
-  { key: 'h13', label: '13시', match: (h) => h === 13 },
-  { key: 'h14', label: '14시', match: (h) => h === 14 },
-  { key: 'h15', label: '15시', match: (h) => h === 15 },
-  { key: 'h16', label: '16시', match: (h) => h === 16 },
-  { key: 'h17', label: '17시', match: (h) => h === 17 },
-  { key: 'h18', label: '18시', match: (h) => h === 18 },
-  { key: 'h19', label: '19시', match: (h) => h === 19 },
-  { key: 'h20', label: '20시', match: (h) => h === 20 },
-  { key: 'h21', label: '21시', match: (h) => h === 21 },
-  { key: 'night', label: '22시 이후', match: (h) => h >= 22 },
-];
-
-/** 시간대별 청취 습관 (8시 전·22시 후 덩어리 + 8–21시 시간별) */
-export function getListenSecondsByTimeHabit(range) {
-  const f = cutoffFilter(range);
-  if (!f) return null;
-  const rows = db
-    .prepare(
-      `
-    SELECT CAST(strftime('%H', h.played_at) AS INTEGER) AS hour,
-           ${listenSecExpr()} AS listen_sec
-    ${LISTEN_FROM}
-    WHERE ${f.sql.replaceAll('played_at', 'h.played_at')}
-    GROUP BY hour
-  `
-    )
-    .all(...f.params);
-
-  const byHour = Object.fromEntries(rows.map((r) => [Number(r.hour), Number(r.listen_sec) || 0]));
-  return TIME_HABIT_BUCKETS.map((b) => {
-    let listenSec = 0;
-    for (const [hourStr, sec] of Object.entries(byHour)) {
-      const hour = Number(hourStr);
-      if (b.match(hour)) listenSec += sec;
-    }
-    return { key: b.key, label: b.label, listenSec };
-  });
-}
-
-export function getTotalListenSeconds(range) {
-  const f = cutoffFilter(range);
-  if (!f) return 0;
-  const row = db
-    .prepare(
-      `
-    SELECT ${listenSecExpr()} AS listen_sec
-    ${LISTEN_FROM}
-    WHERE ${f.sql.replaceAll('played_at', 'h.played_at')}
-  `
-    )
-    .get(...f.params);
-  return Number(row?.listen_sec) || 0;
 }
 
 /**
@@ -226,26 +159,28 @@ function cutoffStringForRange(range, statsZone) {
 }
 
 /** 기간 내 이벤트만 SQL에서 필터해 로드 (기존 filterEventsByRange와 동일한 인스턴트 컷오프) */
-function loadPlayHistoryEvents(range = 'all', statsZone = 'UTC') {
+function loadPlayHistoryEvents(range = 'all', statsZone = 'UTC', deviceId = null) {
   const cutoff = cutoffStringForRange(range, statsZone);
+  const d = deviceScopeFilter(deviceId, 'h.device_id');
   const rows = cutoff
     ? db
         .prepare(
           `
     SELECT h.played_at, h.track_id AS track_id, COALESCE(h.listened_sec, 0) AS listen_sec
     FROM play_history h
-    WHERE h.played_at >= ?
+    WHERE h.played_at >= ? AND ${d.sql}
   `
         )
-        .all(cutoff)
+        .all(cutoff, ...d.params)
     : db
         .prepare(
           `
     SELECT h.played_at, h.track_id AS track_id, COALESCE(h.listened_sec, 0) AS listen_sec
     FROM play_history h
+    WHERE ${d.sql}
   `
         )
-        .all();
+        .all(...d.params);
   return rows
     .map((r) => {
       const playedAt = parsePlayedAt(r.played_at);
@@ -260,38 +195,39 @@ function loadPlayHistoryEvents(range = 'all', statsZone = 'UTC') {
 }
 
 /** 습관·순위 차트: 사용자 IANA 타임존 기준 집계 */
-export function getHabitStatsPayload(range, timezoneRaw) {
+export function getHabitStatsPayload(range, timezoneRaw, deviceId = null) {
   if (!HABIT_RANGES.has(range)) return null;
   const statsZone = resolveStatsTimezone(timezoneRaw);
   const storageZone = getPlayHistoryStorageZone();
-  const inRange = loadPlayHistoryEvents(range, statsZone);
+  const inRange = loadPlayHistoryEvents(range, statsZone, deviceId);
   const { totalListenSec, dayOfWeek, timeOfDay } = aggregateListenHabits(inRange, statsZone);
   return {
     range,
     timezone: statsZone,
     storageZone,
+    deviceId: normalizeDeviceId(deviceId),
     totalListenSec,
     dayOfWeek,
     timeOfDay,
   };
 }
 
-export function getPlayStatsPayload(range) {
+export function getPlayStatsPayload(range, deviceId = null) {
   if (!RANGES.has(range)) return null;
 
-  const timeOfDay = getPlayCountsByTimeOfDay(range);
+  const timeOfDay = getPlayCountsByTimeOfDay(range, deviceId);
   let granularity = 'day';
   let series = [];
 
   if (range === '24h' || range === '48h') {
     granularity = 'hour';
-    series = getPlaySeriesHourly(range) || [];
+    series = getPlaySeriesHourly(range, deviceId) || [];
   } else if (range === '7d' || range === '30d') {
     granularity = 'day';
-    series = getPlaySeriesDaily(range) || [];
+    series = getPlaySeriesDaily(range, deviceId) || [];
   } else {
     granularity = 'month';
-    series = getPlaySeriesMonthlyAllTime();
+    series = getPlaySeriesMonthlyAllTime(deviceId);
   }
 
   return {
@@ -299,6 +235,7 @@ export function getPlayStatsPayload(range) {
     granularity,
     series,
     timeOfDay,
+    deviceId: normalizeDeviceId(deviceId),
   };
 }
 
@@ -340,20 +277,21 @@ function fetchTracksByIdsOrdered(trackIds) {
 }
 
 /** 상위 후보 트랙만 통산 재생/청취를 SQL 집계 (전 이력 로드 대체) */
-function fetchAllTimeStatsForTracks(trackIds) {
+function fetchAllTimeStatsForTracks(trackIds, deviceId = null) {
   const map = new Map();
   if (!trackIds.length) return map;
   const placeholders = trackIds.map(() => '?').join(',');
+  const d = deviceScopeFilter(deviceId);
   const rows = db
     .prepare(
       `
     SELECT track_id, COUNT(*) AS plays, SUM(COALESCE(listened_sec, 0)) AS listen_sec
     FROM play_history
-    WHERE track_id IN (${placeholders})
+    WHERE track_id IN (${placeholders}) AND ${d.sql}
     GROUP BY track_id
   `
     )
-    .all(...trackIds);
+    .all(...trackIds, ...d.params);
   for (const r of rows) {
     map.set(String(r.track_id), {
       plays: Number(r.plays) || 0,
@@ -364,13 +302,13 @@ function fetchAllTimeStatsForTracks(trackIds) {
 }
 
 /** play_history 기간 내 청취 초 합 → 별점 → 통산 청취 초 */
-function topTracksFromEvents(periodEv, limit = 20) {
+function topTracksFromEvents(periodEv, limit = 20, deviceId = null) {
   const periodListen = sumListenSecByTrack(periodEv);
   const periodPlays = countPlaysByTrack(periodEv);
 
   const preRanked = [...periodListen.entries()].sort((a, b) => b[1] - a[1]);
   const topIds = preRanked.slice(0, Math.min(limit * 3, preRanked.length)).map(([id]) => id);
-  const allTime = fetchAllTimeStatsForTracks(topIds);
+  const allTime = fetchAllTimeStatsForTracks(topIds, deviceId);
 
   const ranked = topIds.map((trackId) => ({
     trackId,
@@ -594,20 +532,22 @@ function topAlbumsFromEvents(periodEv, limit = 20) {
 /**
  * `/api/stats/top` 통합 페이로드.
  * 기간 이벤트를 SQL 필터로 1회만 로드해 tracks/albums/artists/totals를 모두 계산한다.
- * @param {{ tracks?: boolean, albums?: boolean, artists?: boolean, totals?: boolean }} [include]
+ * @param {{ tracks?: boolean, albums?: boolean, artists?: boolean, totals?: boolean, deviceId?: string | null }} [options]
  */
-export function getStatsTopPayload(range, limit = 20, timezoneRaw, include = {}) {
+export function getStatsTopPayload(range, limit = 20, timezoneRaw, options = {}) {
   if (!CHART_RANGES.has(range) && !RANGES.has(range)) return null;
   const want = {
-    tracks: include.tracks !== false,
-    albums: include.albums !== false,
-    artists: include.artists !== false,
-    totals: include.totals !== false,
+    tracks: options.tracks !== false,
+    albums: options.albums !== false,
+    artists: options.artists !== false,
+    totals: options.totals !== false,
   };
+  const deviceId = normalizeDeviceId(options.deviceId);
   const statsZone = resolveStatsTimezone(timezoneRaw);
-  const periodEv = loadPlayHistoryEvents(range, statsZone);
+  const periodEv = loadPlayHistoryEvents(range, statsZone, deviceId);
   return {
-    tracks: want.tracks ? topTracksFromEvents(periodEv, limit) : [],
+    deviceId,
+    tracks: want.tracks ? topTracksFromEvents(periodEv, limit, deviceId) : [],
     albums: want.albums ? topAlbumsFromEvents(periodEv, limit) : [],
     artists: want.artists ? topArtistsFromEvents(periodEv, limit) : [],
     totals: want.totals

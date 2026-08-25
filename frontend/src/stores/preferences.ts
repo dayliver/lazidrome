@@ -13,8 +13,36 @@ import {
   isValidIanaTimezone,
 } from '@/lib/timezones'
 
+/** 통계 기기 스코프: ''(전체) 또는 특정 device id */
+const STATS_DEVICE_KEY = 'lz_stats_device'
+
+function readStatsDeviceScope(): string {
+  try {
+    return localStorage.getItem(STATS_DEVICE_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
 export const usePreferencesStore = defineStore('preferences', () => {
   const locale = ref<AppLocale>(i18n.global.locale.value as AppLocale)
+
+  /**
+   * 통계·차트가 공유하는 기기 스코프. 화면마다 따로 고르게 하면 서로 다른 수치를
+   * 보게 되므로 한 곳에 둔다. ''이면 서버가 '통계 제외' 기기만 빼고 집계한다.
+   */
+  const statsDeviceScope = ref<string>(readStatsDeviceScope())
+
+  const setStatsDeviceScope = (next: string) => {
+    const v = String(next ?? '')
+    statsDeviceScope.value = v
+    try {
+      if (v) localStorage.setItem(STATS_DEVICE_KEY, v)
+      else localStorage.removeItem(STATS_DEVICE_KEY)
+    } catch {
+      /* ignore */
+    }
+  }
 
   const timezoneMode = ref<TimezoneMode>(readTimezoneMode())
   const customTimezone = ref(readCustomTimezone())
@@ -56,6 +84,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
 
   return {
     locale,
+    statsDeviceScope,
+    setStatsDeviceScope,
     timezoneMode,
     customTimezone,
     effectiveTimezone,

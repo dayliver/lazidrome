@@ -102,13 +102,25 @@ CREATE TABLE track_artists (
 );
 
 -- 8. 재생 기록
+--    device_id는 소프트 참조(FK 없음): 기기 행을 지워도 과거 기록은 남는다.
 CREATE TABLE play_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT, 
     track_id TEXT NOT NULL,
     played_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     scrobbled INTEGER DEFAULT 0,
     listened_sec INTEGER,
+    device_id TEXT,
     FOREIGN KEY (track_id) REFERENCES track_metadata(id) ON DELETE CASCADE
+);
+
+-- 8b. 재생 기기 레지스트리
+--     exclude_from_stats=1인 기기의 재생은 홈 Top·차트·습관 집계에서 빠진다(기록 자체는 남음).
+CREATE TABLE playback_devices (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    exclude_from_stats INTEGER NOT NULL DEFAULT 0,
+    last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 9. 플레이리스트 통합 테이블
@@ -160,6 +172,7 @@ CREATE UNIQUE INDEX idx_artists_name_unique ON artists(name COLLATE NOCASE);
 CREATE INDEX idx_albums_name ON albums(name);
 CREATE INDEX idx_track_metadata_file ON track_metadata(file_id);
 CREATE INDEX idx_history_track_time ON play_history(track_id, played_at);
+CREATE INDEX idx_history_device_time ON play_history(device_id, played_at);
 CREATE INDEX idx_album_tracks_album ON album_tracks(album_id);
 CREATE INDEX idx_playlist_tracks_playlist ON playlist_tracks(playlist_id, position);
 CREATE INDEX idx_track_artists_artist ON track_artists(artist_id);

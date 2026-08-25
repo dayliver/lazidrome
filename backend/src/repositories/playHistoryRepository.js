@@ -31,6 +31,12 @@ export function countPlayHistory() {
   return db.prepare('SELECT COUNT(*) AS total FROM play_history').get().total;
 }
 
+/** device_id가 없는 재생 기록 수 (기기 귀속 도입 이전 기록·옛 클라이언트) */
+export function countUnattributedPlays() {
+  return db.prepare('SELECT COUNT(*) AS total FROM play_history WHERE device_id IS NULL').get()
+    .total;
+}
+
 /**
  * @param {{ limit?: number, offset?: number }} opts
  */

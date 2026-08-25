@@ -26,7 +26,6 @@
     "unknownArtist": "아티스트 없음",
     "unknownAlbum": "앨범 없음",
     "noRating": "평가 없음",
-    "edit": "편집",
     "backToList": "목록으로",
     "close": "닫기"
   },
@@ -205,7 +204,14 @@
       "onlyThisDevice": "아직 이 기기만 연결되어 있습니다.",
       "waitForOthers": "다른 기기에서 Lazidrome을 열면 여기에 표시됩니다.",
       "openList": "연결된 기기 보기",
-      "openListWithCount": "연결된 기기 {count}대"
+      "openListWithCount": "연결된 기기 {count}대",
+      "lastUpdate": "{secs}초 전 갱신",
+      "lastUpdateJustNow": "방금 갱신",
+      "stale": "응답 없음",
+      "staleHint": "이 기기의 응답이 끊겼습니다. 실제로는 계속 재생 중일 수 있습니다.",
+      "stopAll": "모든 기기 정지",
+      "stopAllConfirm": "연결된 모든 기기의 재생을 멈출까요?",
+      "stopAllDone": "모든 기기에 정지를 보냈습니다."
     }
   },
   "metadata": {

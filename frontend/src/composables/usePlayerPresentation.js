@@ -26,8 +26,9 @@ export function usePlayerPresentation() {
 
   const isPlaying = computed(() => sync.displayIsPlaying)
 
+  // 원격은 보간된 위치를 쓴다 — 마스터 state가 2.5초마다만 오기 때문
   const currentTime = computed(() =>
-    isRemote.value ? sync.remoteState.currentTime : player.currentTime,
+    isRemote.value ? sync.remotePositionSec : player.currentTime,
   )
 
   const duration = computed(() =>

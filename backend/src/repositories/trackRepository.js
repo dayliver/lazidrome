@@ -220,9 +220,14 @@ const PLAY_COUNT_THRESHOLD = 0.5;
  * `listened_sec`은 도달한 최대 위치를 곡 길이로 잘라 실측값으로 저장한다.
  * 통계(홈 Top·차트)는 전부 이 컬럼 합계로 순위를 매기므로, 비워두면 해당 재생이
  * 집계에서 통째로 빠진다(`db.js`의 기동 시 백필은 레거시 행 전용).
+ *
+ * `deviceId`는 어느 기기에서 난 재생인지 사후 감사·필터용. null이면 '기기 미상'.
+ * @param {string} trackId
+ * @param {number} positionPeakSec
+ * @param {string | null} [deviceId]
  * @returns {{ notFound: true } | { skipped: true, play_count: number } | { recorded: true, play_count: number, playHistoryId: number | null }}
  */
-export function recordTrackPlayWithHistory(trackId, positionPeakSec) {
+export function recordTrackPlayWithHistory(trackId, positionPeakSec, deviceId = null) {
   const row = db
     .prepare(
       `SELECT t.id, t.play_count, f.duration as file_duration_sec
@@ -265,8 +270,8 @@ export function recordTrackPlayWithHistory(trackId, positionPeakSec) {
 
   const tx = db.transaction(() => {
     const info = db
-      .prepare('INSERT INTO play_history (track_id, listened_sec) VALUES (?, ?)')
-      .run(trackId, listenedSec);
+      .prepare('INSERT INTO play_history (track_id, listened_sec, device_id) VALUES (?, ?, ?)')
+      .run(trackId, listenedSec, deviceId || null);
     db.prepare(
       `UPDATE track_metadata
        SET play_count = COALESCE(play_count, 0) + 1,

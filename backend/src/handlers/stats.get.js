@@ -14,7 +14,7 @@ function parseTagsRows(rows) {
 export async function getStatsPlaysHandler(request, reply) {
   const raw = request.query?.range;
   const range = RANGES.has(raw) ? raw : '7d';
-  const payload = getPlayStatsPayload(range);
+  const payload = getPlayStatsPayload(range, request.query?.deviceId);
   return { success: true, data: payload };
 }
 
@@ -22,7 +22,7 @@ export async function getStatsHabitsHandler(request, reply) {
   const raw = request.query?.range;
   const range = HABIT_RANGES.has(raw) ? raw : '30d';
   const timezone = request.query?.timezone;
-  const payload = getHabitStatsPayload(range, timezone);
+  const payload = getHabitStatsPayload(range, timezone, request.query?.deviceId);
   if (!payload) {
     return reply.code(400).send({ success: false, error: '유효하지 않은 range입니다.' });
   }
@@ -35,13 +35,16 @@ export async function getStatsTopHandler(request, reply) {
   const limit = Math.min(50, Math.max(1, Number(request.query?.limit) || 12));
   try {
     const timezone = request.query?.timezone;
-    const payload = getStatsTopPayload(range, limit, timezone);
+    const payload = getStatsTopPayload(range, limit, timezone, {
+      deviceId: request.query?.deviceId,
+    });
     const tracks = parseTagsRows(payload?.tracks || []);
     return {
       success: true,
       data: {
         range,
         limit,
+        deviceId: payload?.deviceId ?? null,
         tracks,
         albums: payload?.albums || [],
         artists: payload?.artists || [],

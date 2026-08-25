@@ -1,4 +1,5 @@
 import { recordTrackPlayWithHistory, getTrackScrobbleMeta, markPlayHistoryScrobbled } from '../repositories/trackRepository.js';
+import { touchDevice } from '../repositories/deviceRepository.js';
 import { lastfmService } from '../services/lastfmService.js';
 
 export async function postTrackPlayHandler(request, reply) {
@@ -14,8 +15,15 @@ export async function postTrackPlayHandler(request, reply) {
     });
   }
 
+  // 기기 귀속: 클라이언트가 보낸 device_id를 레지스트리에 등록하고 재생 기록에 남긴다.
+  // 없으면 null(= 기기 미상)로 기록 — 옛 클라이언트도 그대로 동작한다.
+  const deviceId = touchDevice(
+    body.device_id ?? body.deviceId,
+    body.device_name ?? body.deviceName
+  );
+
   try {
-    const result = recordTrackPlayWithHistory(id, positionPeakSec);
+    const result = recordTrackPlayWithHistory(id, positionPeakSec, deviceId);
     if (result.notFound) return reply.code(404).send({ success: false, error: 'Track not found' });
     if (result.skipped) {
       return {

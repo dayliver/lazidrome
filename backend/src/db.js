@@ -53,6 +53,8 @@ export function initDB() {
   normalizeEmptyMbids();
   ensurePageVisitsTable();
   ensurePlayHistoryListenedSec();
+  // 컬럼 추가는 인덱스 생성보다 먼저 — ensurePerformanceIndexes가 device_id를 참조한다
+  ensurePlaybackDevices();
   ensurePerformanceIndexes();
   ensureTrackFiledataMtime();
   ensureTrackVolumePct();
@@ -85,6 +87,37 @@ function ensureTrackVolumePct() {
   }
 }
 
+/**
+ * 재생 기기 귀속: `play_history.device_id` + `playback_devices` 레지스트리.
+ * device_id는 소프트 참조라 FK를 걸지 않는다 — 기기를 지워도 과거 기록은 보존.
+ * 기존 행의 device_id는 NULL(= 기기 미상)로 남는다.
+ */
+function ensurePlaybackDevices() {
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS playback_devices (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        exclude_from_stats INTEGER NOT NULL DEFAULT 0,
+        last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch (err) {
+    console.error('❌ playback_devices 테이블 생성 실패:', err.message);
+    return;
+  }
+
+  const cols = db.prepare('PRAGMA table_info(play_history)').all();
+  if (cols.some((c) => c.name === 'device_id')) return;
+  try {
+    db.exec('ALTER TABLE play_history ADD COLUMN device_id TEXT');
+    console.log('📌 play_history.device_id 컬럼 추가됨 (마이그레이션)');
+  } catch (err) {
+    console.error('❌ play_history.device_id 마이그레이션 실패:', err.message);
+  }
+}
+
 /** 스캐너·통계·상세 조회 hot path 인덱스 (기존 DB 마이그레이션) */
 function ensurePerformanceIndexes() {
   const statements = [
@@ -92,6 +125,7 @@ function ensurePerformanceIndexes() {
     'CREATE INDEX IF NOT EXISTS idx_albums_name ON albums(name)',
     'CREATE INDEX IF NOT EXISTS idx_track_metadata_file ON track_metadata(file_id)',
     'CREATE INDEX IF NOT EXISTS idx_history_track_time ON play_history(track_id, played_at)',
+    'CREATE INDEX IF NOT EXISTS idx_history_device_time ON play_history(device_id, played_at)',
     'CREATE INDEX IF NOT EXISTS idx_album_tracks_album ON album_tracks(album_id)',
     'CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks(playlist_id, position)',
     'CREATE INDEX IF NOT EXISTS idx_track_artists_artist ON track_artists(artist_id)',

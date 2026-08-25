@@ -6,6 +6,7 @@ import { aggregateGenresFromTracks } from '@/lib/libraryAggregates'
 import { normalizeTracksResponse } from '@/lib/tracksApi'
 import { loadLibraryCache, saveLibraryCache, clearLibraryCache } from '@/lib/libraryCache'
 import { normalizeCatalogResponse } from '@/lib/catalogApi'
+import { getDeviceId, guessDeviceName } from '@/lib/deviceIdentity.js'
 
 export const useLibraryStore = defineStore('library', () => {
   const auth = useAuthStore()
@@ -551,7 +552,12 @@ export const useLibraryStore = defineStore('library', () => {
       const res = await auth.fetchWithAuth(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ position_peak_sec: positionPeakSec }),
+        body: JSON.stringify({
+          position_peak_sec: positionPeakSec,
+          // 기기 귀속: 어느 기기에서 난 재생인지 서버가 play_history에 남긴다
+          device_id: getDeviceId(),
+          device_name: guessDeviceName(),
+        }),
       })
       const raw = await res.text()
       if (!res.ok) return null
@@ -631,8 +637,9 @@ export const useLibraryStore = defineStore('library', () => {
    * 재생 이벤트 집계 차트 (GET /api/stats/plays)
    * @param {'24h'|'48h'|'7d'|'30d'|'all'} range
    */
-  const fetchStatsPlays = async (range = '7d') => {
+  const fetchStatsPlays = async (range = '7d', deviceId = null) => {
     const q = new URLSearchParams({ range })
+    if (deviceId) q.set('deviceId', deviceId)
     const res = await auth.fetchWithAuth(`/api/stats/plays?${q}`)
     if (!res.ok) {
       const t = await res.text()
@@ -646,9 +653,10 @@ export const useLibraryStore = defineStore('library', () => {
    * 기간 내 play_history 이벤트 수 기준 상위 트랙·앨범 (GET /api/stats/top)
    * @param {'24h'|'48h'|'7d'|'30d'|'all'} range
    */
-  const fetchStatsHabits = async (range = '30d', timezone) => {
+  const fetchStatsHabits = async (range = '30d', timezone, deviceId = null) => {
     const q = new URLSearchParams({ range })
     if (timezone) q.set('timezone', timezone)
+    if (deviceId) q.set('deviceId', deviceId)
     const res = await auth.fetchWithAuth(`/api/stats/habits?${q}`)
     if (!res.ok) {
       const t = await res.text()
@@ -658,9 +666,10 @@ export const useLibraryStore = defineStore('library', () => {
     return body?.data ?? null
   }
 
-  const fetchStatsTop = async (range = '7d', limit = 12, timezone) => {
+  const fetchStatsTop = async (range = '7d', limit = 12, timezone, deviceId = null) => {
     const q = new URLSearchParams({ range, limit: String(limit) })
     if (timezone) q.set('timezone', timezone)
+    if (deviceId) q.set('deviceId', deviceId)
     const res = await auth.fetchWithAuth(`/api/stats/top?${q}`)
     if (!res.ok) {
       const t = await res.text()

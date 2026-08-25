@@ -7,6 +7,7 @@ import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import HabitBarChart from '@/components/charts/HabitBarChart.vue'
+import DeviceScopeSelect from '@/components/shared/DeviceScopeSelect.vue'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -43,7 +44,11 @@ const load = async () => {
   loading.value = true
   error.value = null
   try {
-    payload.value = await library.fetchStatsHabits(range.value, prefs.effectiveTimezone)
+    payload.value = await library.fetchStatsHabits(
+      range.value,
+      prefs.effectiveTimezone,
+      prefs.statsDeviceScope,
+    )
   } catch (e) {
     console.error(e)
     error.value = e
@@ -56,7 +61,7 @@ const load = async () => {
 onMounted(load)
 watch(range, load)
 watch(
-  () => [auth.token, prefs.effectiveTimezone],
+  () => [auth.token, prefs.effectiveTimezone, prefs.statsDeviceScope],
   () => {
     if (auth.token) void load()
     else {
@@ -97,6 +102,7 @@ const totalListenLabel = computed(() => formatListenSeconds(payload.value?.total
             <SelectItem value="all">{{ t('stats.ranges.all') }}</SelectItem>
           </SelectContent>
         </Select>
+        <DeviceScopeSelect />
       </div>
 
       <p v-if="payload?.timezone" class="text-xs text-muted-foreground max-w-3xl leading-relaxed">

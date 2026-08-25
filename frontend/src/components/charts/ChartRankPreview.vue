@@ -34,7 +34,12 @@ const load = async () => {
   loading.value = true
   errored.value = false
   try {
-    const data = await library.fetchStatsTop(props.range, props.limit, prefs.effectiveTimezone)
+    const data = await library.fetchStatsTop(
+      props.range,
+      props.limit,
+      prefs.effectiveTimezone,
+      prefs.statsDeviceScope,
+    )
     tracks.value = Array.isArray(data?.tracks) ? data.tracks : []
     artists.value = Array.isArray(data?.artists) ? data.artists.slice(0, props.limit) : []
     totals.value = data?.totals ?? null
@@ -50,7 +55,7 @@ const load = async () => {
 }
 
 onMounted(load)
-watch(() => [props.range, props.limit, prefs.effectiveTimezone], load)
+watch(() => [props.range, props.limit, prefs.effectiveTimezone, prefs.statsDeviceScope], load)
 
 const emit = defineEmits(['play-track'])
 
