@@ -202,6 +202,15 @@ fastify.register(importRoutes);
 fastify.register(filesRoutes);
 fastify.register(playbackRoutes);
 
+// 백그라운드 작업(스크롭·스캐너 등)에서 새는 예외로 프로세스가 죽지 않게 한다.
+// 배포가 프로세스 감시자 없이 `nohup node …`로 뜨므로, 죽으면 수동 재시작 전까지 전면 장애다.
+process.on('unhandledRejection', (reason) => {
+  fastify.log.error({ err: reason }, 'Unhandled promise rejection — 프로세스는 유지합니다');
+});
+process.on('uncaughtException', (err) => {
+  fastify.log.error({ err }, 'Uncaught exception — 프로세스는 유지합니다');
+});
+
 const start = async () => {
   try {
     await fastify.listen({ port: PORT, host: '0.0.0.0' });

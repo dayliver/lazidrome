@@ -41,53 +41,59 @@ const handleFetch = () =>
     mbidMissingMessage: t('external.enterMbid'),
   })
 
-const updateField = (field, value) => {
-  emit('update:modelValue', { ...props.modelValue, [field]: value })
-}
-
 // ============================================================================
 // 💡 [아티스트 전용] 데이터 병합 로직 (Smart Apply)
+//
+// ⚠️ props.modelValue는 부모가 리렌더될 때까지 갱신되지 않는다. 한 tick 안에서 emit을
+//    연달아 호출하면 매번 옛 객체를 spread 하게 되어 마지막 emit만 살아남는다.
+//    patch*는 순수 함수로 두고, 일괄 병합은 체이닝 후 단일 emit.
 // ============================================================================
 
-const applyTitle = () => {
-  if (props.item.external?.name) updateField('title', props.item.external.name)
+const patchTitle = (base) => {
+  const extName = props.item.external?.name
+  return extName ? { ...base, title: extName } : base
 }
 
-const applyBio = () => {
-  if (props.item.external?.bio) updateField('biography', props.item.external.bio)
+const patchBio = (base) => {
+  const extBio = props.item.external?.bio
+  return extBio ? { ...base, biography: extBio } : base
 }
 
-const applyTags = () => {
+const patchTags = (base, { warnOnNoneNew = false } = {}) => {
   const extTags = props.item.external?.tags
-  if (!extTags || extTags.length === 0) return
+  if (!extTags || extTags.length === 0) return base
 
-  const currentTags = props.modelValue.tags || []
+  const currentTags = base.tags || []
   // 중복 태그 방지 필터링
-  const newTags = extTags.filter(t => !currentTags.includes(t))
-  
+  const newTags = extTags.filter(tag => !currentTags.includes(tag))
+
   if (newTags.length === 0) {
-    notify.warning(t('external.tagsNoneNew'))
-    return
+    if (warnOnNoneNew) notify.warning(t('external.tagsNoneNew'))
+    return base
   }
-  updateField('tags', [...currentTags, ...newTags])
+  return { ...base, tags: [...currentTags, ...newTags] }
 }
 
-const applyCover = () => {
-  if (props.item.external?.imageUrl) {
-    emit('update:modelValue', {
-      ...props.modelValue,
-      newCoverUrl: props.item.external.imageUrl,
-      newCoverFile: null
-    })
-  }
+const patchCover = (base) => {
+  const extImage = props.item.external?.imageUrl
+  if (!extImage) return base
+  return { ...base, newCoverUrl: extImage, newCoverFile: null }
 }
 
+const patchMbid = (base) => {
+  const extMbid = props.item.external?.mbid
+  return extMbid ? { ...base, mbid: extMbid } : base
+}
+
+const applyTitle = () => emit('update:modelValue', patchTitle(props.modelValue))
+const applyBio = () => emit('update:modelValue', patchBio(props.modelValue))
+const applyTags = () =>
+  emit('update:modelValue', patchTags(props.modelValue, { warnOnNoneNew: true }))
+const applyCover = () => emit('update:modelValue', patchCover(props.modelValue))
+
+// 전체 일괄 병합 — 체이닝 후 단일 emit
 const applyAll = () => {
-  applyTitle()
-  applyBio()
-  applyTags()
-  applyCover()
-  if (props.item.external?.mbid) updateField('mbid', props.item.external.mbid)
+  emit('update:modelValue', patchMbid(patchCover(patchTags(patchBio(patchTitle(props.modelValue))))))
   notifyMergeAll()
 }
 </script>

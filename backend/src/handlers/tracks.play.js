@@ -26,6 +26,8 @@ export async function postTrackPlayHandler(request, reply) {
     }
 
     if (result.recorded && result.playHistoryId != null) {
+      // 스크롭은 응답과 무관한 백그라운드 작업 — 실패해도 재생 기록을 되돌리거나
+      // 프로세스를 죽이지 않도록 여기서 전부 삼킨다.
       void (async () => {
         const hid = result.playHistoryId;
         const meta = getTrackScrobbleMeta(id);
@@ -54,7 +56,12 @@ export async function postTrackPlayHandler(request, reply) {
             },
             'Last.fm scrobble failed'
           );
-      })();
+      })().catch((err) => {
+        request.log.error(
+          { err, trackId: id, playHistoryId: result.playHistoryId },
+          'Last.fm scrobble task failed'
+        );
+      });
     }
 
     return { success: true, data: { id, play_count: result.play_count } };

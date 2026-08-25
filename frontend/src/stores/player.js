@@ -167,23 +167,34 @@ export const usePlayerStore = defineStore('player', () => {
     return Number.isFinite(d) && d > 0 ? d : 0
   }
 
-  const syncHlsPlaybackTimes = () => {
-    if (!hlsQueueMode) return
+  /**
+   * HLS 큐 모드에서 audio.currentTime은 큐 전체를 이어붙인 타임라인 좌표다.
+   * 현재 곡 기준 위치·길이로 환산해 돌려준다.
+   * @returns {{ localCt: number, segDur: number } | null}
+   */
+  const hlsLocalPlaybackPosition = () => {
+    if (!hlsQueueMode) return null
     const localIdx = currentIndex.value - hlsSliceBaseIndex
-    if (localIdx < 0 || localIdx >= hlsSegmentStarts.length) return
+    if (localIdx < 0 || localIdx >= hlsSegmentStarts.length) return null
     const segStart = hlsSegmentStarts[localIdx] ?? 0
     let segDur = hlsSegmentDurations[localIdx]
     if (!Number.isFinite(segDur) || segDur <= 0) {
       segDur = trackDurationFromQueue(currentTrack.value)
     }
     const audioCt = audio.value.currentTime
-    if (!Number.isFinite(audioCt)) return
+    if (!Number.isFinite(audioCt)) return null
     const localCt =
       segDur > 0
         ? Math.max(0, Math.min(audioCt - segStart, segDur))
         : Math.max(0, audioCt - segStart)
-    currentTime.value = localCt
-    if (segDur > 0) duration.value = segDur
+    return { localCt, segDur }
+  }
+
+  const syncHlsPlaybackTimes = () => {
+    const pos = hlsLocalPlaybackPosition()
+    if (!pos) return
+    currentTime.value = pos.localCt
+    if (pos.segDur > 0) duration.value = pos.segDur
   }
 
   const toggleExpand = () => {
@@ -614,7 +625,9 @@ export const usePlayerStore = defineStore('player', () => {
     const tr = currentTrack.value
     if (!tr?.id || playSessionTrackId.value == null) return
     if (String(tr.id) !== String(playSessionTrackId.value)) return
-    const t = audio.value.currentTime
+    // HLS 큐 모드의 audio.currentTime은 큐 전체 타임라인이라 그대로 쓰면
+    // 두 번째 곡부터 peak가 부풀어 스킵해도 완청으로 기록된다. 곡 기준으로 환산.
+    const t = hlsQueueMode ? hlsLocalPlaybackPosition()?.localCt : audio.value.currentTime
     if (!Number.isFinite(t) || t < 0) return
     playSessionPeakSec.value = Math.max(playSessionPeakSec.value, t)
   }

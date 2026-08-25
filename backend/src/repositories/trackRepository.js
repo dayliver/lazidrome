@@ -216,6 +216,10 @@ const PLAY_COUNT_THRESHOLD = 0.5;
 /**
  * DB에 있는 파일 길이(초) 기준으로 절반 이상 재생(position_peak_sec)일 때만
  * play_history 삽입 + play_count 증가 + last_played 갱신.
+ *
+ * `listened_sec`은 도달한 최대 위치를 곡 길이로 잘라 실측값으로 저장한다.
+ * 통계(홈 Top·차트)는 전부 이 컬럼 합계로 순위를 매기므로, 비워두면 해당 재생이
+ * 집계에서 통째로 빠진다(`db.js`의 기동 시 백필은 레거시 행 전용).
  * @returns {{ notFound: true } | { skipped: true, play_count: number } | { recorded: true, play_count: number, playHistoryId: number | null }}
  */
 export function recordTrackPlayWithHistory(trackId, positionPeakSec) {
@@ -257,19 +261,22 @@ export function recordTrackPlayWithHistory(trackId, positionPeakSec) {
     return { skipped: true, play_count: playCount };
   }
 
+  const listenedSec = Math.round(Math.min(peak, durationSec));
+
   const tx = db.transaction(() => {
-    db.prepare('INSERT INTO play_history (track_id) VALUES (?)').run(trackId);
+    const info = db
+      .prepare('INSERT INTO play_history (track_id, listened_sec) VALUES (?, ?)')
+      .run(trackId, listenedSec);
     db.prepare(
       `UPDATE track_metadata
        SET play_count = COALESCE(play_count, 0) + 1,
            last_played = CURRENT_TIMESTAMP
        WHERE id = ?`
     ).run(trackId);
+    return info.lastInsertRowid;
   });
-  tx();
-
-  const hid = db.prepare('SELECT last_insert_rowid() AS id').get();
-  const playHistoryId = hid?.id != null ? Number(hid.id) : null;
+  const insertedId = tx();
+  const playHistoryId = insertedId != null ? Number(insertedId) : null;
 
   const after = db.prepare('SELECT play_count FROM track_metadata WHERE id = ?').get(trackId);
   return { recorded: true, play_count: after?.play_count ?? playCount + 1, playHistoryId };
@@ -295,7 +302,7 @@ export function getTrackScrobbleMeta(trackId) {
        ORDER BY ta.role_mask
        LIMIT 1) AS artist,
       alb.name AS album,
-      CAST(ROUND(f.duration)) AS duration_sec
+      CAST(ROUND(f.duration) AS INTEGER) AS duration_sec
     FROM track_metadata t
     JOIN track_filedata f ON f.id = t.file_id
     LEFT JOIN album_tracks at ON at.track_id = t.id AND at.is_primary = 1

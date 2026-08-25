@@ -1,6 +1,6 @@
 {
   "name": "lazidrome",
-  "version": "0.7.5",
+  "version": "0.8.0-alpha.1",
   "private": true,
   "type": "module",
   "workspaces": [

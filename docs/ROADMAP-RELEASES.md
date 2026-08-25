@@ -33,6 +33,7 @@
 | **0.7.3** | 모바일 HLS CDN + hls.light 폴백 | 2.3b |
 | **0.7.4** | 아티스트/앨범 삭제, 아티스트 정렬, 고아 정의, 상세 필터 자동해제 | — |
 | **0.7.5** | 트랙 음량·연도, FullPlayer UX, 차트 제목 괄호 표시 | — |
+| **0.8.0-alpha.1** | 재생 기록 크래시·통계 집계 복구, 외부 메타 일괄 병합 수정 | — |
 
 ---
 
@@ -76,6 +77,18 @@
 | 0.7.5.2 | 트랙 year 저장·앨범 year COALESCE 표시 | ✅ |
 | 0.7.5.3 | FullPlayer 진행 썸 테두리 · ⋮ 메뉴 z-index | ✅ |
 | 0.7.5.4 | 차트 트랙 제목 끝 괄호 연하게·작게 | ✅ |
+
+---
+
+## 0.8.0-alpha.1 — 재생 기록·통계·메타데이터 병합 복구 ✅
+
+| # | 작업 | 상태 |
+|---|------|------|
+| 0.8.0-alpha.1.1 | `getTrackScrobbleMeta` 잘못된 `CAST` 수정 — 재생 1회당 프로세스 사망 | ✅ |
+| 0.8.0-alpha.1.2 | 스크로블 백그라운드 작업 `.catch()` + 전역 `unhandledRejection`·`uncaughtException` | ✅ |
+| 0.8.0-alpha.1.3 | `play_history.listened_sec` 실측 저장 — 기동 시 백필 없이 홈·차트 반영 | ✅ |
+| 0.8.0-alpha.1.4 | External 탭 일괄 병합: stale props 연속 emit → 순수 patch 체이닝 후 단일 emit | ✅ |
+| 0.8.0-alpha.1.5 | HLS 큐 peak를 곡 기준 좌표로 환산 — 스킵한 곡의 완청 오집계 방지 | ✅ |
 
 ---
 

@@ -42,68 +42,68 @@ const handleFetch = () =>
     mbidMissingMessage: t('external.enterMbid'),
   })
 
-const updateField = (field, value) => {
-  emit('update:modelValue', { ...props.modelValue, [field]: value })
-}
-
 // ============================================================================
 // 💡 [핵심] 개별 데이터 적용 로직 (Smart Apply)
+//
+// ⚠️ props.modelValue는 부모가 리렌더될 때까지 갱신되지 않는다. 그래서 한 tick 안에서
+//    emit을 연달아 호출하면 매번 같은 옛 객체를 spread 하게 되어 **마지막 emit만 살아남는다.**
+//    각 patch*는 base 객체를 받아 새 객체를 돌려주는 순수 함수로 두고,
+//    여러 필드를 적용할 때는 체이닝해서 emit을 딱 1회만 한다.
 // ============================================================================
 
 // 1. 곡 제목 적용
-const applyTitle = () => {
-  if (props.item.external?.title) updateField('title', props.item.external.title)
+const patchTitle = (base) => {
+  const extTitle = props.item.external?.title
+  return extTitle ? { ...base, title: extTitle } : base
 }
 
 // 2. 아티스트 적용 (안전 병합: Safe Append)
-const applyArtist = () => {
+const patchArtist = (base, { warnOnDuplicate = false } = {}) => {
   const extName = props.item.external?.artist
-  if (!extName) return
+  if (!extName) return base
 
-  const currentArtists = props.modelValue.artists || []
+  const currentArtists = base.artists || []
   const isExisting = currentArtists.some(a => a.name.toLowerCase() === extName.toLowerCase())
-  
+
   if (isExisting) {
-    notify.warning(t('external.artistDuplicate'))
-    return
+    if (warnOnDuplicate) notify.warning(t('external.artistDuplicate'))
+    return base
   }
 
   // 💉 핵심: 배열 맨 앞에 '임시 개체(id: null)'로 추가합니다.
-  const updatedArtists = [{ id: null, name: extName, role_mask: 1 }, ...currentArtists]
-  updateField('artists', updatedArtists)
+  return { ...base, artists: [{ id: null, name: extName, role_mask: 1 }, ...currentArtists] }
 }
 
 // 3. 앨범 적용 (스마트 교체: Swap & Nullify ID)
-const applyAlbum = () => {
+const patchAlbum = (base) => {
   const extAlbum = props.item.external?.albumName
-  if (!extAlbum) return
-
-  emit('update:modelValue', {
-    ...props.modelValue,
-    albumName: extAlbum,
-    albumId: null // 💉 핵심: 기존 ID를 날려서 백엔드가 이름으로 재검색/생성하게 유도
-  })
+  if (!extAlbum) return base
+  // 💉 핵심: 기존 ID를 날려서 백엔드가 이름으로 재검색/생성하게 유도
+  return { ...base, albumName: extAlbum, albumId: null }
 }
 
 // 4. 커버 아트 적용
-const applyCover = () => {
-  if (props.item.external?.imageUrl) {
-    emit('update:modelValue', {
-      ...props.modelValue,
-      newCoverUrl: props.item.external.imageUrl,
-      newCoverFile: null // 로컬 파일 우선순위 해제
-    })
-  }
+const patchCover = (base) => {
+  const extImage = props.item.external?.imageUrl
+  if (!extImage) return base
+  return { ...base, newCoverUrl: extImage, newCoverFile: null } // 로컬 파일 우선순위 해제
 }
 
-// 5. 전체 일괄 병합 (Merge All)
+const patchMbid = (base) => {
+  const extMbid = props.item.external?.mbid
+  return extMbid ? { ...base, mbid: extMbid } : base
+}
+
+const applyTitle = () => emit('update:modelValue', patchTitle(props.modelValue))
+const applyArtist = () =>
+  emit('update:modelValue', patchArtist(props.modelValue, { warnOnDuplicate: true }))
+const applyAlbum = () => emit('update:modelValue', patchAlbum(props.modelValue))
+const applyCover = () => emit('update:modelValue', patchCover(props.modelValue))
+
+// 5. 전체 일괄 병합 (Merge All) — 체이닝 후 단일 emit
 const applyAll = () => {
-  applyTitle()
-  applyArtist()
-  applyAlbum()
-  applyCover()
-  // MBID도 있으면 같이 덮어씌움
-  if (props.item.external?.mbid) updateField('mbid', props.item.external.mbid)
+  const merged = patchMbid(patchCover(patchAlbum(patchArtist(patchTitle(props.modelValue)))))
+  emit('update:modelValue', merged)
   notifyMergeAll()
 }
 </script>
