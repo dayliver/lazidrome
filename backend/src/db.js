@@ -9,7 +9,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 경로 설정
-const DB_PATH = path.join(__dirname, '../database/lazidrome.db');
+// LAZI_DB_PATH로 덮어쓸 수 있다 — 테스트가 임시 DB를 쓰기 위한 유일한 통로다
+// (모듈 로드 시점에 연결이 열리므로 import 전에 설정해야 한다).
+const DB_PATH = process.env.LAZI_DB_PATH || path.join(__dirname, '../database/lazidrome.db');
 const SCHEMA_PATH = path.join(__dirname, '../database/schema.sql');
 
 // 데이터베이스 연결

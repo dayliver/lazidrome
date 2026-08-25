@@ -1,6 +1,6 @@
 {
   "name": "lazidrome",
-  "version": "0.8.0-alpha.3",
+  "version": "0.8.0-alpha.4",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
     "install-all": "npm install",
+    "test": "node --test \"backend/test/**/*.test.js\"",
     "build:info": "node scripts/write-build-info.js",
     "build": "npm run build:info && npm run build -w frontend",
     "sync:frontend": "rsync -uav --delete ./frontend/dist/ home:/projects/lazidrome/frontend/dist",

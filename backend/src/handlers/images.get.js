@@ -37,7 +37,15 @@ function sendImageResponse(request, reply, relativePath) {
   }
 
   setPrivateCacheControl(reply, maxAge, { etag });
-  return reply.sendFile(serveRelative);
+  // @fastify/static은 기본적으로 자기 Cache-Control(`public, max-age=0`)과 약한 ETag를
+  // 덧씌운다. 그대로 두면 위에서 만든 서명 기반 private 캐시가 통째로 무시되고
+  // (커버가 전혀 캐시되지 않음), 클라이언트가 돌려주는 ETag도 우리 것과 달라
+  // 조건부 요청이 우리 쪽에서 매칭되지 않는다.
+  return reply.sendFile(serveRelative, {
+    cacheControl: false,
+    etag: false,
+    lastModified: false,
+  });
 }
 
 export async function getAlbumImageHandler(request, reply) {

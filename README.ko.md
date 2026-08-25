@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **버전** | 0.8.0-alpha.3 |
+| **버전** | 0.8.0-alpha.4 |
 | **구성** | Vue 3 + Vite (웹 앱) · Fastify + SQLite (API·스트리밍) |
 | **UI 언어** | 영어 · 한국어 |
 
@@ -99,6 +99,7 @@ lazidrome/
 |------|------|
 | `npm run dev` | API + UI 동시 실행 |
 | `npm run build` | 빌드 정보 기록 후 프론트 빌드 |
+| `npm test` | 백엔드 테스트 실행 (`node --test`, 추가 의존성 없음) |
 | `npm run install-all` | 워크스페이스 의존성 설치 |
 
 운영 배포 스크립트는 `scripts/`에 있으며 [docs/DEPLOY.md](./docs/DEPLOY.md)를 참고하세요.

@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.8.0-alpha.3 |
+| **Version** | 0.8.0-alpha.4 |
 | **Stack** | Vue 3 + Vite (web app) · Fastify + SQLite (API & streaming) |
 | **Languages** | English · Korean (UI) |
 
@@ -100,6 +100,7 @@ Folders named `_excluded` anywhere under `TRACKS_PATH` are ignored by the scanne
 | `npm run dev` | Start API + UI together |
 | `npm run build` | Write build info and build the frontend |
 | `npm run install-all` | Install workspace dependencies |
+| `npm test` | Run the backend test suite (`node --test`, no extra dependencies) |
 
 Production deploy helpers live under `scripts/` and are documented in [docs/DEPLOY.md](./docs/DEPLOY.md) (operator-oriented).
 
