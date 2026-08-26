@@ -77,8 +77,11 @@ const draggableTracks = computed({
       <TableHeader>
         <TableRow class="bg-muted/30">
           <TableHead v-if="playlistId" class="w-8"></TableHead>
-          <TableHead v-if="selectable" class="w-10 text-center">
-            <input type="checkbox" :checked="isAllSelected" :indeterminate="isSomeSelected" @change="toggleSelectAll" class="w-4 h-4 rounded border-muted-foreground/30 accent-primary cursor-pointer focus:ring-primary focus:ring-offset-2 transition-all"/>
+          <TableHead v-if="selectable" class="w-10 px-0 text-center">
+            <!-- label이 칸 전체를 덮어, 체크박스를 정확히 맞히지 않아도 토글된다 -->
+            <label class="flex h-10 cursor-pointer items-center justify-center px-2">
+              <input type="checkbox" :checked="isAllSelected" :indeterminate="isSomeSelected" @change="toggleSelectAll" class="w-4 h-4 rounded border-muted-foreground/30 accent-primary cursor-pointer focus:ring-primary focus:ring-offset-2 transition-all"/>
+            </label>
           </TableHead>
           <TableHead class="w-[50px] text-center">#</TableHead>
           <TableHead v-if="showCover" class="w-16 text-center">{{ t('trackTable.cover') }}</TableHead>
@@ -116,8 +119,11 @@ const draggableTracks = computed({
             <GripVertical class="w-4 h-4 mx-auto text-muted-foreground/30 hover:text-foreground cursor-grab active:cursor-grabbing drag-handle transition-colors" />
           </TableCell>
 
-          <TableCell v-if="selectable" class="text-center" @click.stop>
-            <input type="checkbox" :checked="selectedTrackIds.includes(item.id)" @change="toggleSelect(item.id)" class="w-4 h-4 rounded border-muted-foreground/30 accent-primary cursor-pointer focus:ring-primary focus:ring-offset-2 transition-all"/>
+          <TableCell v-if="selectable" class="p-0 text-center" @click.stop>
+            <!-- label이 셀 전체를 덮어, 체크박스를 정확히 맞히지 않아도 토글된다 -->
+            <label class="flex cursor-pointer items-center justify-center p-2">
+              <input type="checkbox" :checked="selectedTrackIds.includes(item.id)" @change="toggleSelect(item.id)" class="w-4 h-4 rounded border-muted-foreground/30 accent-primary cursor-pointer focus:ring-primary focus:ring-offset-2 transition-all"/>
+            </label>
           </TableCell>
 
           <TableCell class="align-middle font-mono text-xs text-muted-foreground">

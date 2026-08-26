@@ -127,8 +127,11 @@ function onRowClick(index, event) {
           <GripVertical class="w-5 h-5 text-muted-foreground/30 hover:text-foreground cursor-grab active:cursor-grabbing drag-handle transition-colors" />
         </div>
 
-        <div v-if="selectable" class="shrink-0 pl-1" @click.stop>
-          <input type="checkbox" :checked="selectedTrackIds.includes(item.id)" @change="toggleSelect(item.id)" class="w-5 h-5 rounded border-muted-foreground/30 accent-primary"/>
+        <div v-if="selectable" class="shrink-0" @click.stop>
+          <!-- label이 터치 영역을 넓혀준다 — 체크박스만 정확히 누르지 않아도 된다 -->
+          <label class="flex cursor-pointer items-center justify-center py-3 pl-2 pr-2">
+            <input type="checkbox" :checked="selectedTrackIds.includes(item.id)" @change="toggleSelect(item.id)" class="w-5 h-5 rounded border-muted-foreground/30 accent-primary"/>
+          </label>
         </div>
 
         <div v-if="showCover" class="relative w-14 h-14 rounded-md overflow-hidden shrink-0 shadow-sm border bg-secondary flex items-center justify-center pointer-events-none">

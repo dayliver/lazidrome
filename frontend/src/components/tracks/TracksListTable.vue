@@ -124,14 +124,17 @@ function formatScannedAt(value) {
       <Table class="border-b table-fixed">
         <TableHeader>
           <TableRow class="bg-muted/30">
-            <TableHead class="w-10 text-center">
-              <input
-                type="checkbox"
-                :checked="isAllSelected"
-                :indeterminate="isSomeSelected"
-                class="w-4 h-4 rounded border-muted-foreground/30 accent-primary cursor-pointer"
-                @change="toggleSelectAll"
-              />
+            <TableHead class="w-10 px-0 text-center">
+              <!-- label이 칸 전체를 덮어, 체크박스를 정확히 맞히지 않아도 토글된다 -->
+              <label class="flex h-10 cursor-pointer items-center justify-center px-2">
+                <input
+                  type="checkbox"
+                  :checked="isAllSelected"
+                  :indeterminate="isSomeSelected"
+                  class="w-4 h-4 rounded border-muted-foreground/30 accent-primary cursor-pointer"
+                  @change="toggleSelectAll"
+                />
+              </label>
             </TableHead>
             <TableHead class="w-[50px] text-center">#</TableHead>
             <TableHead class="w-14 text-center">{{ t('trackTable.cover') }}</TableHead>
@@ -187,13 +190,16 @@ function formatScannedAt(value) {
             @contextmenu.prevent="openAt($event, item)"
             @mouseenter="prefetchTrackStream?.(item)"
           >
-            <TableCell class="text-center" @click.stop>
-              <input
-                type="checkbox"
-                :checked="selectedTrackIds.includes(item.id)"
-                class="w-4 h-4 rounded border-muted-foreground/30 accent-primary cursor-pointer"
-                @change="toggleSelect(item.id)"
-              />
+            <TableCell class="p-0 text-center" @click.stop>
+              <!-- label이 셀 전체를 덮어, 체크박스를 정확히 맞히지 않아도 토글된다 -->
+              <label class="flex cursor-pointer items-center justify-center p-2">
+                <input
+                  type="checkbox"
+                  :checked="selectedTrackIds.includes(item.id)"
+                  class="w-4 h-4 rounded border-muted-foreground/30 accent-primary cursor-pointer"
+                  @change="toggleSelect(item.id)"
+                />
+              </label>
             </TableCell>
 
             <TableCell class="align-middle font-mono text-xs text-muted-foreground">
