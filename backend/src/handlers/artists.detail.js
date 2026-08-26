@@ -1,5 +1,6 @@
 import { findArtistDetail, findArtistTracks } from '../repositories/artistRepository.js';
 import { formatArtistTags } from '../services/artistService.js';
+import { parseTagList } from '../services/trackService.js';
 
 export async function getArtistDetailHandler(request, reply) {
   const { id } = request.params;
@@ -13,7 +14,7 @@ export async function getArtistDetailHandler(request, reply) {
     return {
       ...formattedArtist,
       aliases: JSON.parse(artist.aliases || '{}'),
-      tracks
+      tracks: tracks.map((track) => ({ ...track, tags: parseTagList(track.tags) }))
     };
   } catch (err) {
     request.log.error(err);

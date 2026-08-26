@@ -118,6 +118,7 @@
     "clearSelection": "Clear selection",
     "addToPlaylist": "Add to playlist…",
     "addToPlaylistBulk": "Add to playlist",
+    "addTagsBulk": "Add tags",
     "removeFromPlaylist": "Remove from list",
     "goToAlbum": "Go to album",
     "goToArtist": "Go to artist",
@@ -448,6 +449,21 @@
     "renameHint": "Renames the same string on artists, albums, tracks, and smart mix rules.",
     "invalidCharsHint": "cannot use /, \\, or ..",
     "maxLengthHint": "200 characters or fewer."
+  },
+  "tagBulk": {
+    "title": "Tag selected tracks",
+    "searchPlaceholder": "Search tags…",
+    "newPlaceholder": "New tag, press Enter",
+    "empty": "No tags yet.",
+    "noMatch": "No matching tags.",
+    "createHint": "Type below to create a new one.",
+    "partial": "{owned}/{total}",
+    "summary": "add {add} · remove {remove}",
+    "noChanges": "Pick tags to change",
+    "apply": "Apply",
+    "applied": "Updated tags on {count} tracks.",
+    "failed": "Could not apply tags.",
+    "noTracks": "No tracks selected."
   },
   "detailHeader": {
     "loading": "Loading…"

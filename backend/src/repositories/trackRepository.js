@@ -330,6 +330,49 @@ export function updateTrackRating(id, { rating, tags, starred }) {
   return result.changes;
 }
 
+/**
+ * 여러 곡의 태그를 한 번에 넣고 뺀다.
+ * 곡마다 기존 태그를 읽어 합집합/차집합만 적용하므로, 선택한 곡들의 태그가 서로 달라도 덮어쓰지 않는다.
+ * 실제로 바뀐 곡만 `{ id, tags }`로 돌려준다 — 호출부가 그만큼만 화면에 반영하면 된다.
+ */
+export function bulkUpdateTrackTags(ids, { add = [], remove = [] } = {}) {
+  const addNames = [...new Set(add)];
+  const removeSet = new Set(remove);
+
+  const select = db.prepare('SELECT tags FROM track_metadata WHERE id = ?');
+  const update = db.prepare('UPDATE track_metadata SET tags = ? WHERE id = ?');
+
+  const apply = db.transaction((trackIds) => {
+    const changed = [];
+    for (const id of trackIds) {
+      const row = select.get(id);
+      if (!row) continue;
+
+      let current;
+      try {
+        current = JSON.parse(row.tags || '[]');
+      } catch {
+        current = [];
+      }
+      if (!Array.isArray(current)) current = [];
+
+      const next = current.filter((tag) => !removeSet.has(tag));
+      for (const tag of addNames) {
+        if (!next.includes(tag)) next.push(tag);
+      }
+
+      const unchanged = next.length === current.length && next.every((tag, i) => tag === current[i]);
+      if (unchanged) continue;
+
+      update.run(JSON.stringify(next), id);
+      changed.push({ id, tags: next });
+    }
+    return changed;
+  });
+
+  return apply(ids);
+}
+
 export function updateTrackMeta(id, { title, genre, tags, year, volume_pct }) {
   const yearProvided = year !== undefined;
   const yearValue =

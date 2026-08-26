@@ -8,6 +8,8 @@ export function useTrackListSelection(localTracks, props) {
   const selectedTrackIds = ref([])
   const isPlaylistModalOpen = ref(false)
   const tracksToAddToPlaylist = ref([])
+  const isTagModalOpen = ref(false)
+  const tracksToTag = ref([])
 
   const isAllSelected = computed(
     () => localTracks.value.length > 0 && selectedTrackIds.value.length === localTracks.value.length
@@ -34,6 +36,17 @@ export function useTrackListSelection(localTracks, props) {
   }
 
   const onPlaylistAddSuccess = () => {
+    selectedTrackIds.value = []
+  }
+
+  // 태그 대화상자는 id가 아니라 곡 자체를 받는다 — 이미 붙어 있는 태그를 3단 상태로 보여줘야 하기 때문이다
+  const openTagModal = (trackId = null) => {
+    const ids = trackId ? [trackId] : selectedTrackIds.value
+    tracksToTag.value = localTracks.value.filter((t) => ids.includes(t.id))
+    isTagModalOpen.value = true
+  }
+
+  const onTagApplySuccess = () => {
     selectedTrackIds.value = []
   }
 
@@ -65,12 +78,16 @@ export function useTrackListSelection(localTracks, props) {
     selectedTrackIds,
     isPlaylistModalOpen,
     tracksToAddToPlaylist,
+    isTagModalOpen,
+    tracksToTag,
     isAllSelected,
     isSomeSelected,
     toggleSelectAll,
     toggleSelect,
     openPlaylistModal,
     onPlaylistAddSuccess,
+    openTagModal,
+    onTagApplySuccess,
     clearSelection,
     removeTrackFromPlaylist,
     removeSelectedFromPlaylist

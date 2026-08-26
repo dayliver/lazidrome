@@ -65,13 +65,14 @@ export function editTrack(id, data, fileBuffer) {
   return { targetAlbumId, newCoverUrl, fileBuffer };
 }
 
+/** track_metadata.tags는 DB에서 JSON 문자열로 나온다 — 응답에 실을 땐 언제나 배열이어야 한다. */
+export function parseTagList(raw) {
+  return parseJsonArray(raw, []);
+}
+
 export function formatTrack(raw) {
   if (!raw) return null;
-  try {
-    raw.tags = raw.tags ? JSON.parse(raw.tags) : [];
-  } catch {
-    raw.tags = [];
-  }
+  raw.tags = parseTagList(raw.tags);
   raw.artist = JSON.parse(raw.artists_json || '[]').map(a => a.name).join(', ');
   delete raw.artists_json;
   return raw;

@@ -8,6 +8,7 @@ import {
   MoreVertical,
   Disc,
   ListMusic,
+  Tags,
   ChevronUp,
   ChevronDown,
   X,
@@ -18,6 +19,7 @@ import StarRating from '@/components/shared/StarRating.vue'
 import TrackPlayingMarker from '@/components/shared/TrackPlayingMarker.vue'
 import TrackContextMenuHost from '@/components/shared/TrackContextMenuHost.vue'
 import PlaylistSelectModal from '@/components/playlist/PlaylistSelectModal.vue'
+import TrackTagBulkDialog from '@/components/tags/TrackTagBulkDialog.vue'
 import { useTrackListTable } from '@/composables/useTrackListTable'
 import { useTrackContextMenu } from '@/composables/useTrackContextMenu'
 import { usePlayerStore } from '@/stores/player'
@@ -43,12 +45,16 @@ const {
   selectedTrackIds,
   isPlaylistModalOpen,
   tracksToAddToPlaylist,
+  isTagModalOpen,
+  tracksToTag,
   isAllSelected,
   isSomeSelected,
   toggleSelectAll,
   toggleSelect,
   openPlaylistModal,
   onPlaylistAddSuccess,
+  openTagModal,
+  onTagApplySuccess,
   clearSelection,
   getTrackImageUrl,
   prefetchTrackStream,
@@ -321,6 +327,9 @@ function formatScannedAt(value) {
         <button type="button" class="text-sm font-bold flex items-center gap-2 hover:text-primary transition-colors whitespace-nowrap" @click="openPlaylistModal()">
           <ListMusic class="w-4 h-4" /> {{ t('trackTable.addToPlaylistBulk') }}
         </button>
+        <button type="button" class="text-sm font-bold flex items-center gap-2 hover:text-primary transition-colors whitespace-nowrap" @click="openTagModal()">
+          <Tags class="w-4 h-4" /> {{ t('trackTable.addTagsBulk') }}
+        </button>
         <button type="button" class="ml-2 text-muted-foreground hover:text-background p-1 transition-colors" :title="t('trackTable.clearSelection')" @click="clearSelection">
           <X class="w-5 h-5" />
         </button>
@@ -328,6 +337,7 @@ function formatScannedAt(value) {
     </Transition>
 
     <PlaylistSelectModal v-model:is-open="isPlaylistModalOpen" :track-ids="tracksToAddToPlaylist" @success="onPlaylistAddSuccess" />
+    <TrackTagBulkDialog v-model:is-open="isTagModalOpen" :tracks="tracksToTag" @success="onTagApplySuccess" />
   </div>
 </template>
 

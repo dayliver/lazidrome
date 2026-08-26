@@ -4,8 +4,9 @@ import { useBreakpoints, breakpointsTailwind } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
 import { formatTrackTime } from '@/lib/audio'
-import { X, Trash2, ListMusic } from 'lucide-vue-next'
+import { X, Trash2, ListMusic, Tags } from 'lucide-vue-next'
 import PlaylistSelectModal from '@/components/playlist/PlaylistSelectModal.vue'
+import TrackTagBulkDialog from '@/components/tags/TrackTagBulkDialog.vue'
 import TrackListTableDesktop from '@/components/shared/TrackListTableDesktop.vue'
 import TrackListTableMobile from '@/components/shared/TrackListTableMobile.vue'
 import TrackContextMenuHost from '@/components/shared/TrackContextMenuHost.vue'
@@ -26,12 +27,16 @@ const {
   selectedTrackIds,
   isPlaylistModalOpen,
   tracksToAddToPlaylist,
+  isTagModalOpen,
+  tracksToTag,
   isAllSelected,
   isSomeSelected,
   toggleSelectAll,
   toggleSelect,
   openPlaylistModal,
   onPlaylistAddSuccess,
+  openTagModal,
+  onTagApplySuccess,
   getTrackImageUrl,
   prefetchTrackStream,
   playTrack,
@@ -161,6 +166,7 @@ const isMd = breakpoints.greaterOrEqual('md')
         </div>
         <div class="w-px h-5 bg-background/20"></div>
         <button @click="openPlaylistModal()" class="text-sm font-bold flex items-center gap-2 hover:text-primary transition-colors whitespace-nowrap"><ListMusic class="w-4 h-4" /> {{ t('trackTable.addToPlaylistBulk') }}</button>
+        <button @click="openTagModal()" class="text-sm font-bold flex items-center gap-2 hover:text-primary transition-colors whitespace-nowrap"><Tags class="w-4 h-4" /> {{ t('trackTable.addTagsBulk') }}</button>
         <template v-if="playlistId">
           <div class="w-px h-5 bg-background/20"></div>
           <button @click="removeSelectedFromPlaylist" class="text-sm font-bold flex items-center gap-2 text-destructive hover:text-destructive/90 transition-ui whitespace-nowrap"><Trash2 class="w-4 h-4" /> {{ t('trackTable.removeFromPlaylist') }}</button>
@@ -170,6 +176,7 @@ const isMd = breakpoints.greaterOrEqual('md')
     </Transition>
 
     <PlaylistSelectModal v-model:is-open="isPlaylistModalOpen" :track-ids="tracksToAddToPlaylist" @success="onPlaylistAddSuccess" />
+    <TrackTagBulkDialog v-model:is-open="isTagModalOpen" :tracks="tracksToTag" @success="onTagApplySuccess" />
   </div>
 </template>
 

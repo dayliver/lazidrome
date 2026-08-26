@@ -357,6 +357,29 @@ export const useLibraryStore = defineStore('library', () => {
     emitTrackExternalSync({ id: trackId, tags })
   }
 
+  /**
+   * 선택한 여러 곡에 태그를 한 번에 넣고 뺀다.
+   * 곡마다 기존 태그가 달라도 서버가 합집합/차집합으로 병합하므로 덮어쓸 걱정이 없다.
+   */
+  const bulkUpdateTrackTags = async (trackIds, { add = [], remove = [] } = {}) => {
+    const res = await auth.fetchWithAuth('/api/tracks/tags/bulk', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trackIds, add, remove }),
+    })
+    if (!res.ok) {
+      throw new Error('Failed to bulk update track tags')
+    }
+    const body = await res.json().catch(() => ({}))
+    const changed = Array.isArray(body?.tracks) ? body.tracks : []
+    for (const { id, tags } of changed) {
+      const track = tracks.value.find((t) => t.id === id)
+      if (track) track.tags = tags
+      emitTrackExternalSync({ id, tags })
+    }
+    return changed.length
+  }
+
   // 💉 수술: 상세 페이지용 단일 객체 패치 함수 추가
   const getArtistById = async (id) => {
     try {
@@ -737,6 +760,7 @@ export const useLibraryStore = defineStore('library', () => {
     toggleTrackStar,
     updateTrackVolumePct,
     updateTrackTags,
+    bulkUpdateTrackTags,
     getArtistById,
     getAlbumById,
     getTrackById,

@@ -193,7 +193,7 @@ export function findAlbumDetailWithTracks(id) {
 
   const tracks = db.prepare(`
     SELECT 
-      t.id, t.title, t.rating, t.starred, t.play_count,
+      t.id, t.title, t.rating, t.starred, t.play_count, t.tags,
       COALESCE(t.volume_pct, 100) AS volume_pct,
       f.duration, at.track_number, at.disc_number,
       GROUP_CONCAT(ar.name, ', ') as artist

@@ -1,5 +1,6 @@
 import { findAllPlaylists, findPlaylistById, findManualPlaylistTracks, executeSmartMixQuery } from '../repositories/playlistRepository.js';
 import { buildMixQuery } from '../services/playlistService.js';
+import { formatTrack } from '../services/trackService.js';
 
 export async function getPlaylistsHandler(request, reply) {
   try {
@@ -26,11 +27,7 @@ export async function getPlaylistDetailHandler(request, reply) {
       tracks = executeSmartMixQuery(sql, params);
     }
 
-    tracks = tracks.map(t => {
-      t.artist = JSON.parse(t.artists_json || '[]').map(a => a.name).join(', ');
-      delete t.artists_json;
-      return t;
-    });
+    tracks = tracks.map(formatTrack);
 
     return { ...playlist, tracks };
   } catch (err) {

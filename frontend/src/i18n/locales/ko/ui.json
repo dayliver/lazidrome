@@ -118,6 +118,7 @@
     "clearSelection": "선택 취소",
     "addToPlaylist": "재생목록에 추가…",
     "addToPlaylistBulk": "재생목록에 추가",
+    "addTagsBulk": "태그 넣기",
     "removeFromPlaylist": "제외하기",
     "goToAlbum": "앨범으로 이동",
     "goToArtist": "아티스트로 이동",
@@ -448,6 +449,21 @@
     "renameHint": "아티스트·앨범·트랙·스마트 믹스 조건에 붙은 동일한 문자열이 모두 바뀝니다. 이름에는",
     "invalidCharsHint": "/, \\, .. 를 쓸 수 없고,",
     "maxLengthHint": "200자 이하여야 합니다."
+  },
+  "tagBulk": {
+    "title": "태그 일괄 적용",
+    "searchPlaceholder": "태그 검색…",
+    "newPlaceholder": "새 태그 입력 후 Enter",
+    "empty": "아직 태그가 없습니다.",
+    "noMatch": "일치하는 태그가 없습니다.",
+    "createHint": "아래에 입력하면 새 태그를 만들 수 있습니다.",
+    "partial": "{owned}/{total}곡",
+    "summary": "넣기 {add} · 빼기 {remove}",
+    "noChanges": "바꿀 태그를 고르세요",
+    "apply": "적용",
+    "applied": "{count}곡의 태그를 바꿨습니다.",
+    "failed": "태그를 적용하지 못했습니다.",
+    "noTracks": "선택된 곡이 없습니다."
   },
   "detailHeader": {
     "loading": "불러오는 중…"

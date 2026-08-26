@@ -1,6 +1,7 @@
 import { findAlbumDetailWithTracks } from '../repositories/albumRepository.js';
 import { findTopTracksForArtistIds } from '../repositories/artistRepository.js';
 import { formatAlbumTags } from '../services/albumService.js';
+import { parseTagList } from '../services/trackService.js';
 
 function parseArtistTags(raw) {
   if (!raw?.tags) return [];
@@ -18,6 +19,7 @@ export async function getAlbumDetailHandler(request, reply) {
     if (!result) return reply.code(404).send({ error: 'Album not found' });
 
     const formatted = formatAlbumTags(result);
+    formatted.tracks = (formatted.tracks || []).map((track) => ({ ...track, tags: parseTagList(track.tags) }));
     const artistRows = result.artists || [];
     const topTracksData = findTopTracksForArtistIds(artistRows.map((a) => a.id));
     const topTracksMap = {};
