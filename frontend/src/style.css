@@ -86,8 +86,11 @@
   --rating: oklch(0.795 0.184 86.047);
   --success: oklch(0.627 0.17 145);
   --smart: oklch(0.541 0.22 303);
-  --z-dropdown: 50;
+  /* 손수 만든 다이얼로그 오버레이가 z-100이라, 그 안에서 열리는 포털 팝오버는
+     그보다 위여야 클릭이 닿는다. 플레이어(200)보다는 아래를 유지한다. */
+  --z-dropdown: 110;
   --z-overlay: 70;
+  --z-dialog: 100;
   --z-player: 200;
   --motion-fast: 150ms;
   --motion-normal: 200ms;

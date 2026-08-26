@@ -52,9 +52,14 @@ Avoid raw `red-500`, `green-500`, `purple-500`, `yellow-500` in product UI.
 
 | Token | Value | Usage |
 |-------|-------|--------|
-| `--z-dropdown` | 50 | Dropdown, popover menus |
 | `--z-overlay` | 70 | Queue drawer |
+| `--z-dialog` | 100 | Hand-rolled dialog overlays (`fixed inset-0`) |
+| `--z-dropdown` | 110 | Dropdown, select and popover menus |
 | `--z-player` | 200 | Full player overlay |
+
+Dropdown sits **above** dialog on purpose. Select and popover content is
+teleported to `<body>`, so a dialog overlay at 100 would otherwise paint over the
+menu and swallow its clicks — the control then looks frozen on its initial value.
 
 Player chrome sits above dropdowns; do not raise dropdown above `--z-player`.
 
