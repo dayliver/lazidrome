@@ -27,7 +27,12 @@
     "unknownAlbum": "Unknown album",
     "noRating": "No ratings",
     "backToList": "Back to list",
-    "close": "Close"
+    "close": "Close",
+    "rateLimited": "Too many requests. Please try again shortly.",
+    "rateLimitedRetryIn": "Too many requests. You can try again in {wait}.",
+    "retryAfterMinutes": "{minutes} min",
+    "retryAfterHours": "{hours} h",
+    "retryAfterHoursMinutes": "{hours} h {minutes} min"
   },
   "share": {
     "button": "Share",

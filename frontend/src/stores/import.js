@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { rateLimitError } from '@/lib/rateLimit';
 
 export const useImportStore = defineStore('import', () => {
   const auth = useAuthStore();
@@ -25,6 +26,9 @@ export const useImportStore = defineStore('import', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       });
+      // 429는 서버 한도라 본문이 'Too Many Requests'뿐이다 — 언제 되는지까지 알려준다
+      const limited = rateLimitError(res);
+      if (limited) throw limited;
       const body = await res.json();
       if (!res.ok) {
         throw new Error(body?.error || res.statusText);
@@ -45,6 +49,8 @@ export const useImportStore = defineStore('import', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, items }),
     });
+    const limited = rateLimitError(res);
+    if (limited) throw limited;
     const body = await res.json();
     if (!res.ok) {
       throw new Error(body?.error || res.statusText);
