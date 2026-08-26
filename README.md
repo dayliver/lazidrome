@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.8.0-alpha.5 |
+| **Version** | 0.8.0-alpha.6 |
 | **Stack** | Vue 3 + Vite (web app) · Fastify + SQLite (API & streaming) |
 | **Languages** | English · Korean (UI) |
 
