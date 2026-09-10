@@ -97,11 +97,14 @@ export function usePlayerPresentation() {
     { immediate: true },
   )
 
+  const canControlPlayback = computed(() => !isRemote.value)
+
   return {
     player,
     sync,
     library,
     isRemote,
+    canControlPlayback,
     currentTrack,
     coverUrl,
     isPlaying,
@@ -126,6 +129,12 @@ export function usePlayerPresentation() {
     prev: () => sync.remotePrev(),
     toggleShuffle: () => sync.remoteToggleShuffle(),
     toggleRepeat: () => sync.remoteToggleRepeat(),
+    setPlaybackRate: (rate) => player.setPlaybackRate(rate),
+    nudgePlaybackRate: (delta) => player.nudgePlaybackRate(delta),
+    setLoopStartAtCurrent: () => player.setLoopStartAtCurrent(),
+    setLoopEndAtCurrent: () => player.setLoopEndAtCurrent(),
+    toggleLoopRegion: () => player.toggleLoopRegion(),
+    clearLoopRegion: () => player.clearLoopRegion(),
     playAtIndex: (index) => sync.remotePlayAtIndex(index),
     transferPlaybackHere: () => sync.transferPlaybackHere(),
     toggleExpand: () => player.toggleExpand(),

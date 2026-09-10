@@ -9,6 +9,13 @@ import {
   prefetchHlsModule,
   shouldPreferHlsQueue,
 } from '@/lib/queueHlsPlayer.js'
+import {
+  MIN_LOOP_REGION_SEC,
+  normalizePlaybackRate,
+  nudgePlaybackRate as nudgeRate,
+  shouldJumpLoopRegion,
+  isValidLoopRegion,
+} from '@/lib/playbackAdjust.js'
 
 const FADE_BEFORE_END_SEC = 5
 /** 다음 곡 URL을 미리 받아 둘 시점(끝나기 N초 전) */
@@ -16,6 +23,27 @@ const PRELOAD_LEAD_SEC = 45
 /** 재생 시작 시 현재 곡 포함 앞으로 N곡 URL·서명 선캐시 (백그라운드 ended 대비) */
 const AGGRESSIVE_PREFETCH_AHEAD = 20
 const QUEUE_STORAGE_KEY = 'lazidrome.queue.v1'
+const PLAYBACK_RATE_STORAGE_KEY = 'lazidrome.playbackRate'
+
+function loadPersistedPlaybackRate() {
+  if (typeof localStorage === 'undefined') return 1
+  try {
+    const raw = localStorage.getItem(PLAYBACK_RATE_STORAGE_KEY)
+    if (raw == null || raw === '') return 1
+    return normalizePlaybackRate(raw)
+  } catch {
+    return 1
+  }
+}
+
+function persistPlaybackRate(rate) {
+  if (typeof localStorage === 'undefined') return
+  try {
+    localStorage.setItem(PLAYBACK_RATE_STORAGE_KEY, String(rate))
+  } catch {
+    /* quota */
+  }
+}
 
 let queuePersistTimer = null
 /** `App`에서 라이브러리 로드·복원 후 `beginPersistingQueue()` 호출 전까지는 빈 대기열로 스냅샷을 지우지 않음 */
@@ -90,6 +118,10 @@ export const usePlayerStore = defineStore('player', () => {
   const duration = ref(0)
   const isShuffle = ref(false)
   const repeatMode = ref('off')
+  const playbackRate = ref(loadPersistedPlaybackRate())
+  const loopRegionEnabled = ref(false)
+  const loopStartSec = ref(0)
+  const loopEndSec = ref(0)
 
   const isExpanded = ref(false)
   const isQueueView = ref(false)
@@ -113,6 +145,104 @@ export const usePlayerStore = defineStore('player', () => {
 
   const syncUserVolumeToAudio = () => {
     audio.value.volume = effectiveVolumeLinear()
+  }
+
+  const syncPlaybackRateToAudio = () => {
+    const rate = normalizePlaybackRate(playbackRate.value)
+    playbackRate.value = rate
+    audio.value.playbackRate = rate
+    _preloadAudio.playbackRate = rate
+  }
+
+  const clearLoopRegion = () => {
+    loopRegionEnabled.value = false
+    loopStartSec.value = 0
+    loopEndSec.value = 0
+  }
+
+  const seekToLocalSeconds = (targetSec) => {
+    const target = Math.max(0, Number(targetSec) || 0)
+    suppressTrackEnded = true
+    try {
+      if (hlsQueueMode) {
+        const localIdx = currentIndex.value - hlsSliceBaseIndex
+        const segStart = hlsSegmentStarts[localIdx] ?? 0
+        audio.value.currentTime = segStart + target
+        syncHlsPlaybackTimes()
+      } else {
+        const cap = Number.isFinite(audio.value.duration) && audio.value.duration > 0
+          ? Math.min(target, audio.value.duration)
+          : target
+        audio.value.currentTime = cap
+        currentTime.value = cap
+      }
+      syncUserVolumeToAudio()
+    } finally {
+      suppressTrackEnded = false
+    }
+  }
+
+  const applyLoopRegionIfNeeded = () => {
+    if (!loopRegionEnabled.value) return
+    const start = loopStartSec.value
+    const end = loopEndSec.value
+    if (!isValidLoopRegion(start, end)) return
+    const ct = hlsQueueMode ? currentTime.value : audio.value.currentTime
+    if (shouldJumpLoopRegion(ct, end)) {
+      seekToLocalSeconds(start)
+    }
+  }
+
+  const setLoopStartAtCurrent = () => {
+    const t = Math.max(0, Number(currentTime.value) || 0)
+    loopStartSec.value = t
+    const d = Number(duration.value) || 0
+    if (loopEndSec.value <= t && d > t) {
+      loopEndSec.value = d
+    }
+  }
+
+  const setLoopEndAtCurrent = () => {
+    const d = Number(duration.value) || 0
+    if (d <= 0) return
+    let t = Math.min(d, Math.max(0, Number(currentTime.value) || 0))
+    if (t <= loopStartSec.value) {
+      loopStartSec.value = Math.max(0, t - MIN_LOOP_REGION_SEC)
+    }
+    loopEndSec.value = t
+    if (isValidLoopRegion(loopStartSec.value, loopEndSec.value)) {
+      loopRegionEnabled.value = true
+    }
+  }
+
+  const toggleLoopRegion = () => {
+    if (loopRegionEnabled.value) {
+      loopRegionEnabled.value = false
+      return
+    }
+    let start = loopStartSec.value
+    let end = loopEndSec.value
+    const d = Number(duration.value) || 0
+    if (!isValidLoopRegion(start, end) && d > MIN_LOOP_REGION_SEC) {
+      start = 0
+      end = d
+      loopStartSec.value = start
+      loopEndSec.value = end
+    }
+    if (isValidLoopRegion(start, end)) {
+      loopRegionEnabled.value = true
+    }
+  }
+
+  const setPlaybackRate = (rate) => {
+    playbackRate.value = normalizePlaybackRate(rate)
+    persistPlaybackRate(playbackRate.value)
+    syncPlaybackRateToAudio()
+    syncMediaSessionPosition()
+  }
+
+  const nudgePlaybackRate = (delta) => {
+    setPlaybackRate(nudgeRate(playbackRate.value, delta))
   }
 
   const hasNextTrackAutoplay = () => {
@@ -294,6 +424,7 @@ export const usePlayerStore = defineStore('player', () => {
       const tr = queue.value[index]
       playSessionTrackId.value = tr?.id ?? null
       playSessionPeakSec.value = 0
+      clearLoopRegion()
       syncHlsPlaybackTimes()
       syncMediaSession()
     }
@@ -367,6 +498,7 @@ export const usePlayerStore = defineStore('player', () => {
     playSessionTrackId.value = tr?.id ?? null
     syncHlsPlaybackTimes()
     syncUserVolumeToAudio()
+    syncPlaybackRateToAudio()
     syncMediaSession()
     await play()
     preloadUpcomingTrack()
@@ -511,7 +643,7 @@ export const usePlayerStore = defineStore('player', () => {
     try {
       navigator.mediaSession.setPositionState({
         duration: dur,
-        playbackRate: 1,
+        playbackRate: playbackRate.value,
         position: Math.min(pos, dur),
       })
     } catch {
@@ -543,6 +675,7 @@ export const usePlayerStore = defineStore('player', () => {
       }
       playSessionTrackId.value = track.id
       syncUserVolumeToAudio()
+      syncPlaybackRateToAudio()
       syncMediaSession()
     } finally {
       suppressTrackEnded = false
@@ -713,6 +846,7 @@ export const usePlayerStore = defineStore('player', () => {
     if (audioListenersBound) return
     audioListenersBound = true
     syncUserVolumeToAudio()
+    syncPlaybackRateToAudio()
     bindMediaSessionHandlers()
     syncMediaSession()
 
@@ -722,6 +856,7 @@ export const usePlayerStore = defineStore('player', () => {
       } else {
         currentTime.value = audio.value.currentTime
       }
+      applyLoopRegionIfNeeded()
       bumpPlaySessionPeak()
       applyEndFadeIfForeground()
       syncMediaSessionPosition()
@@ -822,6 +957,7 @@ export const usePlayerStore = defineStore('player', () => {
     }
     playSessionTrackId.value = track.id
     syncUserVolumeToAudio()
+    syncPlaybackRateToAudio()
     return true
   }
 
@@ -1146,6 +1282,21 @@ export const usePlayerStore = defineStore('player', () => {
     if (hlsQueueMode) destroyHlsQueue()
   })
 
+  watch(
+    () => currentTrack.value?.id,
+    () => clearLoopRegion(),
+  )
+
+  watch(
+    () => duration.value,
+    (d) => {
+      const dur = Number(d) || 0
+      if (dur <= 0) return
+      if (loopEndSec.value > dur) loopEndSec.value = dur
+      if (loopStartSec.value > dur) loopStartSec.value = 0
+    },
+  )
+
   return {
     queue,
     currentIndex,
@@ -1155,6 +1306,10 @@ export const usePlayerStore = defineStore('player', () => {
     duration,
     isShuffle,
     repeatMode,
+    playbackRate,
+    loopRegionEnabled,
+    loopStartSec,
+    loopEndSec,
     isExpanded,
     isQueueView,
     currentTrack,
@@ -1169,6 +1324,12 @@ export const usePlayerStore = defineStore('player', () => {
     seekToSeconds,
     toggleShuffle,
     toggleRepeat,
+    setPlaybackRate,
+    nudgePlaybackRate,
+    setLoopStartAtCurrent,
+    setLoopEndAtCurrent,
+    toggleLoopRegion,
+    clearLoopRegion,
     toggleExpand,
     toggleQueueView,
     loadTrack,

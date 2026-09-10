@@ -1,7 +1,8 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ListMusic, Radio, MonitorSpeaker } from 'lucide-vue-next'
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Repeat2, ListMusic, Radio, MonitorSpeaker, Minus, Plus } from 'lucide-vue-next'
+import { PLAYBACK_RATE_MIN, PLAYBACK_RATE_MAX, isValidLoopRegion } from '@/lib/playbackAdjust.js'
 import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
 import { splitTrailingParentheticals } from '@/lib/titleParts'
@@ -14,6 +15,7 @@ import StarRating from '@/components/shared/StarRating.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const {
+  player,
   isRemote,
   currentTrack,
   coverUrl,
@@ -23,6 +25,7 @@ const {
   isShuffle,
   repeatMode,
   canEditTrackMeta,
+  canControlPlayback,
   remoteBadge,
   progress,
   togglePlay,
@@ -30,6 +33,10 @@ const {
   prev,
   toggleShuffle,
   toggleRepeat,
+  setLoopStartAtCurrent,
+  setLoopEndAtCurrent,
+  toggleLoopRegion,
+  nudgePlaybackRate,
   toggleQueueView,
   transferPlaybackHere,
   library,
@@ -39,6 +46,25 @@ const { t } = useI18n()
 const auth = useAuthStore()
 
 const trackTitleParts = computed(() => splitTrailingParentheticals(currentTrack.value?.title))
+
+const loopRegionActive = computed(() =>
+  player.loopRegionEnabled && isValidLoopRegion(player.loopStartSec, player.loopEndSec),
+)
+
+const loopHighlightStyle = computed(() => {
+  const d = duration.value
+  if (!loopRegionActive.value || !d || d <= 0) return null
+  const left = (player.loopStartSec / d) * 100
+  const width = ((player.loopEndSec - player.loopStartSec) / d) * 100
+  return {
+    left: `${Math.max(0, left)}%`,
+    width: `${Math.min(100 - Math.max(0, left), Math.max(0, width))}%`,
+  }
+})
+
+const canSlowDown = computed(() => player.playbackRate > PLAYBACK_RATE_MIN + 0.001)
+const canSpeedUp = computed(() => player.playbackRate < PLAYBACK_RATE_MAX - 0.001)
+const playbackRateLabel = computed(() => `${player.playbackRate.toFixed(1)}×`)
 
 async function onTransferHere() {
   await transferPlaybackHere()
@@ -126,10 +152,84 @@ async function changeRating(rate) {
 
       <!-- 진행 바 -->
       <div class="space-y-2">
-        <Slider v-model="progress" :max="100" :step="0.1" class="py-2" />
+        <div class="relative player-progress">
+          <div
+            v-if="loopHighlightStyle"
+            class="pointer-events-none absolute inset-x-0 top-1/2 z-0 h-2 -translate-y-1/2 rounded-full bg-primary/30"
+            :style="loopHighlightStyle"
+          />
+          <Slider v-model="progress" :max="100" :step="0.1" class="relative z-10 py-2" />
+        </div>
         <div class="flex justify-between text-xs font-mono font-bold text-muted-foreground tracking-tighter">
           <span>{{ formatTrackTime(currentTime) }}</span>
           <span>{{ formatTrackTime(duration) }}</span>
+        </div>
+      </div>
+
+      <!-- 구간 반복 · 재생 속도 (로컬 재생만) -->
+      <div
+        v-if="canControlPlayback"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5"
+      >
+        <div class="flex items-center gap-1.5">
+          <span class="sr-only">{{ t('player.loopToggle') }}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-8 min-w-8 px-2 font-mono font-bold"
+            :class="player.loopStartSec > 0 ? 'border-primary/50 text-primary' : ''"
+            :aria-label="t('player.loopStart')"
+            @click="setLoopStartAtCurrent()"
+          >
+            A
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-8 min-w-8 px-2 font-mono font-bold"
+            :class="player.loopEndSec > player.loopStartSec ? 'border-primary/50 text-primary' : ''"
+            :aria-label="t('player.loopEnd')"
+            @click="setLoopEndAtCurrent()"
+          >
+            B
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8"
+            :class="loopRegionActive ? 'text-primary bg-primary/10' : 'text-muted-foreground/70'"
+            :aria-label="loopRegionActive ? t('player.loopClear') : t('player.loopToggle')"
+            @click="toggleLoopRegion()"
+          >
+            <Repeat2 class="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <span class="sr-only">{{ t('player.playbackSpeed') }}</span>
+          <Button
+            variant="outline"
+            size="icon"
+            class="h-8 w-8"
+            :disabled="!canSlowDown"
+            :aria-label="t('player.speedDown')"
+            @click="nudgePlaybackRate(-0.1)"
+          >
+            <Minus class="w-4 h-4" />
+          </Button>
+          <span class="min-w-[3.25rem] text-center text-xs font-mono font-bold tabular-nums">
+            {{ playbackRateLabel }}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            class="h-8 w-8"
+            :disabled="!canSpeedUp"
+            :aria-label="t('player.speedUp')"
+            @click="nudgePlaybackRate(0.1)"
+          >
+            <Plus class="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
