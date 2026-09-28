@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useBreakpoints, breakpointsTailwind } from '@vueuse/core'
 import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -18,12 +19,14 @@ import FavoriteButton from '@/components/shared/FavoriteButton.vue'
 import StarRating from '@/components/shared/StarRating.vue'
 import TrackPlayingMarker from '@/components/shared/TrackPlayingMarker.vue'
 import TrackContextMenuHost from '@/components/shared/TrackContextMenuHost.vue'
+import TrackListTableMobile from '@/components/shared/TrackListTableMobile.vue'
 import PlaylistSelectModal from '@/components/playlist/PlaylistSelectModal.vue'
 import TrackTagBulkDialog from '@/components/tags/TrackTagBulkDialog.vue'
 import { useTrackListTable } from '@/composables/useTrackListTable'
 import { useTrackContextMenu } from '@/composables/useTrackContextMenu'
 import { usePlayerStore } from '@/stores/player'
 import { formatLocaleDateTime } from '@/lib/localeFormat'
+import { formatTrackTime } from '@/lib/audio'
 import { TRACKS_PAGE_SORT_COLUMNS } from '@/lib/trackListQuery'
 
 const props = defineProps({
@@ -66,10 +69,14 @@ const {
   updateRating,
   fetchMetadata,
   getArtistList,
+  removeTrackFromPlaylist,
+  onDragEnd,
 } = useTrackListTable(props)
 
 const player = usePlayerStore()
 const { t } = useI18n()
+const breakpoints = useBreakpoints(breakpointsTailwind)
+const isMd = breakpoints.greaterOrEqual('md')
 
 const nowPlayingTrackId = computed(() => player.currentTrack?.id ?? null)
 const playerIsPlaying = computed(() => player.isPlaying)
@@ -120,7 +127,7 @@ function formatScannedAt(value) {
 
 <template>
   <div class="w-full relative">
-    <div class="hidden md:block pb-2">
+    <div v-if="isMd" class="pb-2">
       <Table class="border-b table-fixed">
         <TableHeader>
           <TableRow class="bg-muted/30">
@@ -302,6 +309,39 @@ function formatScannedAt(value) {
         </tbody>
       </Table>
     </div>
+
+    <TrackListTableMobile
+      v-else
+      v-model:local-tracks="localTracks"
+      :selected-track-ids="selectedTrackIds"
+      :show-cover="showCover"
+      :show-artist="showArtist"
+      :show-album="showAlbum"
+      :selectable="selectable"
+      :playlist-id="playlistId"
+      :is-all-selected="isAllSelected"
+      :is-some-selected="isSomeSelected"
+      :toggle-select-all="toggleSelectAll"
+      :toggle-select="toggleSelect"
+      :play-track="playTrack"
+      :prefetch-track-stream="prefetchTrackStream"
+      :on-drag-end="onDragEnd"
+      :get-track-image-url="getTrackImageUrl"
+      :toggle-star="toggleStar"
+      :get-artist-list="getArtistList"
+      :go-to-artist="goToArtist"
+      :go-to-album="goToAlbum"
+      :go-to-track="goToTrack"
+      :format-track-time="formatTrackTime"
+      :update-rating="updateRating"
+      :remove-track-from-playlist="removeTrackFromPlaylist"
+      :open-playlist-modal="openPlaylistModal"
+      :fetch-metadata="fetchMetadata"
+      :now-playing-track-id="nowPlayingTrackId"
+      :player-is-playing="playerIsPlaying"
+      :open-context-at="openAt"
+      :open-context-from-trigger="openFromTrigger"
+    />
 
     <TrackContextMenuHost
       v-model:open="contextMenuOpen"

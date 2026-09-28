@@ -26,7 +26,10 @@ const currentWrapper = computed(() => (item.value ? wrapperMap[item.value.type] 
 const { t } = useI18n()
 
 const canDeleteEntity = computed(
-  () => item.value?.type === 'album' || item.value?.type === 'artist',
+  () =>
+    item.value?.type === 'album' ||
+    item.value?.type === 'artist' ||
+    item.value?.type === 'track',
 )
 
 const tabs = computed(() => {
@@ -72,7 +75,7 @@ const handleDelete = async () => {
   const current = item.value
   if (!current || !canDeleteEntity.value || isDeleting.value) return
 
-  const name = current.local?.name || ''
+  const name = current.local?.name || current.local?.title || ''
   const trackCount = Number(current.local?.trackCount) || 0
 
   if (current.type === 'album' && trackCount > 0) {
@@ -87,6 +90,8 @@ const handleDelete = async () => {
     } else if (!confirm(t('metadata.deleteConfirmArtist', { name }))) {
       return
     }
+  } else if (current.type === 'track') {
+    if (!confirm(t('metadata.deleteConfirmTrack', { name }))) return
   } else if (!confirm(t('metadata.deleteConfirmAlbum', { name }))) {
     return
   }
@@ -117,6 +122,8 @@ const handleDelete = async () => {
       await router.replace({ name: 'artists' })
     } else if (current.type === 'album' && route.name === 'album-detail' && route.params.id === id) {
       await router.replace({ name: 'albums' })
+    } else if (current.type === 'track' && route.name === 'track-detail' && route.params.id === id) {
+      await router.replace({ name: 'tracks' })
     }
   } finally {
     isDeleting.value = false

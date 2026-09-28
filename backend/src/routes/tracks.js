@@ -4,6 +4,7 @@ import { postTrackPlayHandler } from '../handlers/tracks.play.js';
 import { patchTrackRatingHandler } from '../handlers/tracks.rate.js';
 import { patchTracksTagsBulkHandler } from '../handlers/tracks.tags.bulk.js';
 import { patchTrackHandler } from '../handlers/tracks.patch.js';
+import { deleteTrackHandler } from '../handlers/tracks.delete.js';
 import { enrichTrackHandler } from '../handlers/tracks.enrich.js';
 import { postTrackReplaceAudioHandler } from '../handlers/tracks.replaceAudio.post.js';
 
@@ -15,6 +16,7 @@ export default async function trackRoutes(fastify) {
   fastify.patch('/api/tracks/tags/bulk', patchTracksTagsBulkHandler);
   fastify.patch('/api/tracks/:id/rate', patchTrackRatingHandler);
   fastify.patch('/api/tracks/:id', patchTrackHandler);
+  fastify.delete('/api/tracks/:id', { preHandler: [fastify.authenticate] }, deleteTrackHandler);
   fastify.post('/api/tracks/:id/replace-audio', {
     config: { rateLimit: { max: 20, timeWindow: '1 hour' } },
   }, postTrackReplaceAudioHandler);

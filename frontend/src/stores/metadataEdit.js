@@ -188,13 +188,14 @@ export const useMetadataEditStore = defineStore('metadataEdit', () => {
   }
 
   /**
-   * 앨범/아티스트 삭제.
+   * 트랙/앨범/아티스트 삭제.
+   * - 트랙: 메타·파일·커스텀 커버 삭제
    * - 앨범: 곡이 있으면 { ok:false, reason:'HAS_TRACKS', trackCount }
    * - 아티스트: 곡 크레딧 unlink 후 삭제 가능. data에 unlinkedTracks 등 포함.
    * @returns {Promise<{ ok: boolean, reason?: string, trackCount?: number, data?: object }>}
    */
   const deleteEntity = async (item) => {
-    if (!item?.id || (item.type !== 'album' && item.type !== 'artist')) {
+    if (!item?.id || (item.type !== 'album' && item.type !== 'artist' && item.type !== 'track')) {
       return { ok: false, reason: 'UNSUPPORTED' }
     }
     if (item.type === 'album') {

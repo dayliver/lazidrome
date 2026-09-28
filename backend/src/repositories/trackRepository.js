@@ -475,3 +475,19 @@ export function swapTrackFileRecord(trackId, oldFileId, fileRow) {
     }
   })();
 }
+/** 삭제용: 메타데이터 + 파일 경로 */
+export function findTrackForDelete(id) {
+  return db.prepare(`
+    SELECT
+      t.id, t.title, t.custom_cover_type, t.file_id AS fileId,
+      f.path
+    FROM track_metadata t
+    JOIN track_filedata f ON t.file_id = f.id
+    WHERE t.id = ?
+  `).get(id);
+}
+
+/** track_filedata 삭제 → track_metadata 및 교차 테이블 CASCADE */
+export function deleteTrackFiledataById(fileId) {
+  db.prepare('DELETE FROM track_filedata WHERE id = ?').run(fileId);
+}

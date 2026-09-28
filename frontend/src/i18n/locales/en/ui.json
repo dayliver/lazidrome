@@ -293,6 +293,7 @@
     "deleteConfirmArtistWithTracks": "Artist “{name}” is linked to {count} track(s).\nDeleting removes this artist’s credits from those tracks and albums. Track files stay.\nContinue?",
     "deleteConfirmArtistFinal": "This cannot be undone. Delete “{name}” and unlink {count} track(s)?",
     "deleteConfirmAlbum": "Delete album “{name}”?",
+    "deleteConfirmTrack": "Delete track “{name}”? This removes its library record and audio file. This cannot be undone.",
     "cannotDeleteHasTracks": "Cannot delete — {count} track(s) are still linked. Move or remove them first.",
     "deleteFailed": "Could not delete.",
     "deleted": "Deleted.",
