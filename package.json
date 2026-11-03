@@ -1,6 +1,6 @@
 {
   "name": "lazidrome",
-  "version": "0.8.0-alpha.6",
+  "version": "0.8.0-alpha.7",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -19,7 +19,9 @@
     "deploy": "bash scripts/deploy.sh",
     "deploy:restart": "bash scripts/restart-backend-remote.sh",
     "smoke:phase1": "node scripts/smoke-phase1.mjs",
-    "smoke:phase1:prod": "LAZI_BASE_URL=https://lazidrome.hwaryong.com LAZI_ORIGIN=https://lazidrome.hwaryong.com LAZI_ENV_FILE=backend/.env node scripts/smoke-phase1.mjs"
+    "smoke:phase1:prod": "LAZI_BASE_URL=https://lazidrome.hwaryong.com LAZI_ORIGIN=https://lazidrome.hwaryong.com LAZI_ENV_FILE=backend/.env node scripts/smoke-phase1.mjs",
+    "android:sync": "npm run android:sync -w frontend",
+    "android:open": "npm run android:open -w frontend"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

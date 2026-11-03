@@ -39,6 +39,7 @@
 | **0.8.0-alpha.4** | 커버 캐시 헤더 복구, rsync schema.sql 오타, 백엔드 테스트 스위트 도입 | — |
 | **0.8.0-alpha.5** | 선택 곡 일괄 태그, 체크박스 셀 전체 토글, YouTube 임포트 한도·429 안내 | — |
 | **0.8.0-alpha.6** | 스마트 믹스 조건 select 먹통 수정 (포털 팝오버 z-index) | — |
+| **0.8.0-alpha.7** | Android continuous queue stream, Capacitor 셸, 백그라운드 핸드오프 | — |
 
 ---
 
@@ -162,6 +163,20 @@ Cloudflare가 아니라 이 문제였다.
 
 스마트 믹스 조건 select가 rating·>=에서 고정되던 원인. body로 포털되는 메뉴가 z-50이라
 z-[100] 다이얼로그 오버레이 뒤에 깔려 클릭이 오버레이에 먹혔다. 바인딩 문제가 아니었다.
+
+---
+
+## 0.8.0-alpha.7 — Android continuous stream ✅
+
+| # | 작업 | 상태 |
+|---|------|------|
+| 0.8.0-alpha.7.1 | 서버 ffmpeg concat continuous stream + 슬라이스 프리페치 | ✅ |
+| 0.8.0-alpha.7.2 | 백그라운드 early handoff / MediaSession 안정화 | ✅ |
+| 0.8.0-alpha.7.3 | Capacitor Android 셸·네이티브 플랫폼 훅 | ✅ |
+| 0.8.0-alpha.7.4 | 태그 피커·컨텍스트 메뉴 UX, deploy/restart 스크립트 | ✅ |
+
+화면 꺼짐 시 JS `ended`에 의존하면 다음 곡이 안 넘어가던 문제를, 짧은 continuous MP3 파이프와
+끝나기 전 커밋으로 줄였다. Capacitor 앱 셸은 ExoPlayer foreground service로 가는 발판.
 
 ---
 

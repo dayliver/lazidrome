@@ -35,9 +35,23 @@ export function useTrackTags() {
     return sharedAllTags.value
   }
 
+  function normalizeTagList(raw) {
+    if (Array.isArray(raw)) return raw.map((t) => String(t))
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw)
+        return Array.isArray(parsed) ? parsed.map((t) => String(t)) : []
+      } catch {
+        return []
+      }
+    }
+    return []
+  }
+
   function mergeTagCatalog(trackTags = []) {
+    const names = normalizeTagList(trackTags)
     const byName = new Map(sharedAllTags.value.map((t) => [t.name, t]))
-    for (const name of trackTags || []) {
+    for (const name of names) {
       if (!byName.has(name)) {
         byName.set(name, { name, count: 0, hasImage: false })
       }
@@ -46,8 +60,9 @@ export function useTrackTags() {
   }
 
   function sortedTagsForTrack(trackTags = []) {
-    const current = new Set(trackTags || [])
-    return mergeTagCatalog(trackTags).sort((a, b) => {
+    const names = normalizeTagList(trackTags)
+    const current = new Set(names)
+    return mergeTagCatalog(names).sort((a, b) => {
       const aOn = current.has(a.name) ? 0 : 1
       const bOn = current.has(b.name) ? 0 : 1
       if (aOn !== bOn) return aOn - bOn
@@ -57,43 +72,50 @@ export function useTrackTags() {
   }
 
   function ensureTrackTags(track) {
-    if (!Array.isArray(track.tags)) track.tags = []
+    if (!track) return []
+    if (!Array.isArray(track.tags)) {
+      track.tags = normalizeTagList(track.tags)
+    }
     return track.tags
   }
 
   async function persistTags(track, tags) {
     const prev = [...ensureTrackTags(track)]
-    track.tags = tags
+    const next = [...tags]
+    track.tags = next
     try {
-      await library.updateTrackTags(track.id, tags)
+      await library.updateTrackTags(track.id, next)
     } catch (err) {
       track.tags = prev
       throw err
     }
   }
 
-  async function toggleTag(track, tagName) {
-    const tags = [...ensureTrackTags(track)]
-    const idx = tags.indexOf(tagName)
-    if (idx >= 0) tags.splice(idx, 1)
-    else tags.push(tagName)
-    await persistTags(track, tags)
-    if (idx < 0 && !sharedAllTags.value.some((t) => t.name === tagName)) {
-      sharedAllTags.value.push({ name: tagName, count: 1, hasImage: false })
-    }
-  }
-
-  async function addTag(track, rawName) {
-    const name = String(rawName || '').trim()
+  async function setTag(track, tagName, enabled) {
+    const name = String(tagName || '').trim()
     if (!name) return false
     const tags = [...ensureTrackTags(track)]
-    if (tags.includes(name)) return false
-    tags.push(name)
+    const idx = tags.indexOf(name)
+    const on = idx >= 0
+    if (enabled === on) return false
+    if (enabled) tags.push(name)
+    else tags.splice(idx, 1)
     await persistTags(track, tags)
-    if (!sharedAllTags.value.some((t) => t.name === name)) {
+    if (enabled && !sharedAllTags.value.some((t) => t.name === name)) {
       sharedAllTags.value.push({ name, count: 1, hasImage: false })
     }
     return true
+  }
+
+  async function toggleTag(track, tagName) {
+    const name = String(tagName || '').trim()
+    if (!name) return false
+    const on = ensureTrackTags(track).includes(name)
+    return setTag(track, name, !on)
+  }
+
+  async function addTag(track, rawName) {
+    return setTag(track, rawName, true)
   }
 
   return {
@@ -101,6 +123,7 @@ export function useTrackTags() {
     loading,
     fetchTags,
     sortedTagsForTrack,
+    setTag,
     toggleTag,
     addTag,
   }

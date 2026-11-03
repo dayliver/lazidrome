@@ -55,5 +55,9 @@ export function resolveCorsOrigins() {
     'http://127.0.0.1:5173',
     'http://localhost:4173',
     'http://127.0.0.1:4173',
+    // Capacitor Android WebView (androidScheme: https)
+    'https://localhost',
+    'capacitor://localhost',
+    'http://localhost',
   ];
 }

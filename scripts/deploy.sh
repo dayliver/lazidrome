@@ -14,30 +14,16 @@ echo "  Lazidrome deploy → ${REMOTE}"
 echo "═══════════════════════════════════════"
 echo ""
 
-echo "▶ 1/4  build-info + frontend build"
+echo "▶ 1/3  build-info + frontend build"
 npm run build
 
 echo ""
-echo "▶ 2/4  원격 백엔드 정지"
-ssh "$REMOTE" bash -s <<EOF
-set -euo pipefail
-echo "   → node 프로세스 종료 (5294)"
-pkill -f "lazidrome/backend/src/index.js" 2>/dev/null || true
-pkill -f "${BACKEND_DIR}/src/index.js" 2>/dev/null || true
-sleep 1
-if ss -tlnp 2>/dev/null | grep -q ':5294 '; then
-  echo "   ⚠ 5294 포트가 아직 사용 중입니다. 수동 확인: ss -tlnp | grep 5294"
-else
-  echo "   ✔ 5294 포트 비움"
-fi
-EOF
-
-echo ""
-echo "▶ 3/4  rsync (frontend dist + backend)"
+echo "▶ 2/3  rsync (frontend dist + backend)"
+# Keep the live PM2 process up during sync; step 3 restarts it cleanly.
 npm run sync
 
 echo ""
-echo "▶ 4/4  원격 백엔드 설치·재기동"
+echo "▶ 3/3  원격 백엔드 설치·재기동 (pm2)"
 bash "${ROOT}/scripts/restart-backend-remote.sh"
 
 echo ""

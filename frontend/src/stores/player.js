@@ -5,8 +5,10 @@ import { useAuthStore } from './auth'
 import { useLibraryStore } from './library'
 import {
   QueueHlsPlayer,
+  isAndroidPlaybackUa,
   isMobilePlaybackUa,
   prefetchHlsModule,
+  shouldPreferContinuousQueue,
   shouldPreferHlsQueue,
 } from '@/lib/queueHlsPlayer.js'
 import {
@@ -20,8 +22,22 @@ import {
 const FADE_BEFORE_END_SEC = 5
 /** 다음 곡 URL을 미리 받아 둘 시점(끝나기 N초 전) */
 const PRELOAD_LEAD_SEC = 45
+/**
+ * 화면 꺼짐 시 JS가 멈추기 전에 다음 곡을 이미 재생 중이어야 한다.
+ * 끝 페이드 구간 안에서 standby를 play()하고 main을 교체한다.
+ */
+const EARLY_HANDOFF_LEAD_SEC = 2
 /** 재생 시작 시 현재 곡 포함 앞으로 N곡 URL·서명 선캐시 (백그라운드 ended 대비) */
 const AGGRESSIVE_PREFETCH_AHEAD = 20
+/** Continuous ffmpeg concat: keep slices short so the pipe starts before screen-off. */
+const CONTINUOUS_SLICE_TRACKS = 12
+/** Next continuous pipe URL/timeline — prepare this many seconds before slice end. */
+const CONTINUOUS_SLICE_PREPARE_LEAD_SEC = 45
+/**
+ * When the tab/app is hidden, commit the next continuous src before `ended`
+ * (clips a little of the last track) so play() still runs under an active session.
+ */
+const CONTINUOUS_SLICE_BG_COMMIT_LEAD_SEC = 2.5
 const QUEUE_STORAGE_KEY = 'lazidrome.queue.v1'
 const PLAYBACK_RATE_STORAGE_KEY = 'lazidrome.playbackRate'
 
@@ -71,7 +87,11 @@ function streamTrackIdFromAudioSrc(src) {
 let audioListenersBound = false
 /** src 교체·수동 스킵 시 발생하는 가짜 `ended` 무시 */
 let suppressTrackEnded = false
+/** 엘리먼트 교체 handoff 중 pause/play로 isPlaying·MediaSession이 흔들리지 않게 */
+let suppressPlayStateEvents = false
 let preloadedNextId = null
+/** 이번 곡에서 early handoff를 이미 수행했는지 */
+let earlyHandoffDone = false
 let playRetryTimer = null
 /** play() 거부 후에도 화면 복귀 시 재시도할지 (pause·성공 재생 전까지 유지) */
 let playRetryActive = false
@@ -79,26 +99,65 @@ let playRetryActive = false
 const streamUrlByTrackId = new Map()
 let queueHlsPlayer = null
 let hlsQueueMode = false
+/** Server-concatenated MP3 pipe (Android continuous stream). Shares timeline math with HLS. */
+let continuousQueueMode = false
 let lastHlsTrackIndex = -1
 let hlsSliceBaseIndex = 0
 let hlsSegmentStarts = []
 let hlsSegmentDurations = []
+/**
+ * Next continuous (or final single-track) window, prepared before the current pipe ends.
+ * Commit must stay sync — no await — for Android background.
+ * @type {null | {
+ *   kind: 'continuous',
+ *   fromIndex: number,
+ *   ids: string[],
+ *   url: string,
+ *   segmentStarts: number[],
+ *   segmentDurations: number[],
+ * } | {
+ *   kind: 'direct',
+ *   index: number,
+ *   trackId: string,
+ *   url: string,
+ * }}
+ */
+let pendingContinuousSlice = null
+
+const inQueueTimeline = () => hlsQueueMode || continuousQueueMode
+
+const isPlaybackBackgrounded = () =>
+  typeof document !== 'undefined' && document.visibilityState !== 'visible'
+
+function mountAudioElement(el) {
+  if (typeof document === 'undefined' || !el || el.isConnected) return
+  el.setAttribute('aria-hidden', 'true')
+  el.style.cssText = 'display:none;position:fixed;width:0;height:0;opacity:0;pointer-events:none'
+  const parent = document.body || document.documentElement
+  parent?.appendChild(el)
+}
+
+function createAudioElement({ preload = false } = {}) {
+  const el = new Audio()
+  el.crossOrigin = 'anonymous'
+  if (preload) el.preload = 'auto'
+  el.setAttribute('playsinline', '')
+  el.setAttribute('webkit-playsinline', '')
+  // Android Chrome: DOM에 붙은 audio가 MediaSession·백그라운드 포커스에 더 안정적
+  if (typeof document !== 'undefined') {
+    if (document.body) mountAudioElement(el)
+    else document.addEventListener('DOMContentLoaded', () => mountAudioElement(el), { once: true })
+  }
+  return el
+}
 
 export const usePlayerStore = defineStore('player', () => {
   const auth = useAuthStore()
   const library = useLibraryStore()
 
-  const _audio = new Audio()
-  _audio.crossOrigin = 'anonymous'
-  _audio.setAttribute('playsinline', '')
-  _audio.setAttribute('webkit-playsinline', '')
-  const audio = shallowRef(_audio)
-
-  const _preloadAudio = new Audio()
-  _preloadAudio.crossOrigin = 'anonymous'
-  _preloadAudio.preload = 'auto'
-  _preloadAudio.setAttribute('playsinline', '')
-  _preloadAudio.setAttribute('webkit-playsinline', '')
+  const audio = shallowRef(createAudioElement())
+  /** 다음 곡을 버퍼링·early handoff에 쓰는 대기 엘리먼트 (교체 후 역할이 바뀜) */
+  let standbyAudio = createAudioElement({ preload: true })
 
   // --- 상태 (State) ---
   const queue = ref([])
@@ -151,7 +210,7 @@ export const usePlayerStore = defineStore('player', () => {
     const rate = normalizePlaybackRate(playbackRate.value)
     playbackRate.value = rate
     audio.value.playbackRate = rate
-    _preloadAudio.playbackRate = rate
+    standbyAudio.playbackRate = rate
   }
 
   const clearLoopRegion = () => {
@@ -164,7 +223,7 @@ export const usePlayerStore = defineStore('player', () => {
     const target = Math.max(0, Number(targetSec) || 0)
     suppressTrackEnded = true
     try {
-      if (hlsQueueMode) {
+      if (inQueueTimeline()) {
         const localIdx = currentIndex.value - hlsSliceBaseIndex
         const segStart = hlsSegmentStarts[localIdx] ?? 0
         audio.value.currentTime = segStart + target
@@ -187,7 +246,7 @@ export const usePlayerStore = defineStore('player', () => {
     const start = loopStartSec.value
     const end = loopEndSec.value
     if (!isValidLoopRegion(start, end)) return
-    const ct = hlsQueueMode ? currentTime.value : audio.value.currentTime
+    const ct = inQueueTimeline() ? currentTime.value : audio.value.currentTime
     if (shouldJumpLoopRegion(ct, end)) {
       seekToLocalSeconds(start)
     }
@@ -256,6 +315,12 @@ export const usePlayerStore = defineStore('player', () => {
 
   const applyEndFadeIfForeground = () => {
     if (typeof document === 'undefined' || document.visibilityState !== 'visible') return
+    // Joined streams already cross tracks without a client-side fade.
+    if (inQueueTimeline()) {
+      const u = effectiveVolumeLinear()
+      if (audio.value.volume !== u) audio.value.volume = u
+      return
+    }
     const dur = audio.value.duration
     const ct = audio.value.currentTime
     if (!Number.isFinite(dur) || dur <= 0 || !Number.isFinite(ct)) return
@@ -281,7 +346,7 @@ export const usePlayerStore = defineStore('player', () => {
     get: () => [(duration.value === 0 ? 0 : (currentTime.value / duration.value) * 100)],
     set: (val) => {
       const time = (val[0] / 100) * duration.value
-      if (hlsQueueMode) {
+      if (inQueueTimeline()) {
         const localIdx = currentIndex.value - hlsSliceBaseIndex
         const segStart = hlsSegmentStarts[localIdx] ?? 0
         audio.value.currentTime = segStart + time
@@ -298,12 +363,12 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   /**
-   * HLS 큐 모드에서 audio.currentTime은 큐 전체를 이어붙인 타임라인 좌표다.
-   * 현재 곡 기준 위치·길이로 환산해 돌려준다.
+   * Joined-queue modes (HLS / continuous): audio.currentTime is the full slice timeline.
+   * Map to the current track's local position/duration.
    * @returns {{ localCt: number, segDur: number } | null}
    */
   const hlsLocalPlaybackPosition = () => {
-    if (!hlsQueueMode) return null
+    if (!inQueueTimeline()) return null
     const localIdx = currentIndex.value - hlsSliceBaseIndex
     if (localIdx < 0 || localIdx >= hlsSegmentStarts.length) return null
     const segStart = hlsSegmentStarts[localIdx] ?? 0
@@ -318,6 +383,22 @@ export const usePlayerStore = defineStore('player', () => {
         ? Math.max(0, Math.min(audioCt - segStart, segDur))
         : Math.max(0, audioCt - segStart)
     return { localCt, segDur }
+  }
+
+  /** Continuous MP3: detect track boundaries from timeline position (no hls.js). */
+  const syncContinuousTrackFromTime = () => {
+    if (!continuousQueueMode || !hlsSegmentStarts.length) return
+    const ct = audio.value.currentTime
+    if (!Number.isFinite(ct)) return
+    let localIdx = 0
+    for (let i = hlsSegmentStarts.length - 1; i >= 0; i--) {
+      if (ct >= (hlsSegmentStarts[i] ?? 0) - 0.05) {
+        localIdx = i
+        break
+      }
+    }
+    handleHlsTrackIndex(hlsSliceBaseIndex + localIdx)
+    syncHlsPlaybackTimes()
   }
 
   const syncHlsPlaybackTimes = () => {
@@ -346,15 +427,33 @@ export const usePlayerStore = defineStore('player', () => {
     void library.recordTrackPlay(sessionTrackId, peakSnapshot)
   }
 
+  const clearPendingContinuousSlice = ({ clearStandby = true } = {}) => {
+    pendingContinuousSlice = null
+    if (!clearStandby) return
+    try {
+      standbyAudio.pause()
+    } catch {
+      /* ignore */
+    }
+    standbyAudio.removeAttribute('src')
+    standbyAudio.src = ''
+    try {
+      standbyAudio.load()
+    } catch {
+      /* ignore */
+    }
+  }
+
   const clearPreloadBuffer = () => {
     preloadedNextId = null
-    _preloadAudio.src = ''
+    earlyHandoffDone = false
+    clearPendingContinuousSlice({ clearStandby: true })
   }
 
   const resetPlaybackBuffers = () => {
     clearPreloadBuffer()
     clearStreamUrlCache()
-    if (!hlsQueueMode) destroyHlsQueue()
+    if (!inQueueTimeline()) destroyQueueTimeline()
   }
 
   const resolveNextIndex = () => {
@@ -399,20 +498,309 @@ export const usePlayerStore = defineStore('player', () => {
       repeatMode: repeatMode.value,
     })
 
-  const destroyHlsQueue = () => {
+  const wantsContinuousQueue = () =>
+    shouldPreferContinuousQueue({
+      queueLength: queue.value.length,
+      isShuffle: isShuffle.value,
+      repeatMode: repeatMode.value,
+    })
+
+  const destroyQueueTimeline = () => {
     hlsQueueMode = false
+    continuousQueueMode = false
     lastHlsTrackIndex = -1
     hlsSliceBaseIndex = 0
     hlsSegmentStarts = []
     hlsSegmentDurations = []
+    clearPendingContinuousSlice({ clearStandby: true })
     if (queueHlsPlayer) queueHlsPlayer.destroy()
   }
+
+  /** @deprecated alias — prefer destroyQueueTimeline */
+  const destroyHlsQueue = destroyQueueTimeline
 
   const composePlaylistApiUrl = (ids) => {
     const q = `ids=${encodeURIComponent(ids.join(','))}`
     const base = (auth.serverUrl || '').replace(/\/$/, '')
     if (base) return `${base}/api/stream/playlist.m3u8?${q}`
     return `/api/stream/playlist.m3u8?${q}`
+  }
+
+  const composeContinuousApiUrl = (ids) => {
+    const q = new URLSearchParams()
+    q.set('ids', ids.join(','))
+    if (auth.token) q.set('token', auth.token)
+    const qs = q.toString()
+    const base = (auth.serverUrl || '').replace(/\/$/, '')
+    if (base) return `${base}/api/stream/continuous.mp3?${qs}`
+    return `/api/stream/continuous.mp3?${qs}`
+  }
+
+  /**
+   * Build a continuous/HLS slice plan without mutating the active timeline.
+   * @returns {{ idx: number, slice: any[], ids: string[], segmentStarts: number[], segmentDurations: number[] } | null}
+   */
+  const buildQueueSlicePlan = (fromIndex, maxTracks = 48) => {
+    if (!queue.value.length) return null
+    const idx = Math.max(0, Math.min(fromIndex, queue.value.length - 1))
+    const limit = Math.max(1, Math.min(48, Number(maxTracks) || 48))
+    const slice = queue.value.slice(idx, idx + limit)
+    const ids = slice.map((tr) => (tr?.id != null ? String(tr.id) : '')).filter(Boolean)
+    if (!ids.length) return null
+    const segmentDurations = slice.map((tr) => {
+      const d = Number(tr?.duration_sec ?? tr?.duration)
+      return Number.isFinite(d) && d > 0 ? d : 1
+    })
+    const segmentStarts = []
+    let segmentAcc = 0
+    for (const d of segmentDurations) {
+      segmentStarts.push(segmentAcc)
+      segmentAcc += d
+    }
+    return { idx, slice, ids, segmentStarts, segmentDurations }
+  }
+
+  const applyQueueSlicePlanToTimeline = (plan) => {
+    hlsSliceBaseIndex = plan.idx
+    hlsSegmentDurations = plan.segmentDurations
+    hlsSegmentStarts = plan.segmentStarts
+  }
+
+  const prepareQueueSliceTimeline = (fromIndex, maxTracks = 48) => {
+    const plan = buildQueueSlicePlan(fromIndex, maxTracks)
+    if (!plan) {
+      hlsSliceBaseIndex = 0
+      hlsSegmentDurations = []
+      hlsSegmentStarts = []
+      return { idx: 0, slice: [], ids: [] }
+    }
+    applyQueueSlicePlanToTimeline(plan)
+    return { idx: plan.idx, slice: plan.slice, ids: plan.ids }
+  }
+
+  const continuousSliceRemainingSec = () => {
+    if (!continuousQueueMode || !hlsSegmentDurations.length) return null
+    const total = hlsSegmentDurations.reduce((a, d) => a + (Number(d) > 0 ? Number(d) : 0), 0)
+    const ct = audio.value?.currentTime
+    if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(ct)) return null
+    return Math.max(0, total - ct)
+  }
+
+  /** Absolute queue index where the next continuous window should start, or null. */
+  const nextContinuousSliceStartIndex = () => {
+    if (!continuousQueueMode || !hlsSegmentDurations.length) return null
+    const lastInSlice = hlsSliceBaseIndex + hlsSegmentDurations.length - 1
+    if (lastInSlice < queue.value.length - 1) return lastInSlice + 1
+    if (repeatMode.value === 'all' && queue.value.length >= 1) return 0
+    return null
+  }
+
+  const warmStandbyWithUrl = (url) => {
+    if (!url || typeof url !== 'string') return
+    try {
+      standbyAudio.preload = 'auto'
+      if (standbyAudio.src !== url) {
+        standbyAudio.src = url
+        standbyAudio.load()
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /**
+   * Prefetch the next continuous (or final direct) window before the pipe ends.
+   * Continuous URLs must NOT be loaded on standby — each GET spawns an ffmpeg pipe.
+   * Direct (single-file) URLs may warm on standby via load() only, never play().
+   */
+  const prepareNextContinuousSliceIfNeeded = () => {
+    if (!continuousQueueMode || !auth.token) return
+    if (pendingContinuousSlice) {
+      if (pendingContinuousSlice.kind === 'direct') {
+        warmStandbyWithUrl(pendingContinuousSlice.url)
+      }
+      return
+    }
+    const rem = continuousSliceRemainingSec()
+    if (rem == null || rem > CONTINUOUS_SLICE_PREPARE_LEAD_SEC) return
+
+    const nextFrom = nextContinuousSliceStartIndex()
+    if (nextFrom == null) return
+    // Same window already playing (repeat-all single-slice queue): nothing to prefetch.
+    if (nextFrom === hlsSliceBaseIndex) return
+
+    const plan = buildQueueSlicePlan(nextFrom, CONTINUOUS_SLICE_TRACKS)
+    if (!plan?.ids?.length) return
+
+    if (plan.ids.length >= 2) {
+      const url = composeContinuousApiUrl(plan.ids)
+      if (!url) return
+      pendingContinuousSlice = {
+        kind: 'continuous',
+        fromIndex: plan.idx,
+        ids: plan.ids,
+        url,
+        segmentStarts: plan.segmentStarts,
+        segmentDurations: plan.segmentDurations,
+      }
+      return
+    }
+
+    // Last track after a multi-track pipe — sync direct URL handoff.
+    const track = queue.value[plan.idx]
+    const trackId = track?.id != null ? String(track.id) : ''
+    if (!trackId) return
+    const url = getCachedStreamUrl(trackId) || composeStreamUrl(trackId)
+    if (!url) {
+      void auth.prefetchStreamSignatures([trackId]).then(() => {
+        if (!continuousQueueMode || pendingContinuousSlice) return
+        const ready = composeStreamUrl(trackId)
+        if (!ready) return
+        cacheStreamUrl(trackId, ready)
+        pendingContinuousSlice = {
+          kind: 'direct',
+          index: plan.idx,
+          trackId,
+          url: ready,
+        }
+        warmStandbyWithUrl(ready)
+      })
+      return
+    }
+    cacheStreamUrl(trackId, url)
+    pendingContinuousSlice = {
+      kind: 'direct',
+      index: plan.idx,
+      trackId,
+      url,
+    }
+    warmStandbyWithUrl(url)
+  }
+
+  /**
+   * Apply a prepared next window with no await (Android background-safe).
+   * @returns {boolean}
+   */
+  const commitPendingContinuousSliceSync = () => {
+    const pending = pendingContinuousSlice
+    if (!pending?.url) return false
+    pendingContinuousSlice = null
+
+    if (pending.kind === 'direct') {
+      const track = queue.value[pending.index]
+      if (!track?.id || String(track.id) !== String(pending.trackId)) {
+        clearPendingContinuousSlice({ clearStandby: true })
+        return false
+      }
+      destroyQueueTimeline()
+      currentIndex.value = pending.index
+      applyStreamUrlToMainAudio(track, pending.url)
+      isPlaying.value = true
+      if (typeof navigator !== 'undefined' && navigator.mediaSession) {
+        navigator.mediaSession.playbackState = 'playing'
+      }
+      playCurrentImmediate()
+      return true
+    }
+
+    if (queueHlsPlayer) queueHlsPlayer.destroy()
+    continuousQueueMode = true
+    hlsQueueMode = false
+    applyQueueSlicePlanToTimeline({
+      idx: pending.fromIndex,
+      segmentStarts: pending.segmentStarts,
+      segmentDurations: pending.segmentDurations,
+    })
+    lastHlsTrackIndex = pending.fromIndex
+    currentIndex.value = pending.fromIndex
+
+    suppressTrackEnded = true
+    try {
+      playSessionPeakSec.value = 0
+      audio.value.src = pending.url
+      audio.value.load()
+    } catch {
+      suppressTrackEnded = false
+      clearPendingContinuousSlice({ clearStandby: true })
+      return false
+    } finally {
+      suppressTrackEnded = false
+    }
+
+    const tr = queue.value[pending.fromIndex]
+    playSessionTrackId.value = tr?.id ?? null
+    syncHlsPlaybackTimes()
+    syncUserVolumeToAudio()
+    syncPlaybackRateToAudio()
+    // Keep MediaSession metadata stable while hidden; reinforce playing only.
+    if (isPlaybackBackgrounded()) {
+      reinforcePlayingMediaSession()
+    } else {
+      syncMediaSession()
+    }
+    isPlaying.value = true
+    if (typeof navigator !== 'undefined' && navigator.mediaSession) {
+      navigator.mediaSession.playbackState = 'playing'
+    }
+    playCurrentImmediate()
+    return true
+  }
+
+  /**
+   * @param {'ended' | 'early-bg' | 'near-end'} reason
+   */
+  const tryCommitContinuousSliceHandoff = (reason) => {
+    if (!continuousQueueMode || !pendingContinuousSlice) return false
+    if (reason === 'ended') return commitPendingContinuousSliceSync()
+
+    const rem = continuousSliceRemainingSec()
+    if (rem == null) return false
+
+    if (reason === 'early-bg') {
+      if (!isPlaybackBackgrounded()) return false
+      if (rem > CONTINUOUS_SLICE_BG_COMMIT_LEAD_SEC) return false
+      flushPlaySessionToServer()
+      return commitPendingContinuousSliceSync()
+    }
+
+    if (reason === 'near-end') {
+      // Backup if `ended` is delayed/throttled while still technically "playing".
+      if (rem > 0.4) return false
+      flushPlaySessionToServer()
+      return commitPendingContinuousSliceSync()
+    }
+    return false
+  }
+
+  const seekQueueTimelineToIndex = (absoluteIndex) => {
+    if (!inQueueTimeline()) return false
+    const localIdx = absoluteIndex - hlsSliceBaseIndex
+    if (localIdx < 0 || localIdx >= hlsSegmentStarts.length) return false
+    const segStart = hlsSegmentStarts[localIdx]
+    if (!Number.isFinite(segStart)) return false
+    suppressTrackEnded = true
+    try {
+      audio.value.currentTime = segStart
+      handleHlsTrackIndex(absoluteIndex)
+      syncHlsPlaybackTimes()
+    } finally {
+      suppressTrackEnded = false
+    }
+    return true
+  }
+
+  const reinforcePlayingMediaSession = () => {
+    if (!audio.value || audio.value.paused) return
+    isPlaying.value = true
+    if (typeof navigator === 'undefined' || !navigator.mediaSession) return
+    navigator.mediaSession.playbackState = 'playing'
+    // Screen-off track boundaries: reclaim audio focus without swapping metadata/artwork.
+    try {
+      const p = audio.value.play()
+      if (p?.catch) p.catch(() => {})
+    } catch {
+      /* ignore */
+    }
   }
 
   const handleHlsTrackIndex = (index) => {
@@ -426,12 +814,22 @@ export const usePlayerStore = defineStore('player', () => {
       playSessionPeakSec.value = 0
       clearLoopRegion()
       syncHlsPlaybackTimes()
+      // 곡 경계에서 MediaSession metadata/artwork를 바꾸면 Android가 출력을 끊고
+      // currentTime만 남는 무음 상태가 된다. 백그라운드에서는 playing만 유지한다.
+      if (isPlaybackBackgrounded()) {
+        reinforcePlayingMediaSession()
+        return
+      }
+      if (!audio.value.paused) isPlaying.value = true
       syncMediaSession()
+      if (typeof navigator !== 'undefined' && navigator.mediaSession && !audio.value.paused) {
+        navigator.mediaSession.playbackState = 'playing'
+      }
     }
   }
 
   const fallbackFromHls = async () => {
-    destroyHlsQueue()
+    destroyQueueTimeline()
     await startPlaybackDirect()
   }
 
@@ -447,13 +845,70 @@ export const usePlayerStore = defineStore('player', () => {
     return queueHlsPlayer
   }
 
-  const startHlsPlayback = async (fromIndex = currentIndex.value) => {
-    const idx = Math.max(0, Math.min(fromIndex, queue.value.length - 1))
+  const startContinuousPlayback = async (fromIndex = currentIndex.value) => {
+    const { idx, ids } = prepareQueueSliceTimeline(fromIndex, CONTINUOUS_SLICE_TRACKS)
     currentIndex.value = idx
-    const slice = queue.value.slice(idx, idx + 48)
-    const ids = slice.map((tr) => (tr?.id != null ? String(tr.id) : '')).filter(Boolean)
     if (ids.length < 2) {
-      destroyHlsQueue()
+      destroyQueueTimeline()
+      await startPlaybackDirect({ allowStandbyPreload: false })
+      return
+    }
+
+    if (queueHlsPlayer) queueHlsPlayer.destroy()
+    continuousQueueMode = true
+    hlsQueueMode = false
+    lastHlsTrackIndex = idx
+    // Dual-audio play() handoff causes silent progress on Android. Standby may
+    // warm a final direct file only; never start a second continuous ffmpeg GET.
+    clearPendingContinuousSlice({ clearStandby: true })
+    preloadedNextId = null
+    earlyHandoffDone = false
+
+    const url = composeContinuousApiUrl(ids)
+    suppressTrackEnded = true
+    try {
+      playSessionPeakSec.value = 0
+      audio.value.src = url
+      audio.value.load()
+    } catch (e) {
+      console.warn('Continuous queue unavailable, falling back', e)
+      destroyQueueTimeline()
+      if (wantsHlsQueue() && auth.token) {
+        await startHlsPlayback(idx)
+        return
+      }
+      await startPlaybackDirect({ allowStandbyPreload: false })
+      return
+    } finally {
+      suppressTrackEnded = false
+    }
+
+    const tr = queue.value[idx]
+    playSessionTrackId.value = tr?.id ?? null
+    syncHlsPlaybackTimes()
+    syncUserVolumeToAudio()
+    syncPlaybackRateToAudio()
+    syncMediaSession()
+    try {
+      await play()
+    } catch (e) {
+      console.warn('Continuous queue play failed, falling back', e)
+      destroyQueueTimeline()
+      if (wantsHlsQueue() && auth.token) {
+        await startHlsPlayback(idx)
+        return
+      }
+      // Android: never enter dual-element early-handoff mode after continuous fails.
+      await startPlaybackDirect({ allowStandbyPreload: false })
+      return
+    }
+  }
+
+  const startHlsPlayback = async (fromIndex = currentIndex.value) => {
+    const { idx, ids, slice } = prepareQueueSliceTimeline(fromIndex)
+    currentIndex.value = idx
+    if (ids.length < 2) {
+      destroyQueueTimeline()
       await startPlaybackDirect()
       return
     }
@@ -465,15 +920,7 @@ export const usePlayerStore = defineStore('player', () => {
       return Number.isFinite(d) && d > 0 ? d : 1
     })
 
-    hlsSliceBaseIndex = idx
-    hlsSegmentDurations = segmentDurations
-    hlsSegmentStarts = []
-    let segmentAcc = 0
-    for (const d of hlsSegmentDurations) {
-      hlsSegmentStarts.push(segmentAcc)
-      segmentAcc += d
-    }
-
+    continuousQueueMode = false
     const hls = ensureQueueHlsPlayer()
     hlsQueueMode = true
     lastHlsTrackIndex = idx
@@ -486,7 +933,7 @@ export const usePlayerStore = defineStore('player', () => {
       })
     } catch (e) {
       console.warn('HLS queue unavailable, falling back to direct stream', e)
-      destroyHlsQueue()
+      destroyQueueTimeline()
       await startPlaybackDirect()
       return
     } finally {
@@ -565,7 +1012,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   const playWhenReady = async (el = audio.value) => {
-    if (!el?.src && !hlsQueueMode) return
+    if (!el?.src && !inQueueTimeline()) return
     if (el.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
       await el.play()
       return
@@ -637,8 +1084,29 @@ export const usePlayerStore = defineStore('player', () => {
 
   const syncMediaSessionPosition = () => {
     if (typeof navigator === 'undefined' || !navigator.mediaSession?.setPositionState) return
-    const dur = hlsQueueMode ? duration.value : audio.value.duration
-    const pos = hlsQueueMode ? currentTime.value : audio.value.currentTime
+    // Background metadata/position jumps at track boundaries mute Android output
+    // while currentTime keeps advancing ("silent progress").
+    if (isPlaybackBackgrounded() && inQueueTimeline()) return
+
+    // Continuous pipe: report the joined timeline so position never resets at boundaries.
+    if (continuousQueueMode && hlsSegmentStarts.length) {
+      const total = hlsSegmentDurations.reduce((a, d) => a + (Number(d) > 0 ? Number(d) : 0), 0)
+      const pos = audio.value.currentTime
+      if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(pos)) return
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: total,
+          playbackRate: playbackRate.value,
+          position: Math.min(Math.max(0, pos), total),
+        })
+      } catch {
+        /* ignore */
+      }
+      return
+    }
+
+    const dur = inQueueTimeline() ? duration.value : audio.value.duration
+    const pos = inQueueTimeline() ? currentTime.value : audio.value.currentTime
     if (!Number.isFinite(dur) || dur <= 0 || !Number.isFinite(pos)) return
     try {
       navigator.mediaSession.setPositionState({
@@ -666,6 +1134,7 @@ export const usePlayerStore = defineStore('player', () => {
   const applyStreamUrlToMainAudio = (track, streamUrl) => {
     if (!track?.id || !streamUrl) return
     destroyHlsQueue()
+    earlyHandoffDone = false
     suppressTrackEnded = true
     try {
       playSessionPeakSec.value = 0
@@ -683,6 +1152,10 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   const preloadUpcomingTrack = () => {
+    // Continuous/HLS already carry upcoming audio in one session.
+    if (inQueueTimeline()) return
+    // Android standby preload only feeds early handoff, which we disable.
+    if (isAndroidPlaybackUa()) return
     if (!hasNextTrackAutoplay()) {
       clearPreloadBuffer()
       return
@@ -697,25 +1170,164 @@ export const usePlayerStore = defineStore('player', () => {
         if (!url) return
         cacheStreamUrl(nextId, url)
         preloadedNextId = nextId
-        if (_preloadAudio.src !== url) {
-          _preloadAudio.src = url
-          _preloadAudio.load()
+        if (standbyAudio.src !== url) {
+          standbyAudio.src = url
+          standbyAudio.load()
         }
       })
       return
     }
     preloadedNextId = nextId
-    if (_preloadAudio.src !== url) {
-      _preloadAudio.src = url
-      _preloadAudio.load()
+    if (standbyAudio.src !== url) {
+      standbyAudio.src = url
+      standbyAudio.load()
     }
+  }
+
+  /**
+   * standby에 버퍼된 다음 곡을 main으로 승격해 재생한다.
+   * src 재설정 없이 엘리먼트만 바꿔, 화면 꺼짐 직전에도 미디어 파이프라인이 이어지게 한다.
+   *
+   * Android: 먼저 역할을 바꾸고 incoming.play()한 뒤 outgoing을 pause한다.
+   * 예전처럼 활성 엘리먼트를 먼저 pause하면 MediaSession이 paused가 되어
+   * 다음 곡이 잠깐만 나오다 무음(진행만 감)이 된다.
+   */
+  const promoteStandbyToMain = (track) => {
+    // Android: swapping <audio> elements after a brief dual-play yields
+    // "progress keeps moving, no sound" until the screen wakes.
+    if (isAndroidPlaybackUa()) return false
+    if (!track?.id || !standbyAudio.src) return false
+    if (preloadedNextId && preloadedNextId !== String(track.id)) return false
+
+    const outgoing = audio.value
+    const incoming = standbyAudio
+
+    suppressTrackEnded = true
+    suppressPlayStateEvents = true
+    try {
+      incoming.volume = effectiveVolumeLinear()
+      incoming.playbackRate = normalizePlaybackRate(playbackRate.value)
+      if (incoming.paused || incoming.currentTime > 0.35) {
+        try {
+          incoming.currentTime = 0
+        } catch {
+          /* ignore */
+        }
+      }
+
+      audio.value = incoming
+      standbyAudio = outgoing
+
+      isPlaying.value = true
+      if (typeof navigator !== 'undefined' && navigator.mediaSession) {
+        navigator.mediaSession.playbackState = 'playing'
+      }
+
+      try {
+        const p = incoming.play()
+        if (p?.then) p.catch(() => onPlayRejected())
+      } catch {
+        onPlayRejected()
+      }
+
+      try {
+        outgoing.pause()
+      } catch {
+        /* ignore */
+      }
+
+      standbyAudio.removeAttribute('src')
+      standbyAudio.src = ''
+      try {
+        standbyAudio.load()
+      } catch {
+        /* ignore */
+      }
+
+      preloadedNextId = null
+      playSessionPeakSec.value = 0
+      playSessionTrackId.value = track.id
+      currentTime.value = Number.isFinite(incoming.currentTime) ? incoming.currentTime : 0
+      const metaDur = incoming.duration
+      duration.value =
+        Number.isFinite(metaDur) && metaDur > 0
+          ? metaDur
+          : trackDurationFromQueue(track)
+      syncMediaSession()
+      if (typeof navigator !== 'undefined' && navigator.mediaSession) {
+        navigator.mediaSession.playbackState = 'playing'
+      }
+    } finally {
+      suppressTrackEnded = false
+      suppressPlayStateEvents = false
+    }
+    return true
+  }
+
+  /**
+   * 곡이 끝나기 직전에 standby를 play()하고 main을 교체한다.
+   * ended 이후에야 src를 바꾸면 화면 꺼짐 상태에서 JS가 멈춰 다음 곡이 안 나온다.
+   */
+  const tryEarlyHandoff = () => {
+    if (isAndroidPlaybackUa()) return
+    if (inQueueTimeline() || earlyHandoffDone || suppressTrackEnded) return
+    if (!hasNextTrackAutoplay()) return
+    const dur = audio.value.duration
+    const ct = audio.value.currentTime
+    if (!Number.isFinite(dur) || dur <= 0 || !Number.isFinite(ct)) return
+    if (dur - ct > EARLY_HANDOFF_LEAD_SEC) return
+
+    const ni = resolveNextIndex()
+    if (ni == null) return
+    const track = queue.value[ni]
+    if (!track?.id) return
+
+    if (preloadedNextId !== String(track.id) || !standbyAudio.src) {
+      preloadUpcomingTrack()
+      return
+    }
+    // HAVE_CURRENT_DATA 이상이면 시도 (완전 버퍼 전에도 play가 이어질 수 있음)
+    if (standbyAudio.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return
+
+    earlyHandoffDone = true
+    flushPlaySessionToServer()
+    currentIndex.value = ni
+
+    // 교체 전에 standby를 먼저 play해 Android 오디오 포커스를 끊기지 않게 한다.
+    suppressPlayStateEvents = true
+    try {
+      standbyAudio.volume = effectiveVolumeLinear()
+      standbyAudio.playbackRate = normalizePlaybackRate(playbackRate.value)
+      if (standbyAudio.currentTime > 0.05) {
+        try {
+          standbyAudio.currentTime = 0
+        } catch {
+          /* ignore */
+        }
+      }
+      const warm = standbyAudio.play()
+      if (warm?.catch) warm.catch(() => {})
+    } catch {
+      /* ignore */
+    } finally {
+      suppressPlayStateEvents = false
+    }
+
+    if (!promoteStandbyToMain(track)) {
+      earlyHandoffDone = false
+      return
+    }
+    markPlaybackIntent()
+    void warmStreamUrlCache(queue.value, { fromIndex: ni })
+    earlyHandoffDone = false
+    preloadUpcomingTrack()
   }
 
   /**
    * 곡 종료·잠금화면 next — await 없이 URL 교체 + play() (모바일 백그라운드)
    */
   const advanceToNextTrackSync = () => {
-    if (hlsQueueMode) return
+    if (inQueueTimeline()) return
     flushPlaySessionToServer()
     const ni = resolveNextIndex()
     if (ni == null) {
@@ -729,14 +1341,14 @@ export const usePlayerStore = defineStore('player', () => {
     const track = queue.value[ni]
     if (!track?.id) return
 
-    let streamUrl = ''
-    if (preloadedNextId === String(track.id) && _preloadAudio.src) {
-      streamUrl = _preloadAudio.src
-      clearPreloadBuffer()
-    } else {
-      streamUrl = getCachedStreamUrl(track.id) || composeStreamUrl(track.id)
+    if (promoteStandbyToMain(track)) {
+      markPlaybackIntent()
+      void warmStreamUrlCache(queue.value, { fromIndex: ni })
+      preloadUpcomingTrack()
+      return
     }
 
+    const streamUrl = getCachedStreamUrl(track.id) || composeStreamUrl(track.id)
     if (!streamUrl) {
       void advanceToNextTrackAsync()
       return
@@ -744,9 +1356,70 @@ export const usePlayerStore = defineStore('player', () => {
 
     cacheStreamUrl(track.id, streamUrl)
     applyStreamUrlToMainAudio(track, streamUrl)
+    isPlaying.value = true
+    if (typeof navigator !== 'undefined' && navigator.mediaSession) {
+      navigator.mediaSession.playbackState = 'playing'
+    }
     playCurrentImmediate()
     void warmStreamUrlCache(queue.value, { fromIndex: ni })
     preloadUpcomingTrack()
+  }
+
+  /** 화면/앱 복귀 시 무음·정지·HLS 로더 정체를 복구한다 */
+  const recoverPlaybackAfterWake = () => {
+    if (!currentTrack.value?.id) return
+    const el = audio.value
+    syncUserVolumeToAudio()
+
+    if (hlsQueueMode && queueHlsPlayer) {
+      queueHlsPlayer.resumeLoad()
+    }
+
+    // Continuous slice may have ended (or stalled near end) while JS was frozen.
+    if (continuousQueueMode) {
+      prepareNextContinuousSliceIfNeeded()
+      const sliceRem = continuousSliceRemainingSec()
+      if (
+        pendingContinuousSlice &&
+        (el.ended || (sliceRem != null && sliceRem <= 0.75) || (el.paused && sliceRem != null && sliceRem <= 1.5))
+      ) {
+        flushPlaySessionToServer()
+        if (commitPendingContinuousSliceSync()) return
+      }
+    }
+
+    const dur = el.duration
+    const ct = el.currentTime
+    const nearEnd =
+      Number.isFinite(dur) &&
+      dur > 0 &&
+      Number.isFinite(ct) &&
+      (el.ended || dur - ct <= 0.75)
+
+    if (!inQueueTimeline() && el.paused && nearEnd && hasNextTrackAutoplay()) {
+      advanceToNextTrackSync()
+      return
+    }
+
+    // paused가 아니어도 Android는 오디오 포커스만 뺏는 경우가 있다.
+    // 진행 바는 움직이는데 소리만 없는 상태가 그 증상 → play()로 출력을 다시 잡는다.
+    const shouldBePlaying =
+      playRetryActive || isPlaying.value || (!el.paused && !el.ended)
+
+    if (!shouldBePlaying || (!el.src && !inQueueTimeline())) return
+
+    markPlaybackIntent()
+    if (typeof navigator !== 'undefined' && navigator.mediaSession) {
+      navigator.mediaSession.playbackState = 'playing'
+    }
+    void playWhenReady(el)
+      .then(() => {
+        if (!el.paused) {
+          isPlaying.value = true
+          clearPlaybackIntent()
+        }
+      })
+      .catch(() => onPlayRejected())
   }
 
   const advanceToNextTrackAsync = async () => {
@@ -760,7 +1433,7 @@ export const usePlayerStore = defineStore('player', () => {
     if (String(tr.id) !== String(playSessionTrackId.value)) return
     // HLS 큐 모드의 audio.currentTime은 큐 전체 타임라인이라 그대로 쓰면
     // 두 번째 곡부터 peak가 부풀어 스킵해도 완청으로 기록된다. 곡 기준으로 환산.
-    const t = hlsQueueMode ? hlsLocalPlaybackPosition()?.localCt : audio.value.currentTime
+    const t = inQueueTimeline() ? hlsLocalPlaybackPosition()?.localCt : audio.value.currentTime
     if (!Number.isFinite(t) || t < 0) return
     playSessionPeakSec.value = Math.max(playSessionPeakSec.value, t)
   }
@@ -780,9 +1453,9 @@ export const usePlayerStore = defineStore('player', () => {
     const title = tr.title || t('player.unknownTrack')
     const artist = tr.artist || t('common.unknownArtist')
     const album = tr.album || undefined
-    const cover = auth.token
-      ? auth.coverSrc('track', tr.id)
-      : ''
+    // Artwork fetch while screen-off often steals Android audio focus after a track change.
+    const allowArtwork = !isPlaybackBackgrounded()
+    const cover = allowArtwork && auth.token ? auth.coverSrc('track', tr.id) : ''
     const artwork = cover ? [{ src: cover, sizes: '512x512', type: 'image/jpeg' }] : []
 
     try {
@@ -790,12 +1463,12 @@ export const usePlayerStore = defineStore('player', () => {
         title,
         artist,
         ...(album ? { album } : {}),
-        artwork,
+        ...(artwork.length ? { artwork } : {}),
       })
     } catch {
       navigator.mediaSession.metadata = new MediaMetadata({ title, artist })
     }
-    navigator.mediaSession.playbackState = isPlaying.value ? 'playing' : 'paused'
+    navigator.mediaSession.playbackState = isPlaying.value || !audio.value?.paused ? 'playing' : 'paused'
   }
 
   const bindMediaSessionHandlers = () => {
@@ -832,7 +1505,14 @@ export const usePlayerStore = defineStore('player', () => {
       isPlaying.value,
       volume.value,
     ],
-    () => syncMediaSession(),
+    () => {
+      // Avoid metadata churn while backgrounded; track-boundary handler already reinforces playing.
+      if (isPlaybackBackgrounded() && inQueueTimeline()) {
+        reinforcePlayingMediaSession()
+        return
+      }
+      syncMediaSession()
+    },
   )
 
   watch(
@@ -850,8 +1530,13 @@ export const usePlayerStore = defineStore('player', () => {
     bindMediaSessionHandlers()
     syncMediaSession()
 
-    audio.value.addEventListener('timeupdate', () => {
-      if (hlsQueueMode) {
+    const isActiveEl = (el) => el === audio.value
+
+    const onTimeUpdate = (e) => {
+      if (!isActiveEl(e.target)) return
+      if (continuousQueueMode) {
+        syncContinuousTrackFromTime()
+      } else if (hlsQueueMode) {
         syncHlsPlaybackTimes()
       } else {
         currentTime.value = audio.value.currentTime
@@ -871,28 +1556,49 @@ export const usePlayerStore = defineStore('player', () => {
       ) {
         preloadUpcomingTrack()
       }
-    })
-    audio.value.addEventListener('seeked', () => {
+      tryEarlyHandoff()
+      if (continuousQueueMode) {
+        prepareNextContinuousSliceIfNeeded()
+        if (!tryCommitContinuousSliceHandoff('early-bg')) {
+          tryCommitContinuousSliceHandoff('near-end')
+        }
+      }
+    }
+    const onSeeked = (e) => {
+      if (!isActiveEl(e.target)) return
       bumpPlaySessionPeak()
       syncUserVolumeToAudio()
-    })
-    audio.value.addEventListener('loadedmetadata', () => {
-      if (hlsQueueMode) {
+    }
+    const onLoadedMetadata = (e) => {
+      if (!isActiveEl(e.target)) return
+      if (inQueueTimeline()) {
         syncHlsPlaybackTimes()
       } else {
         duration.value = audio.value.duration
       }
       bumpPlaySessionPeak()
-    })
-    audio.value.addEventListener('ended', () => {
+    }
+    const onEnded = (e) => {
+      if (!isActiveEl(e.target)) return
       if (suppressTrackEnded) return
-      if (hlsQueueMode) {
-        if (repeatMode.value === 'all' && queue.value.length > 1) {
-          flushPlaySessionToServer()
-          void startHlsPlayback(0)
+      if (inQueueTimeline()) {
+        flushPlaySessionToServer()
+        // Continuous: prefer sync handoff with a URL prepared during the last track.
+        if (continuousQueueMode && tryCommitContinuousSliceHandoff('ended')) {
           return
         }
-        flushPlaySessionToServer()
+        // Slice ended but queue continues — open the next continuous/HLS window.
+        const ni = resolveNextIndex()
+        if (ni != null && (ni !== currentIndex.value || repeatMode.value === 'all')) {
+          if (continuousQueueMode) {
+            void startContinuousPlayback(ni === currentIndex.value ? 0 : ni)
+            return
+          }
+          if (hlsQueueMode) {
+            void startHlsPlayback(ni === currentIndex.value ? 0 : ni)
+            return
+          }
+        }
         pause()
         return
       }
@@ -906,32 +1612,57 @@ export const usePlayerStore = defineStore('player', () => {
         return
       }
       advanceToNextTrackSync()
-    })
-    audio.value.addEventListener('play', () => {
+    }
+    const onPlay = (e) => {
+      if (!isActiveEl(e.target)) return
       isPlaying.value = true
-      clearPlaybackIntent()
-    })
-    audio.value.addEventListener('pause', () => {
+      if (!suppressPlayStateEvents) clearPlaybackIntent()
+    }
+    const onPause = (e) => {
+      if (!isActiveEl(e.target)) return
+      if (suppressPlayStateEvents) return
       isPlaying.value = false
       syncUserVolumeToAudio()
-    })
+    }
+
+    const onWaiting = (e) => {
+      if (!isActiveEl(e.target)) return
+      if (inQueueTimeline() || playRetryActive) markPlaybackIntent()
+    }
+
+    const bindEl = (el) => {
+      el.addEventListener('timeupdate', onTimeUpdate)
+      el.addEventListener('seeked', onSeeked)
+      el.addEventListener('loadedmetadata', onLoadedMetadata)
+      el.addEventListener('ended', onEnded)
+      el.addEventListener('play', onPlay)
+      el.addEventListener('pause', onPause)
+      el.addEventListener('waiting', onWaiting)
+    }
+    bindEl(audio.value)
+    bindEl(standbyAudio)
 
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState !== 'visible') {
+          // 페이드로 낮아진 볼륨·MediaSession paused가 백그라운드에서 출력을 죽이지 않게
           syncUserVolumeToAudio()
+          if (
+            typeof navigator !== 'undefined' &&
+            navigator.mediaSession &&
+            !audio.value.paused
+          ) {
+            isPlaying.value = true
+            navigator.mediaSession.playbackState = 'playing'
+          }
           return
         }
-        if (
-          playRetryActive &&
-          audio.value.paused &&
-          audio.value.src &&
-          currentTrack.value?.id
-        ) {
-          markPlaybackIntent()
-          void playWhenReady(audio.value).catch(() => onPlayRejected())
-        }
+        recoverPlaybackAfterWake()
       })
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pageshow', () => recoverPlaybackAfterWake())
+      window.addEventListener('focus', () => recoverPlaybackAfterWake())
     }
   }
 
@@ -962,7 +1693,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   const play = async () => {
-    if (!audio.value.src && !hlsQueueMode) return
+    if (!audio.value.src && !inQueueTimeline()) return
     markPlaybackIntent()
     try {
       await playWhenReady(audio.value)
@@ -977,7 +1708,7 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
-  const startPlaybackDirect = async () => {
+  const startPlaybackDirect = async ({ allowStandbyPreload = true } = {}) => {
     const track = currentTrack.value
     if (!track?.id) return
     await warmStreamUrlCache(queue.value, { fromIndex: currentIndex.value })
@@ -985,18 +1716,22 @@ export const usePlayerStore = defineStore('player', () => {
     if (!url) return
     applyStreamUrlToMainAudio(track, url)
     await play()
-    preloadUpcomingTrack()
+    if (allowStandbyPreload && !isAndroidPlaybackUa()) preloadUpcomingTrack()
   }
 
   const startPlayback = async () => {
     // 모바일: 재생 시작 시 CDN(또는 light 폴백)에서 hls.js를 미리 받아 둠
     if (isMobilePlaybackUa()) void prefetchHlsModule()
+    if (wantsContinuousQueue() && auth.token) {
+      await startContinuousPlayback(currentIndex.value)
+      return
+    }
     if (wantsHlsQueue() && auth.token) {
       await startHlsPlayback(currentIndex.value)
       return
     }
-    destroyHlsQueue()
-    await startPlaybackDirect()
+    destroyQueueTimeline()
+    await startPlaybackDirect({ allowStandbyPreload: !isAndroidPlaybackUa() })
   }
   const pause = () => {
     clearPlaybackIntent()
@@ -1021,35 +1756,55 @@ export const usePlayerStore = defineStore('player', () => {
 
   const next = async () => {
     flushPlaySessionToServer()
-    resetPlaybackBuffers()
     if (queue.value.length === 0) return
     const ni = resolveNextIndex()
     if (ni == null) {
       pause()
       return
     }
+    if (inQueueTimeline() && seekQueueTimelineToIndex(ni)) {
+      if (audio.value.paused) await play()
+      return
+    }
+    resetPlaybackBuffers()
     currentIndex.value = ni
-    if (hlsQueueMode || wantsHlsQueue()) {
-      destroyHlsQueue()
-      if (wantsHlsQueue() && auth.token) {
-        await startHlsPlayback(ni)
-        return
-      }
+    if (wantsContinuousQueue() && auth.token) {
+      destroyQueueTimeline()
+      await startContinuousPlayback(ni)
+      return
+    }
+    if (wantsHlsQueue() && auth.token) {
+      destroyQueueTimeline()
+      await startHlsPlayback(ni)
+      return
     }
     await startPlaybackDirect()
   }
 
   const prev = async () => {
-    if (currentTime.value > 3 && !hlsQueueMode) {
+    if (currentTime.value > 3 && !inQueueTimeline()) {
       audio.value.currentTime = 0
       return
     }
+    if (currentTime.value > 3 && inQueueTimeline()) {
+      seekToLocalSeconds(0)
+      return
+    }
     flushPlaySessionToServer()
-    resetPlaybackBuffers()
     const pi = currentIndex.value <= 0 ? queue.value.length - 1 : currentIndex.value - 1
+    if (inQueueTimeline() && seekQueueTimelineToIndex(pi)) {
+      if (audio.value.paused) await play()
+      return
+    }
+    resetPlaybackBuffers()
     currentIndex.value = pi
+    if (wantsContinuousQueue() && auth.token) {
+      destroyQueueTimeline()
+      await startContinuousPlayback(pi)
+      return
+    }
     if (wantsHlsQueue() && auth.token) {
-      destroyHlsQueue()
+      destroyQueueTimeline()
       await startHlsPlayback(pi)
       return
     }
@@ -1096,7 +1851,7 @@ export const usePlayerStore = defineStore('player', () => {
     }
     if (!ready()) return
 
-    if (hlsQueueMode) {
+    if (inQueueTimeline()) {
       const localIdx = currentIndex.value - hlsSliceBaseIndex
       const segStart = hlsSegmentStarts[localIdx] ?? 0
       el.currentTime = segStart + target
@@ -1279,7 +2034,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   watch([isShuffle, repeatMode], () => {
-    if (hlsQueueMode) destroyHlsQueue()
+    if (inQueueTimeline()) destroyQueueTimeline()
   })
 
   watch(

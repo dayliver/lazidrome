@@ -80,7 +80,8 @@ ssh home 'curl -s http://127.0.0.1:5294/api; tail -20 /tmp/lazidrome-backend.log
 ```env
 JWT_SECRET=...               # 16자 이상 (production)
 ADMIN_PASSWORD=...
-CORS_ORIGINS=https://lazidrome.hwaryong.com
+# Include https://localhost for the Capacitor Android app WebView
+CORS_ORIGINS=https://lazidrome.hwaryong.com,https://localhost
 TRACKS_PATH=...
 IMAGES_PATH=...
 PORT=5294

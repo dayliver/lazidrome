@@ -1,6 +1,15 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-pwa/client" />
 
+interface ImportMetaEnv {
+  /** Absolute API origin for Capacitor builds when Settings has no server URL */
+  readonly VITE_NATIVE_SERVER_URL?: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+
 declare module '@/router/documentTitle' {
   import type { Router } from 'vue-router'
   export function registerDocumentTitle(router: Router): void

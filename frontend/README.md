@@ -84,6 +84,29 @@ There is no separate frontend `.env` required for the default local setup.
 | `npm run build` | Typecheck + production bundle |
 | `npm run preview` | Serve the production build locally |
 | `npm run icons:generate` | Regenerate PWA / app icons |
+| `npm run android:sync` | Build web assets + `cap sync android` |
+| `npm run android:open` | Sync then open Android Studio |
+
+From the monorepo root you can also run `npm run android:sync` / `npm run android:open`.
+
+---
+
+## Android (Capacitor)
+
+Native shell lives in `frontend/android/` (`appId`: `com.hwaryong.lazidrome`).
+
+1. Install **JDK 21** and **Android Studio** (SDK + platform tools).
+2. On the server, allow the WebView origin in `CORS_ORIGINS` (include `https://localhost`).
+3. Sync and open:
+
+```bash
+npm run android:sync   # from repo root or frontend/
+npm run android:open
+```
+
+The app defaults `serverUrl` to `https://lazidrome.hwaryong.com` (override with `VITE_NATIVE_SERVER_URL` at build time, or Settings). Service workers are disabled in the native shell.
+
+This is still WebView `<audio>` until a **foreground media service** is added — see [Mobile / HLS notes](../docs/MOBILE-BACKGROUND-PLAYBACK.md).
 
 ---
 

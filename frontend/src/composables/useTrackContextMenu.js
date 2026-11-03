@@ -1,10 +1,11 @@
-import { ref, shallowRef } from 'vue'
+import { ref } from 'vue'
 
 export function useTrackContextMenu() {
   const open = ref(false)
   const anchorX = ref(0)
   const anchorY = ref(0)
-  const contextTrack = shallowRef(null)
+  /** deep ref — 태그/즐겨찾기 등 중첩 필드 변경이 메뉴 UI에 바로 반영되게 */
+  const contextTrack = ref(null)
 
   function openAt(event, track) {
     if (!track) return

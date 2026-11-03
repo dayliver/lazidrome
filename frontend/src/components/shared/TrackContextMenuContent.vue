@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-  DropdownMenuCheckboxItem,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -18,6 +17,7 @@ import {
   ListPlus,
   Sparkles,
   Trash2,
+  Check,
 } from 'lucide-vue-next'
 import TrackTagSubmenu from '@/components/shared/TrackTagSubmenu.vue'
 import StarRating from '@/components/shared/StarRating.vue'
@@ -40,10 +40,8 @@ const props = defineProps({
 const { t } = useI18n()
 const tagSubmenuRef = ref(null)
 
-async function onToggleStar(checked) {
-  if (!!props.track.starred !== checked) {
-    await props.toggleStar(props.track)
-  }
+async function onToggleStar() {
+  await props.toggleStar(props.track)
 }
 
 function onRating(star) {
@@ -56,14 +54,13 @@ function onTagsSubOpen(isOpen) {
 </script>
 
 <template>
-  <DropdownMenuCheckboxItem
-    :checked="!!track.starred"
-    @update:checked="onToggleStar"
-    @select.prevent
-  >
+  <DropdownMenuItem @select.prevent="onToggleStar">
     <Heart class="mr-2 h-4 w-4" :class="track.starred ? 'text-favorite fill-current' : ''" />
-    {{ t('trackTable.favorite') }}
-  </DropdownMenuCheckboxItem>
+    <span :class="track.starred ? 'font-semibold text-favorite' : ''">
+      {{ t('trackTable.favorite') }}
+    </span>
+    <Check v-if="track.starred" class="ml-auto h-4 w-4 text-favorite" />
+  </DropdownMenuItem>
 
   <div class="px-2 py-1.5 flex justify-center" @pointerdown.stop>
     <StarRating :rating="track.rating || 0" interactive size="sm" @change="onRating" />

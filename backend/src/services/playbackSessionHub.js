@@ -310,6 +310,11 @@ export function handlePlaybackMessage(deviceId, raw) {
     case 'hello': {
       const name = String(msg.deviceName || client.deviceName).slice(0, 120)
       client.deviceName = name
+      // 클라이언트가 재생 중 재연결 시 claimMaster를 보내는데, 예전엔 무시되어
+      // 화면 꺼짐→소켓 재접속 직후 마스터가 비거나 다른 기기로 넘어가 재생이 끊겼다.
+      if (msg.claimMaster) {
+        setMaster(deviceId, name)
+      }
       send(client.socket, buildSessionMessage())
       broadcast({ type: 'devices', devices: listDevices() }, deviceId)
       break

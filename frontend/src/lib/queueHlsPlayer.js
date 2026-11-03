@@ -127,6 +127,11 @@ export function isMobilePlaybackUa() {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 }
 
+export function isAndroidPlaybackUa() {
+  if (typeof navigator === 'undefined') return false
+  return /Android/i.test(navigator.userAgent)
+}
+
 /**
  * @param {{ queueLength: number, isShuffle: boolean, repeatMode: string }} opts
  */
@@ -138,6 +143,19 @@ export function shouldPreferHlsQueue(opts) {
   if (!isMobilePlaybackUa()) return false
   const probe = typeof Audio !== 'undefined' ? new Audio() : null
   return isHlsJsSupported() || canPlayNativeHls(probe)
+}
+
+/**
+ * Android: one server-side concatenated MP3 pipe (no per-track play()).
+ * Prefer this over HLS when the screen is off — JS/MSE often freezes.
+ * @param {{ queueLength: number, isShuffle: boolean, repeatMode: string }} opts
+ */
+export function shouldPreferContinuousQueue(opts) {
+  if (typeof navigator === 'undefined') return false
+  if (!opts || opts.queueLength < 2) return false
+  if (opts.isShuffle) return false
+  if (opts.repeatMode === 'one') return false
+  return isAndroidPlaybackUa()
 }
 
 export class QueueHlsPlayer {
@@ -157,6 +175,20 @@ export class QueueHlsPlayer {
 
   get active() {
     return this.nativeHls || !!this.hls
+  }
+
+  /** 화면 복귀 시 세그먼트 로더를 다시 깨운다 (Android가 백그라운드에서 네트워크/워커를 멈춘 경우). */
+  resumeLoad() {
+    if (!this.hls) return
+    try {
+      this.hls.startLoad(-1)
+    } catch {
+      try {
+        this.hls.startLoad()
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   destroy() {
@@ -227,16 +259,24 @@ export class QueueHlsPlayer {
       throw new Error('HLS_NOT_SUPPORTED')
     }
 
+    // 세그먼트 1개 = 곡 전체(수 분)라 기본 maxBufferLength(30s)면 다음 곡을
+    // 끝나기 직전에야 받기 시작한다. 화면 꺼짐 시 JS가 멈추면 경계에서 끊긴다.
+    // Android: worker가 백그라운드에서 먼저 멈추는 기기가 있어 메인 스레드 로더가 더 안전하다.
     const hlsConfig = {
-      enableWorker: hlsLoadSource === 'cdn',
+      enableWorker: hlsLoadSource === 'cdn' && !isMobilePlaybackUa(),
       lowLatencyMode: false,
+      maxBufferLength: 12 * 60,
+      maxMaxBufferLength: 24 * 60,
+      maxBufferSize: 200 * 1000 * 1000,
+      maxBufferHole: 1.5,
+      backBufferLength: 30,
       xhrSetup: (xhr, url) => {
         if (opts.authorization && String(url).includes('/api/stream/playlist')) {
           xhr.setRequestHeader('Authorization', opts.authorization)
         }
       },
     }
-    if (hlsLoadSource === 'cdn') {
+    if (hlsConfig.enableWorker && hlsLoadSource === 'cdn') {
       hlsConfig.workerPath = HLS_CDN_WORKER
     }
 

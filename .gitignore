@@ -18,6 +18,19 @@ frontend/public/build-info.json
 backend/.env
 
 # =========================
+# Capacitor / Android
+# =========================
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/captures/
+frontend/android/local.properties
+*.apk
+*.aab
+*.keystore
+!frontend/android/**/*.keystore.example
+
+# =========================
 # Node modules (frontend & backend)
 # =========================
 frontend/node_modules/

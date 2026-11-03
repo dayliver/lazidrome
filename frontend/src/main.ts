@@ -9,6 +9,8 @@ import App from './App.vue'
 import { useThemeStore } from '@/stores/theme'
 import { usePreferencesStore } from '@/stores/preferences'
 import { i18n, initDocumentLang } from '@/i18n'
+import { isNativeApp } from '@/lib/nativePlatform'
+import { initNativeShell } from '@/lib/nativeShell'
 
 const STALE_CHUNK_RELOAD_KEY = 'lazidrome.stale-chunk-reload'
 
@@ -37,7 +39,10 @@ router.onError((error, to) => {
   }
 })
 
-registerSW({ immediate: true })
+// Service workers fight Capacitor's file:// / https://localhost asset loading.
+if (!isNativeApp()) {
+  registerSW({ immediate: true })
+}
 
 window.setTimeout(() => sessionStorage.removeItem(STALE_CHUNK_RELOAD_KEY), 15_000)
 
@@ -54,5 +59,6 @@ initDocumentLang()
 const theme = useThemeStore(pinia)
 theme.initTheme()
 usePreferencesStore(pinia).initPreferences()
+void initNativeShell()
 
 app.mount('#app')

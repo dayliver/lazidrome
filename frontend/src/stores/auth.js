@@ -3,11 +3,19 @@ import { ref, computed, reactive, watch } from 'vue'
 import { getCoverUrl } from '@/lib/image'
 import { t } from '@/i18n/t'
 import { formatMediaQuery, imageResourceKey, streamResourceKey } from '@/lib/mediaSign'
+import { defaultNativeServerUrl, isNativeApp } from '@/lib/nativePlatform'
 
 const SIG_REFRESH_BUFFER_MS = 120_000
 
+function initialServerUrl() {
+  const stored = localStorage.getItem('lz_server_url') || ''
+  if (stored) return stored
+  // Native WebView has no same-origin /api proxy — require an absolute server URL.
+  return isNativeApp() ? defaultNativeServerUrl() : ''
+}
+
 export const useAuthStore = defineStore('auth', () => {
-  const serverUrl = ref(localStorage.getItem('lz_server_url') || '')
+  const serverUrl = ref(initialServerUrl())
   const token = ref(localStorage.getItem('lz_token') || '')
 
   /**

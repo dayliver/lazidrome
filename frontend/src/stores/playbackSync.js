@@ -309,6 +309,13 @@ export const usePlaybackSyncStore = defineStore('playbackSync', () => {
           stateUpdatedAt.value = 0
         }
         if (nextMaster && nextMaster !== deviceId.value && player.isPlaying && !applyingRemoteCommand) {
+          // 화면 꺼짐으로 WS가 잠깐 끊기면 다른 기기가 마스터로 보일 수 있다.
+          // 로컬이 아직 재생 중이면 멈추지 말고 마스터를 되찾는다 (명시적 pause 명령은 command 경로).
+          if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+            claimMaster()
+            pushStateNow()
+            break
+          }
           player.pause()
         }
         break
