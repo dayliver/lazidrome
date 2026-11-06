@@ -112,6 +112,7 @@ export async function replaceTrackAudio(trackId, opts) {
   if (!resolvedPath) throw httpError('트랙 파일 경로를 확인할 수 없습니다.', 422);
 
   const { sourcePath, cleanup } = await acquireSourcePath(trackId, opts);
+  let succeeded = false;
 
   try {
     const newHash = await sha256FileStream(sourcePath);
@@ -156,8 +157,15 @@ export async function replaceTrackAudio(trackId, opts) {
     bumpLibraryRevisionNow();
 
     const detail = findTrackDetailById(trackId);
+    succeeded = true;
     return formatTrackDetail(detail);
   } finally {
-    cleanup?.();
+    if (succeeded) {
+      try {
+        cleanup?.();
+      } catch {
+        /* 교체는 끝났고, 임시 파일 정리는 다음 요청에 맡겨도 된다 */
+      }
+    }
   }
 }

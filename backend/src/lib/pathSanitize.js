@@ -124,13 +124,34 @@ export function parseLazidromeUploadPath(filePath, tracksRoot) {
   };
 }
 
-/** dest가 tracksRoot 밖으로 나가지 않는지 확인 */
+/**
+ * 존재하는 경로는 심볼릭 링크를 풀어 비교한다.
+ * DB에는 `/home/.../storage/tracks/...`가 있고, 프로세스는
+ * 그 경로의 실제 대상(`.../Music`)을 `TRACKS_PATH`로 보는 경우가 있다.
+ * 파일이 아직 없으면 부모 디렉터리만 푼다.
+ */
+function canonicalPath(p) {
+  const resolved = path.resolve(p);
+  try {
+    return fs.realpathSync(resolved);
+  } catch {
+    const parent = path.dirname(resolved);
+    const base = path.basename(resolved);
+    try {
+      return path.join(fs.realpathSync(parent), base);
+    } catch {
+      return resolved;
+    }
+  }
+}
+
+/** dest가 tracksRoot 밖으로 나가지 않는지 확인. 반환값은 호출자가 넘긴 경로(링크를 풀지 않음). */
 export function assertInsideTracksRoot(tracksRoot, destPath) {
-  const root = path.resolve(tracksRoot);
-  const resolved = path.resolve(destPath);
-  const rel = path.relative(root, resolved);
+  const root = canonicalPath(tracksRoot);
+  const target = canonicalPath(destPath);
+  const rel = path.relative(root, target);
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
     throw new Error('Destination path escapes tracks root');
   }
-  return resolved;
+  return path.resolve(destPath);
 }
