@@ -1,22 +1,16 @@
-import path from 'node:path';
-import fs from 'node:fs';
-import sharp from 'sharp';
-import { downloadImage } from '../lib/downloader.js';
+import { imagesSubdir } from '../lib/imagesPath.js';
+import {
+  saveCoverFromUrl as writeCoverFromUrl,
+  saveCoverFromBuffer as writeCoverFromBuffer,
+} from '../lib/imageCoverWrite.js';
 import { updateAlbumCoverType } from '../repositories/albumRepository.js';
 
-const COVERS_DIR = path.join(process.env.IMAGES_PATH || './storage/images', 'albums');
+const COVERS_DIR = imagesSubdir('albums');
 
 export async function saveCoverFromUrl(albumId, url) {
-  const ext = url.match(/\.(png|jpe?g|gif)$/i)?.[0] || '.jpg';
-  const success = await downloadImage(url, `${albumId}${ext}`, COVERS_DIR);
-  if (success) updateAlbumCoverType(albumId, ext);
+  await writeCoverFromUrl(albumId, url, COVERS_DIR, (ext) => updateAlbumCoverType(albumId, ext));
 }
 
 export async function saveCoverFromBuffer(albumId, buffer) {
-  if (!fs.existsSync(COVERS_DIR)) fs.mkdirSync(COVERS_DIR, { recursive: true });
-  await sharp(buffer)
-    .resize(800, 800, { fit: 'cover' })
-    .jpeg({ quality: 90 })
-    .toFile(path.join(COVERS_DIR, `${albumId}.jpg`));
-  updateAlbumCoverType(albumId, '.jpg');
+  await writeCoverFromBuffer(albumId, buffer, COVERS_DIR, () => updateAlbumCoverType(albumId, '.jpg'));
 }

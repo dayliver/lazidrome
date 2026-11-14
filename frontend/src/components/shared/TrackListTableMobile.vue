@@ -7,6 +7,7 @@ import { VueDraggable } from 'vue-draggable-plus'
 import SafeImage from '@/components/shared/SafeImage.vue'
 import FavoriteButton from '@/components/shared/FavoriteButton.vue'
 import StarRating from '@/components/shared/StarRating.vue'
+import { splitTrailingParentheticals } from '@/lib/titleParts'
 
 const props = defineProps({
   localTracks: { type: Array, required: true },
@@ -44,19 +45,7 @@ function activeNow(trackId) {
   return props.nowPlayingTrackId != null && String(props.nowPlayingTrackId) === String(trackId)
 }
 
-function splitTrackTitle(title) {
-  const raw = String(title ?? '')
-  const m = raw.match(/^(.*?)(\s*(\([^)]*\)\s*)+)$/)
-  if (!m) return { main: raw, suffix: '' }
-  const suffix = (m[2] || '')
-    .replace(/[()]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return {
-    main: m[1].trimEnd() || raw,
-    suffix,
-  }
-}
+const splitTrackTitle = splitTrailingParentheticals
 
 const emit = defineEmits(['update:localTracks'])
 

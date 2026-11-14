@@ -95,52 +95,52 @@ function applyCommonToSelected() {
 <template>
   <div class="space-y-4">
     <div v-if="playlistTitle" class="text-sm text-muted-foreground">
-      {{ t('download.playlistTitle', { title: playlistTitle }) }}
+      {{ t('import.playlistTitle', { title: playlistTitle }) }}
     </div>
 
     <div class="flex flex-wrap items-center gap-2 text-sm">
-      <span>{{ t('download.selectedCount', { selected: selectedCount, total: rows.length }) }}</span>
+      <span>{{ t('import.selectedCount', { selected: selectedCount, total: rows.length }) }}</span>
       <Button type="button" variant="outline" size="sm" @click="selectAll(true)">
-        {{ t('download.selectAll') }}
+        {{ t('import.selectAll') }}
       </Button>
       <Button type="button" variant="outline" size="sm" @click="selectAll(false)">
-        {{ t('download.selectNone') }}
+        {{ t('import.selectNone') }}
       </Button>
     </div>
 
     <div class="rounded-xl border p-4 space-y-3 bg-muted/10">
       <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {{ t('download.commonMeta') }}
+        {{ t('import.commonMeta') }}
       </p>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="space-y-1">
-          <Label class="text-xs">{{ t('download.fieldArtist') }}</Label>
+          <Label class="text-xs">{{ t('import.fieldArtist') }}</Label>
           <ImportMetaPicker
             v-model="commonArtist"
             :options="artistOptions"
-            :placeholder="t('download.fieldArtistHint')"
+            :placeholder="t('import.fieldArtistHint')"
           />
         </div>
         <div class="space-y-1">
-          <Label class="text-xs">{{ t('download.fieldAlbum') }}</Label>
+          <Label class="text-xs">{{ t('import.fieldAlbum') }}</Label>
           <ImportMetaPicker
             v-model="commonAlbum"
             :options="albumOptions"
-            :placeholder="t('download.fieldAlbumHint')"
+            :placeholder="t('import.fieldAlbumHint')"
           />
         </div>
       </div>
       <Button type="button" variant="secondary" size="sm" @click="applyCommonToSelected">
-        {{ t('download.applyCommon') }}
+        {{ t('import.applyCommon') }}
       </Button>
     </div>
 
     <div class="rounded-xl border overflow-hidden">
       <div class="grid grid-cols-[auto_1fr_1fr_1fr_4rem] gap-2 px-3 py-2 bg-muted/30 text-[10px] font-bold uppercase text-muted-foreground">
         <span></span>
-        <span>{{ t('download.fieldTitle') }}</span>
-        <span>{{ t('download.fieldArtist') }}</span>
-        <span>{{ t('download.fieldAlbum') }}</span>
+        <span>{{ t('import.fieldTitle') }}</span>
+        <span>{{ t('import.fieldArtist') }}</span>
+        <span>{{ t('import.fieldAlbum') }}</span>
         <span v-if="showTrackNo" class="text-center">#</span>
       </div>
       <div
@@ -163,13 +163,13 @@ function applyCommonToSelected() {
         <ImportMetaPicker
           :model-value="row.artist"
           :options="artistOptions"
-          :placeholder="t('download.fieldArtistHint')"
+          :placeholder="t('import.fieldArtistHint')"
           @update:model-value="(v) => updateRow(globalIndex(localIdx), { artist: String(v) })"
         />
         <ImportMetaPicker
           :model-value="row.album"
           :options="albumOptions"
-          :placeholder="t('download.fieldAlbumHint')"
+          :placeholder="t('import.fieldAlbumHint')"
           @update:model-value="(v) => updateRow(globalIndex(localIdx), { album: String(v) })"
         />
         <Input
@@ -185,13 +185,13 @@ function applyCommonToSelected() {
 
     <div v-if="totalPages > 1" class="flex items-center justify-center gap-2">
       <Button type="button" variant="outline" size="sm" :disabled="page <= 1" @click="page -= 1">
-        {{ t('download.prevPage') }}
+        {{ t('import.prevPage') }}
       </Button>
       <span class="text-xs text-muted-foreground tabular-nums">
         {{ page }} / {{ totalPages }}
       </span>
       <Button type="button" variant="outline" size="sm" :disabled="page >= totalPages" @click="page += 1">
-        {{ t('download.nextPage') }}
+        {{ t('import.nextPage') }}
       </Button>
     </div>
   </div>

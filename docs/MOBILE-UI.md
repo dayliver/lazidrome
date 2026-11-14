@@ -14,7 +14,7 @@
 |------|------|
 | `/import` | `frontend/src/views/ImportView.vue` |
 | `/upload` | `frontend/src/views/UploadView.vue` → `frontend/src/components/import/LocalFileImportPanel.vue` |
-| 공통 표 | `frontend/src/components/download/ImportTrackTable.vue` |
+| 공통 표 | `frontend/src/components/import/ImportTrackTable.vue` |
 
 ---
 

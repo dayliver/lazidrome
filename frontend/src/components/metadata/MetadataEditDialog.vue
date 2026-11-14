@@ -6,7 +6,8 @@ import { useLibraryStore } from '@/stores/library'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
-import { X, Save, Trash2, Info, Users, Image as ImageIcon, Globe, ListMusic } from 'lucide-vue-next'
+import { Save, Trash2, Info, Users, Image as ImageIcon, Globe, ListMusic } from 'lucide-vue-next'
+import AppEditShell from '@/components/shared/AppEditShell.vue'
 
 const TrackMetadataPanel = defineAsyncComponent(() => import('./TrackMetadataPanel.vue'))
 const AlbumMetadataPanel = defineAsyncComponent(() => import('./AlbumMetadataPanel.vue'))
@@ -132,68 +133,52 @@ const handleDelete = async () => {
 </script>
 
 <template>
-  <div
+  <AppEditShell
     v-if="item"
-    class="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+    :open="!!item"
+    :title="t('metadata.editTitle')"
+    @close="metadataEdit.shiftQueue()"
   >
-    <div class="bg-card w-full max-w-5xl h-[85vh] rounded-2xl shadow-2xl border-2 flex flex-col overflow-hidden">
-      <header class="flex items-center justify-between px-8 py-5 border-b bg-muted/20">
-        <h2 class="text-2xl font-black">{{ t('metadata.editTitle') }}</h2>
-        <Button variant="ghost" size="icon" @click="metadataEdit.shiftQueue()"><X /></Button>
-      </header>
+    <template #tabs>
+      <button
+        v-for="tab in tabs"
+        :key="tab.id"
+        type="button"
+        class="flex items-center gap-2 py-4 text-sm font-black border-b-2 transition-all whitespace-nowrap focus:outline-none"
+        :class="
+          activeTab === tab.id
+            ? 'border-primary text-primary translate-y-[1px]'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+        "
+        @click="activeTab = tab.id"
+      >
+        <component :is="tab.icon" class="w-4 h-4" />
+        {{ tab.label }}
+      </button>
+    </template>
 
-      <nav class="flex items-center border-b px-8 gap-8 bg-muted/5 shrink-0 overflow-x-auto no-scrollbar">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          @click="activeTab = tab.id"
-          class="flex items-center gap-2 py-4 text-sm font-black border-b-2 transition-all whitespace-nowrap focus:outline-none"
-          :class="
-            activeTab === tab.id
-              ? 'border-primary text-primary translate-y-[1px]'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          "
-        >
-          <component :is="tab.icon" class="w-4 h-4" />
-          {{ tab.label }}
-        </button>
-      </nav>
+    <component
+      :is="currentWrapper"
+      ref="wrapperRef"
+      :item="item"
+      :active-tab="activeTab"
+      @update:active-tab="activeTab = $event"
+    />
 
-      <main class="flex-1 overflow-y-auto p-8 relative">
-        <component
-          :is="currentWrapper"
-          ref="wrapperRef"
-          :item="item"
-          :active-tab="activeTab"
-          @update:active-tab="activeTab = $event"
-        />
-      </main>
-
-      <footer class="p-6 border-t bg-muted/20 flex items-center justify-between gap-3">
-        <Button
-          v-if="canDeleteEntity"
-          variant="destructive"
-          :disabled="isDeleting || metadataEdit.isFetching"
-          @click="handleDelete"
-        >
-          <Trash2 class="w-4 h-4 mr-2" />
-          {{ t('metadata.delete') }}
-        </Button>
-        <div v-else />
-        <Button @click="handleSave" class="font-black px-12" :disabled="isDeleting">
-          <Save class="w-4 h-4 mr-2" /> {{ t('common.save') }}
-        </Button>
-      </footer>
-    </div>
-  </div>
+    <template #footer>
+      <Button
+        v-if="canDeleteEntity"
+        variant="destructive"
+        :disabled="isDeleting || metadataEdit.isFetching"
+        @click="handleDelete"
+      >
+        <Trash2 class="w-4 h-4 mr-2" />
+        {{ t('metadata.delete') }}
+      </Button>
+      <div v-else />
+      <Button class="font-black px-12" :disabled="isDeleting" @click="handleSave">
+        <Save class="w-4 h-4 mr-2" /> {{ t('common.save') }}
+      </Button>
+    </template>
+  </AppEditShell>
 </template>
-
-<style scoped>
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-</style>

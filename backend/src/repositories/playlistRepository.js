@@ -1,4 +1,5 @@
 import { getDB } from '../db.js';
+import { ARTISTS_JSON_NAMES_SUBQUERY } from '../lib/trackListSql.js';
 
 const db = getDB();
 
@@ -21,8 +22,7 @@ export function findManualPlaylistTracks(id) {
       COALESCE(t.volume_pct, 100) AS volume_pct,
       f.duration, 
       alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
-      (SELECT json_group_array(json_object('id', a.id, 'name', a.name))
-       FROM track_artists ta JOIN artists a ON ta.artist_id = a.id WHERE ta.track_id = t.id) as artists_json
+      ${ARTISTS_JSON_NAMES_SUBQUERY} as artists_json
     FROM playlist_tracks pt
     JOIN track_metadata t ON pt.track_id = t.id
     JOIN track_filedata f ON t.file_id = f.id

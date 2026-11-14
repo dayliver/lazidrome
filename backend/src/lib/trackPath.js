@@ -4,6 +4,8 @@ import { getDB } from '../db.js';
 
 /**
  * DB에 예전 절대경로(폴더 이동·대소문자 차이)가 남아 있을 때 storage/tracks 기준으로 다시 찾습니다.
+ * 쓰기/삭제 안전 검사는 `assertInsideTracksRoot`(realpath)를 쓰고,
+ * 이 함수는 읽기용 관대한 basename 폴백이다.
  */
 export function resolveTrackFilePath(storedPath, tracksRoot) {
   if (!storedPath) return null;

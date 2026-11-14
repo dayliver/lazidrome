@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import TracksListTable from '@/components/tracks/TracksListTable.vue'
-import TracksPageFilters from '@/components/tracks/TracksPageFilters.vue'
+import TrackListFilters from '@/components/shared/TrackListFilters.vue'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AuthEmptyState from '@/components/shared/AuthEmptyState.vue'
@@ -58,7 +58,7 @@ const handleCreateTrack = () => {
     <AuthEmptyState v-if="showAuthEmpty" />
 
     <div v-else class="space-y-4">
-      <TracksPageFilters
+      <TrackListFilters
         :search-input="searchInput"
         :starred="query.starred"
         :min-rating="query.minRating"

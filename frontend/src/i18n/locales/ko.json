@@ -280,19 +280,7 @@
       "clear": "목록 비우기",
       "importMore": "다른 파일 가져오기",
       "useTypedValue": "「{value}」 직접 사용"
-    }
-  },
-  "upload": {
-    "title": "음원 업로드",
-    "subtitle": "로컬 파일을 올린 뒤 제목·아티스트·앨범을 지정해 라이브러리에 추가합니다.",
-    "authRequired": "업로드를 사용하려면 설정에서 로그인하세요.",
-    "youtubeHint": "YouTube에서 가져오려면",
-    "youtubeLink": "YouTube 가져오기"
-  },
-  "download": {
-    "title": "YouTube 가져오기",
-    "subtitle": "YouTube URL에서 음원을 추출해 라이브러리에 추가합니다.",
-    "authRequired": "가져오기를 사용하려면 설정에서 로그인하세요.",
+    },
     "pasteConfirmVideo": "YouTube 동영상 URL입니다. 가져오기 페이지로 이동할까요?",
     "pasteConfirmPlaylist": "YouTube 플레이리스트 URL입니다. 가져오기 페이지로 이동할까요?",
     "pasteHint": "앱 어디서든 Ctrl+V로 YouTube URL을 붙여넣을 수 있습니다 (입력 칸 제외).",
@@ -324,6 +312,13 @@
     "failedCount": "실패 {n}",
     "goTracks": "곡 목록 보기",
     "importAnother": "다른 URL 가져오기"
+  },
+  "upload": {
+    "title": "음원 업로드",
+    "subtitle": "로컬 파일을 올린 뒤 제목·아티스트·앨범을 지정해 라이브러리에 추가합니다.",
+    "authRequired": "업로드를 사용하려면 설정에서 로그인하세요.",
+    "youtubeHint": "YouTube에서 가져오려면",
+    "youtubeLink": "YouTube 가져오기"
   },
   "auth": {
     "emptyDefault": "설정에서 서버에 로그인하면 라이브러리를 사용할 수 있습니다.",

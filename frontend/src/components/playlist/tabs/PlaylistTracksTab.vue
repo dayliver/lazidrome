@@ -3,7 +3,6 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth' // 💡 추가: 이미지 인증용
-import { getCoverUrl } from '@/lib/image'    // 💡 추가: 커버 URL 생성기
 import SafeImage from '@/components/shared/SafeImage.vue' // 💡 추가: 에러 방지 이미지 컴포넌트
 
 import { Search, Plus, Trash2, GripVertical, ListMusic, Disc } from 'lucide-vue-next' // 💡 Disc 아이콘 추가

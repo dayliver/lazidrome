@@ -15,7 +15,11 @@ import {
   isAudioFilePath,
   MIN_AUDIO_BYTES,
 } from '../lib/audioExtensions.js';
-import { setPrimaryAlbumForTrack } from '../repositories/albumRepository.js';
+import {
+  setPrimaryAlbumForTrack,
+  findOrCreateArtist,
+  findOrCreateAlbumByNameAndArtists,
+} from '../repositories/albumRepository.js';
 import { markScanCompleted, shouldSkipRecentScan } from '../lib/recentIngestPaths.js';
 
 /** 스캔·감시 제외 폴더명 (경로 어디에든 동일하게 적용) */
@@ -143,60 +147,17 @@ export function startScanner(watchPath) {
           }
         }
 
-        const getOrCreateArtistIds = (names) => {
-          return names.map((rawName) => {
-            const name = String(rawName || '').trim();
-            if (!name) return null;
-            let artist = db
-              .prepare('SELECT id FROM artists WHERE name = ? COLLATE NOCASE')
-              .get(name);
-            if (!artist) {
-              const newId = ulid();
-              try {
-                db.prepare('INSERT INTO artists (id, name) VALUES (?, ?)').run(newId, name);
-                return newId;
-              } catch {
-                artist = db
-                  .prepare('SELECT id FROM artists WHERE name = ? COLLATE NOCASE')
-                  .get(name);
-                if (artist) return artist.id;
-                throw new Error(`Failed to create artist: ${name}`);
-              }
-            }
-            return artist.id;
-          }).filter(Boolean);
-        };
+        const getOrCreateArtistIds = (names) =>
+          names
+            .map((rawName) => {
+              const name = String(rawName || '').trim();
+              if (!name) return null;
+              return findOrCreateArtist({ name });
+            })
+            .filter(Boolean);
 
         const albumArtistIds = getOrCreateArtistIds(albumNamesForAlbum);
-
-        const safeAlbumName = (albumName && String(albumName).trim()) || 'Unknown Album';
-
-        const candidateAlbums = db.prepare('SELECT id FROM albums WHERE name = ?').all(safeAlbumName);
-
-        for (const row of candidateAlbums) {
-          const existingArtists = db
-            .prepare('SELECT artist_id FROM album_artists WHERE album_id = ?')
-            .all(row.id)
-            .map((a) => a.artist_id);
-
-          const sortedA = [...albumArtistIds].sort().join(',');
-          const sortedB = [...existingArtists].sort().join(',');
-
-          if (sortedA === sortedB) {
-            albumId = row.id;
-            break;
-          }
-        }
-
-        if (!albumId) {
-          albumId = ulid();
-          db.prepare('INSERT INTO albums (id, name, year) VALUES (?, ?, ?)').run(albumId, safeAlbumName, year);
-
-          const insertAlbumArtist = db.prepare('INSERT INTO album_artists (album_id, artist_id) VALUES (?, ?)');
-          for (const aId of albumArtistIds) {
-            insertAlbumArtist.run(albumId, aId);
-          }
-        }
+        albumId = findOrCreateAlbumByNameAndArtists(albumName, albumArtistIds, year);
 
         let currentTrackId = null;
 

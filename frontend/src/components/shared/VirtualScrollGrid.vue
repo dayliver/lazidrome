@@ -1,9 +1,12 @@
 <script setup>
+/**
+ * CSS responsive grid (not window-virtualized). Kept name for call-site stability.
+ */
 import { useGridColumns } from '@/composables/useGridColumns'
 
 const props = defineProps({
   items: { type: Array, required: true },
-  /** @deprecated — 페이지 스크롤 그리드로 전환, 무시됨 */
+  /** @deprecated — ignored; not a virtual list */
   rowHeight: { type: Number, default: 300 },
   class: { type: String, default: '' },
 })

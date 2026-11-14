@@ -1,14 +1,17 @@
-import path from 'node:path';
-import fs from 'node:fs';
-import sharp from 'sharp';
+import { imagesSubdir } from '../lib/imagesPath.js';
+import { saveCoverFromBuffer as writeCoverFromBuffer } from '../lib/imageCoverWrite.js';
 
 export async function savePlaylistCoverImage(id, buffer) {
   if (!buffer) return null;
-  const uploadDir = path.join(process.cwd(), 'storage', 'images', 'playlists');
-  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-  
-  const imagePath = path.join(uploadDir, `${id}.jpg`);
-  await sharp(buffer).resize(800, 800, { fit: 'cover' }).jpeg({ quality: 80 }).toFile(imagePath);
-  
-  return 'jpg'; 
+  let coverType = null;
+  await writeCoverFromBuffer(
+    id,
+    buffer,
+    imagesSubdir('playlists'),
+    () => {
+      coverType = 'jpg';
+    },
+    { quality: 80 },
+  );
+  return coverType;
 }

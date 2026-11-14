@@ -18,6 +18,20 @@ import {
   shouldJumpLoopRegion,
   isValidLoopRegion,
 } from '@/lib/playbackAdjust.js'
+import {
+  loadPersistedPlaybackRate,
+  persistPlaybackRate,
+  loadPersistedQueue,
+  persistQueueSnapshot,
+  clearPersistedQueue,
+} from '@/lib/playerPersistence.js'
+import {
+  setMediaSessionPlaybackState,
+  clearMediaSession,
+  applyMediaSessionMetadata,
+  bindMediaSessionActionHandlers,
+  setMediaSessionPositionState,
+} from '@/lib/playerMediaSession.js'
 
 const FADE_BEFORE_END_SEC = 5
 /** 다음 곡 URL을 미리 받아 둘 시점(끝나기 N초 전) */
@@ -38,28 +52,6 @@ const CONTINUOUS_SLICE_PREPARE_LEAD_SEC = 45
  * (clips a little of the last track) so play() still runs under an active session.
  */
 const CONTINUOUS_SLICE_BG_COMMIT_LEAD_SEC = 2.5
-const QUEUE_STORAGE_KEY = 'lazidrome.queue.v1'
-const PLAYBACK_RATE_STORAGE_KEY = 'lazidrome.playbackRate'
-
-function loadPersistedPlaybackRate() {
-  if (typeof localStorage === 'undefined') return 1
-  try {
-    const raw = localStorage.getItem(PLAYBACK_RATE_STORAGE_KEY)
-    if (raw == null || raw === '') return 1
-    return normalizePlaybackRate(raw)
-  } catch {
-    return 1
-  }
-}
-
-function persistPlaybackRate(rate) {
-  if (typeof localStorage === 'undefined') return
-  try {
-    localStorage.setItem(PLAYBACK_RATE_STORAGE_KEY, String(rate))
-  } catch {
-    /* quota */
-  }
-}
 
 let queuePersistTimer = null
 /** `App`에서 라이브러리 로드·복원 후 `beginPersistingQueue()` 호출 전까지는 빈 대기열로 스냅샷을 지우지 않음 */
@@ -792,8 +784,7 @@ export const usePlayerStore = defineStore('player', () => {
   const reinforcePlayingMediaSession = () => {
     if (!audio.value || audio.value.paused) return
     isPlaying.value = true
-    if (typeof navigator === 'undefined' || !navigator.mediaSession) return
-    navigator.mediaSession.playbackState = 'playing'
+    setMediaSessionPlaybackState('playing')
     // Screen-off track boundaries: reclaim audio focus without swapping metadata/artwork.
     try {
       const p = audio.value.play()
@@ -1083,7 +1074,6 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   const syncMediaSessionPosition = () => {
-    if (typeof navigator === 'undefined' || !navigator.mediaSession?.setPositionState) return
     // Background metadata/position jumps at track boundaries mute Android output
     // while currentTime keeps advancing ("silent progress").
     if (isPlaybackBackgrounded() && inQueueTimeline()) return
@@ -1091,32 +1081,21 @@ export const usePlayerStore = defineStore('player', () => {
     // Continuous pipe: report the joined timeline so position never resets at boundaries.
     if (continuousQueueMode && hlsSegmentStarts.length) {
       const total = hlsSegmentDurations.reduce((a, d) => a + (Number(d) > 0 ? Number(d) : 0), 0)
-      const pos = audio.value.currentTime
-      if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(pos)) return
-      try {
-        navigator.mediaSession.setPositionState({
-          duration: total,
-          playbackRate: playbackRate.value,
-          position: Math.min(Math.max(0, pos), total),
-        })
-      } catch {
-        /* ignore */
-      }
+      setMediaSessionPositionState({
+        duration: total,
+        position: audio.value.currentTime,
+        playbackRate: playbackRate.value,
+      })
       return
     }
 
     const dur = inQueueTimeline() ? duration.value : audio.value.duration
     const pos = inQueueTimeline() ? currentTime.value : audio.value.currentTime
-    if (!Number.isFinite(dur) || dur <= 0 || !Number.isFinite(pos)) return
-    try {
-      navigator.mediaSession.setPositionState({
-        duration: dur,
-        playbackRate: playbackRate.value,
-        position: Math.min(pos, dur),
-      })
-    } catch {
-      /* 일부 브라우저 미지원 */
-    }
+    setMediaSessionPositionState({
+      duration: dur,
+      position: pos,
+      playbackRate: playbackRate.value,
+    })
   }
 
   const playCurrentImmediate = () => {
@@ -1441,58 +1420,41 @@ export const usePlayerStore = defineStore('player', () => {
   let mediaSessionHandlersBound = false
 
   const syncMediaSession = () => {
-    if (typeof navigator === 'undefined' || !navigator.mediaSession) return
-
     const tr = currentTrack.value
     if (!tr?.id) {
-      navigator.mediaSession.metadata = null
-      navigator.mediaSession.playbackState = 'none'
+      clearMediaSession()
       return
     }
 
-    const title = tr.title || t('player.unknownTrack')
-    const artist = tr.artist || t('common.unknownArtist')
-    const album = tr.album || undefined
-    // Artwork fetch while screen-off often steals Android audio focus after a track change.
     const allowArtwork = !isPlaybackBackgrounded()
-    const cover = allowArtwork && auth.token ? auth.coverSrc('track', tr.id) : ''
-    const artwork = cover ? [{ src: cover, sizes: '512x512', type: 'image/jpeg' }] : []
-
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title,
-        artist,
-        ...(album ? { album } : {}),
-        ...(artwork.length ? { artwork } : {}),
-      })
-    } catch {
-      navigator.mediaSession.metadata = new MediaMetadata({ title, artist })
-    }
-    navigator.mediaSession.playbackState = isPlaying.value || !audio.value?.paused ? 'playing' : 'paused'
+    applyMediaSessionMetadata({
+      title: tr.title || t('player.unknownTrack'),
+      artist: tr.artist || t('common.unknownArtist'),
+      album: tr.album || undefined,
+      artworkUrl: allowArtwork && auth.token ? auth.coverSrc('track', tr.id) : '',
+      playing: isPlaying.value || !audio.value?.paused,
+    })
   }
 
   const bindMediaSessionHandlers = () => {
-    if (typeof navigator === 'undefined' || !navigator.mediaSession || mediaSessionHandlersBound) return
-    mediaSessionHandlersBound = true
-    try {
-      navigator.mediaSession.setActionHandler('play', () => {
+    if (mediaSessionHandlersBound) return
+    mediaSessionHandlersBound = bindMediaSessionActionHandlers({
+      play: () => {
         void play()
-      })
-      navigator.mediaSession.setActionHandler('pause', () => {
+      },
+      pause: () => {
         pause()
-      })
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
+      },
+      prev: () => {
         void prev()
-      })
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
+      },
+      next: () => {
         advanceToNextTrackSync()
-      })
-      navigator.mediaSession.setActionHandler('stop', () => {
+      },
+      stop: () => {
         pause()
-      })
-    } catch {
-      /* optional handlers */
-    }
+      },
+    })
   }
 
   watch(
@@ -1894,14 +1856,10 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   const saveQueueSnapshot = () => {
-    if (!queuePersistenceMayWrite || typeof localStorage === 'undefined') return
+    if (!queuePersistenceMayWrite) return
     if (!auth.token) return
     if (!queue.value.length) {
-      try {
-        localStorage.removeItem(QUEUE_STORAGE_KEY)
-      } catch {
-        /* ignore */
-      }
+      clearPersistedQueue()
       return
     }
     const trackIds = queue.value.map((t) => (t && t.id != null ? String(t.id) : null)).filter(Boolean)
@@ -1917,20 +1875,13 @@ export const usePlayerStore = defineStore('player', () => {
         : trackIds[ci]
           ? { id: String(trackIds[ci]), title: '' }
           : null
-    try {
-      localStorage.setItem(
-        QUEUE_STORAGE_KEY,
-        JSON.stringify({
-          v: 1,
-          trackIds,
-          currentIndex: ci,
-          resumeHead,
-          updatedAt: Date.now(),
-        })
-      )
-    } catch {
-      /* quota */
-    }
+    persistQueueSnapshot({
+      v: 1,
+      trackIds,
+      currentIndex: ci,
+      resumeHead,
+      updatedAt: Date.now(),
+    })
   }
 
   watch(
@@ -1947,15 +1898,8 @@ export const usePlayerStore = defineStore('player', () => {
 
   /** localStorage에 저장된 대기열이 있는지(복원 가능한 트랙이 라이브러리에 있어야 실제 재생 가능) */
   const hasPersistedQueueSnapshot = () => {
-    if (typeof localStorage === 'undefined') return false
-    try {
-      const raw = localStorage.getItem(QUEUE_STORAGE_KEY)
-      if (!raw) return false
-      const p = JSON.parse(raw)
-      return Array.isArray(p?.trackIds) && p.trackIds.length > 0
-    } catch {
-      return false
-    }
+    const p = loadPersistedQueue()
+    return Array.isArray(p?.trackIds) && p.trackIds.length > 0
   }
 
   /**
@@ -1963,20 +1907,8 @@ export const usePlayerStore = defineStore('player', () => {
    * @returns {Promise<boolean>}
    */
   const restoreQueueFromStorage = async () => {
-    if (typeof localStorage === 'undefined') return false
-    let raw
-    try {
-      raw = localStorage.getItem(QUEUE_STORAGE_KEY)
-    } catch {
-      return false
-    }
-    if (!raw) return false
-    let parsed
-    try {
-      parsed = JSON.parse(raw)
-    } catch {
-      return false
-    }
+    const parsed = loadPersistedQueue()
+    if (!parsed) return false
     const ids = parsed?.trackIds
     if (!Array.isArray(ids) || ids.length === 0) return false
     const idx = Number.isFinite(Number(parsed.currentIndex)) ? Number(parsed.currentIndex) : 0
@@ -1984,8 +1916,8 @@ export const usePlayerStore = defineStore('player', () => {
     const byId = new Map(libTracks.map((t) => [String(t.id), t]))
     const resolved = []
     for (const id of ids) {
-      const t = byId.get(String(id))
-      if (t) resolved.push(t)
+      const tr = byId.get(String(id))
+      if (tr) resolved.push(tr)
     }
     if (!resolved.length) return false
     flushPlaySessionToServer()
@@ -2012,11 +1944,9 @@ export const usePlayerStore = defineStore('player', () => {
    * @returns {{ trackId: string, title: string, total: number, restCount: number } | null}
    */
   const getPersistedQueueResumeHint = () => {
-    if (typeof localStorage === 'undefined') return null
+    const p = loadPersistedQueue()
+    if (!p) return null
     try {
-      const raw = localStorage.getItem(QUEUE_STORAGE_KEY)
-      if (!raw) return null
-      const p = JSON.parse(raw)
       const ids = p?.trackIds
       if (!Array.isArray(ids) || ids.length === 0) return null
       const total = ids.length

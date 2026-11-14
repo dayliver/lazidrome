@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { X, Hash } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+import { invalidTagName } from '@/lib/tagName'
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false },
@@ -26,11 +27,11 @@ watch(
 )
 
 function invalidLabel(value) {
-  const s = String(value || '').trim()
-  if (!s) return t('tagEdit.noName')
-  if (s.includes('..') || /[/\\]/.test(s)) return t('tagEdit.invalidChars')
-  if (s.length > 200) return t('tagEdit.maxLength')
-  return ''
+  return invalidTagName(value, {
+    empty: t('tagEdit.noName'),
+    invalidChars: t('tagEdit.invalidChars'),
+    maxLength: t('tagEdit.maxLength'),
+  })
 }
 
 function close() {

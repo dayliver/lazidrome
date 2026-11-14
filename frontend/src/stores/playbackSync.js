@@ -5,30 +5,10 @@ import { usePlayerStore } from './player'
 import { useLibraryStore } from './library'
 import { resolveNextIndex, resolvePrevIndex, trackSummaryAt } from '@/lib/playbackSyncUtils.js'
 import { getDeviceId, guessDeviceName } from '@/lib/deviceIdentity.js'
+import { emptyRemoteState, buildWsUrl } from '@/lib/playbackSyncWs.js'
 
 const STATE_PUSH_MS = 2500
 const RECONNECT_MS = 3500
-
-function emptyRemoteState() {
-  return {
-    trackIds: [],
-    currentIndex: -1,
-    isPlaying: false,
-    currentTime: 0,
-    duration: 0,
-    isShuffle: false,
-    repeatMode: 'off',
-    track: null,
-  }
-}
-
-function buildWsUrl(serverUrl, token) {
-  const origin =
-    serverUrl?.replace(/\/$/, '') ||
-    (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:5294')
-  const wsOrigin = origin.replace(/^http/i, (m) => (m.toLowerCase() === 'https' ? 'wss' : 'ws'))
-  return `${wsOrigin}/api/playback/ws?token=${encodeURIComponent(token)}`
-}
 
 export const usePlaybackSyncStore = defineStore('playbackSync', () => {
   const auth = useAuthStore()

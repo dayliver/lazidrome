@@ -3,18 +3,13 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import * as mm from 'music-metadata';
 import { ulid } from 'ulid';
-import {
-  buildDestDir,
-  buildTrackFileName,
-  uniqueDestPath,
-  assertInsideTracksRoot,
-} from '../lib/pathSanitize.js';
 import { writeAudioFileWithTags } from '../lib/writeAudioTags.js';
 import {
   ensureImportTempDir,
   TRACKS_PATH,
 } from '../lib/importEnv.js';
 import { AUDIO_EXT_SET } from '../lib/audioExtensions.js';
+import { resolveLibraryAudioDest, noteIngestedPaths } from '../lib/ingestDest.js';
 
 const STAGING_SUBDIR = 'staging';
 const STAGING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -169,15 +164,15 @@ export async function commitStagedUpload(item) {
     throw err;
   }
 
-  const destDir = buildDestDir(TRACKS_PATH, { artist, album });
-  fs.mkdirSync(destDir, { recursive: true });
-
-  const fileName = buildTrackFileName({ artist, album, title, ext: manifest.ext });
-  let destPath = path.join(destDir, fileName);
-  destPath = assertInsideTracksRoot(TRACKS_PATH, destPath);
-  destPath = uniqueDestPath(destPath);
+  const destPath = resolveLibraryAudioDest({
+    artist,
+    album,
+    title,
+    ext: manifest.ext,
+  });
 
   await writeFileWithMetadata(sourcePath, destPath, { title, artist, album });
+  noteIngestedPaths(destPath);
 
   try {
     fs.rmSync(workDir, { recursive: true, force: true });

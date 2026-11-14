@@ -3,8 +3,10 @@ import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
-import { X, Save, Info, Image as ImageIcon } from 'lucide-vue-next'
+import { Save, Info, Image as ImageIcon } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+import { invalidTagName } from '@/lib/tagName'
+import AppEditShell from '@/components/shared/AppEditShell.vue'
 
 import CoverArtTab from '@/components/shared/tabs/CoverArtTab.vue'
 import TagBasicInfoTab from '@/components/tags/tabs/TagBasicInfoTab.vue'
@@ -48,13 +50,12 @@ const tabs = computed(() => [
   { id: 'cover', label: t('metadata.tabCover'), icon: ImageIcon }
 ])
 
-const invalidLabel = (s) => {
-  const value = String(s || '').trim()
-  if (!value) return t('tagEdit.noName')
-  if (value.includes('..') || /[/\\]/.test(value)) return t('tagEdit.invalidChars')
-  if (value.length > 200) return t('tagEdit.maxLength')
-  return ''
-}
+const invalidLabel = (s) =>
+  invalidTagName(s, {
+    empty: t('tagEdit.noName'),
+    invalidChars: t('tagEdit.invalidChars'),
+    maxLength: t('tagEdit.maxLength'),
+  })
 
 const handleClose = () => {
   emit('update:isOpen', false)
@@ -119,47 +120,43 @@ const handleSave = async () => {
 </script>
 
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+  <AppEditShell
+    :open="isOpen"
+    :title="t('tagEdit.title')"
+    :show-close="!isSubmitting"
+    @close="handleClose"
   >
-    <div class="bg-card w-full max-w-5xl h-[85vh] rounded-2xl shadow-2xl border-2 flex flex-col overflow-hidden">
-      <header class="flex items-center justify-between px-8 py-5 border-b bg-muted/20">
-        <h2 class="text-2xl font-black">{{ t('tagEdit.title') }}</h2>
-        <Button variant="ghost" size="icon" :disabled="isSubmitting" @click="handleClose">
-          <X />
+    <template #tabs>
+      <button
+        v-for="tab in tabs"
+        :key="tab.id"
+        type="button"
+        class="flex items-center gap-2 py-4 text-sm font-black border-b-2 transition-all whitespace-nowrap focus:outline-none"
+        :class="
+          activeTab === tab.id
+            ? 'border-primary text-primary translate-y-[1px]'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+        "
+        @click="activeTab = tab.id"
+      >
+        <component :is="tab.icon" class="w-4 h-4" />
+        {{ tab.label }}
+      </button>
+    </template>
+
+    <div v-show="activeTab === 'basic'">
+      <TagBasicInfoTab v-model="localData" />
+    </div>
+    <div v-show="activeTab === 'cover'">
+      <CoverArtTab v-model="localData" />
+    </div>
+
+    <template #footer>
+      <div />
+      <div class="flex justify-end gap-3">
+        <Button variant="ghost" class="font-bold" :disabled="isSubmitting" @click="handleClose">
+          {{ t('common.cancel') }}
         </Button>
-      </header>
-
-      <nav class="flex items-center border-b px-8 gap-8 bg-muted/5 shrink-0 overflow-x-auto no-scrollbar">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          type="button"
-          class="flex items-center gap-2 py-4 text-sm font-black border-b-2 transition-all whitespace-nowrap focus:outline-none"
-          :class="
-            activeTab === tab.id
-              ? 'border-primary text-primary translate-y-[1px]'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          "
-          @click="activeTab = tab.id"
-        >
-          <component :is="tab.icon" class="w-4 h-4" />
-          {{ tab.label }}
-        </button>
-      </nav>
-
-      <main class="flex-1 overflow-y-auto p-8 relative custom-scrollbar">
-        <div v-show="activeTab === 'basic'">
-          <TagBasicInfoTab v-model="localData" />
-        </div>
-        <div v-show="activeTab === 'cover'">
-          <CoverArtTab v-model="localData" />
-        </div>
-      </main>
-
-      <footer class="p-6 border-t bg-muted/20 flex justify-end gap-3">
-        <Button variant="ghost" class="font-bold" :disabled="isSubmitting" @click="handleClose">{{ t('common.cancel') }}</Button>
         <Button class="font-black px-12 shadow-lg" :disabled="isSubmitting" @click="handleSave">
           <span
             v-if="isSubmitting"
@@ -168,24 +165,7 @@ const handleSave = async () => {
           <Save class="w-4 h-4 mr-2" />
           {{ t('common.save') }}
         </Button>
-      </footer>
-    </div>
-  </div>
+      </div>
+    </template>
+  </AppEditShell>
 </template>
-
-<style scoped>
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted));
-  border-radius: 10px;
-}
-</style>

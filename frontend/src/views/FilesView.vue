@@ -174,7 +174,7 @@ watch([currentPath, showAuthEmpty], () => {
   <PageLayout>
     <ViewHeader :title="t('files.title')" :description="description" :show-action="false" />
 
-    <AuthEmptyState v-if="showAuthEmpty" :message="t('files.authRequired')" />
+    <AuthEmptyState v-if="showAuthEmpty" :description="t('files.authRequired')" />
 
     <template v-else>
       <nav

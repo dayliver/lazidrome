@@ -23,11 +23,19 @@ export function isClientSafeErrorMessage(message) {
  * @param {{ fallback?: string, statusCode?: number }} [opts]
  */
 export function replyHttpError(request, reply, err, opts = {}) {
-  const { fallback = '요청 처리 중 오류가 발생했습니다.', statusCode = 500 } = opts;
+  const fallback = opts.fallback ?? '요청 처리 중 오류가 발생했습니다.';
   request.log.error(err);
   const msg = err instanceof Error ? err.message : String(err || '');
+  const fromErr =
+    err && typeof err === 'object' && Number.isFinite(err.statusCode)
+      ? Number(err.statusCode)
+      : null;
+  if (fromErr && fromErr >= 400 && fromErr < 500) {
+    return reply.code(fromErr).send({ error: msg || fallback });
+  }
   if (isClientSafeErrorMessage(msg)) {
     return reply.code(400).send({ error: msg });
   }
+  const statusCode = opts.statusCode ?? 500;
   return reply.code(statusCode).send({ error: fallback });
 }

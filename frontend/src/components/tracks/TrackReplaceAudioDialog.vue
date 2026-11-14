@@ -112,7 +112,7 @@ function onDrop(e) {
 async function resolveYoutube() {
   const url = ytUrl.value.trim()
   if (!isYoutubeUrl(url)) {
-    notify.error(t('download.invalidUrl'))
+    notify.error(t('import.invalidUrl'))
     return
   }
   ytResolving.value = true
@@ -130,7 +130,7 @@ async function resolveYoutube() {
       ytSelectedVideoId.value = ytItems.value[0].videoId
     }
   } catch (e) {
-    notify.error(e?.message || t('download.resolveFailed'))
+    notify.error(e?.message || t('import.resolveFailed'))
   } finally {
     ytResolving.value = false
   }
@@ -248,7 +248,7 @@ async function handleReplace() {
               id="replace-yt-url"
               v-model="ytUrl"
               type="url"
-              :placeholder="t('download.urlPlaceholder')"
+              :placeholder="t('import.urlPlaceholder')"
               :disabled="replacing || ytResolving"
               @keydown.enter.prevent="resolveYoutube"
             />
@@ -258,7 +258,7 @@ async function handleReplace() {
               :disabled="!ytUrl.trim() || replacing || ytResolving"
               @click="resolveYoutube"
             >
-              {{ ytResolving ? t('download.resolving') : t('download.resolve') }}
+              {{ ytResolving ? t('import.resolving') : t('import.resolve') }}
             </Button>
           </div>
         </div>

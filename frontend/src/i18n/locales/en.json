@@ -280,19 +280,7 @@
       "clear": "Clear list",
       "importMore": "Import more files",
       "useTypedValue": "Use \"{value}\""
-    }
-  },
-  "upload": {
-    "title": "Upload tracks",
-    "subtitle": "Upload local files, set title · artist · album, then save to your library.",
-    "authRequired": "Log in from Settings to upload.",
-    "youtubeHint": "To import from YouTube, go to",
-    "youtubeLink": "YouTube import"
-  },
-  "download": {
-    "title": "Import from YouTube",
-    "subtitle": "Extract audio from a YouTube URL and add it to your library.",
-    "authRequired": "Log in under Settings to import from YouTube.",
+    },
     "pasteConfirmVideo": "YouTube video URL detected. Open the import page?",
     "pasteConfirmPlaylist": "YouTube playlist URL detected. Open the import page?",
     "pasteHint": "Press Ctrl+V anywhere (except text fields) to paste a YouTube URL.",
@@ -324,6 +312,13 @@
     "failedCount": "{n} failed",
     "goTracks": "View tracks",
     "importAnother": "Import another URL"
+  },
+  "upload": {
+    "title": "Upload tracks",
+    "subtitle": "Upload local files, set title · artist · album, then save to your library.",
+    "authRequired": "Log in from Settings to upload.",
+    "youtubeHint": "To import from YouTube, go to",
+    "youtubeLink": "YouTube import"
   },
   "auth": {
     "emptyDefault": "Log in under Settings to use your library.",

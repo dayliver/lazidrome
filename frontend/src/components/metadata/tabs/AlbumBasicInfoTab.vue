@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuthStore } from '@/stores/auth'
-import { getCoverUrl } from '@/lib/image'
 
 // 💡 TagsInput UI 컴포넌트 임포트
 import { 

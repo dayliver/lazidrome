@@ -2,12 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ulid } from 'ulid';
 import { normalizeYoutubeInput } from '../lib/youtubeUrl.js';
-import {
-  buildDestDir,
-  buildDestFilePath,
-  assertInsideTracksRoot,
-  sanitizePathSegment,
-} from '../lib/pathSanitize.js';
+import { sanitizePathSegment } from '../lib/pathSanitize.js';
 import { buildFfmpegMetadataArgs } from '../lib/audioTags.js';
 import { spawnCmd } from '../lib/spawnCmd.js';
 import {
@@ -16,6 +11,7 @@ import {
   ensureImportTempDir,
   TRACKS_PATH,
 } from '../lib/importEnv.js';
+import { resolveLibraryAudioDest, noteIngestedPaths } from '../lib/ingestDest.js';
 
 function parseYtDlpJsonLines(stdout) {
   const lines = stdout.trim().split('\n').filter(Boolean);
@@ -112,22 +108,12 @@ export async function resolveYoutubeUrl(url) {
   };
 }
 
-function uniqueDestPath(destPath) {
-  if (!fs.existsSync(destPath)) return destPath;
-  const dir = path.dirname(destPath);
-  const ext = path.extname(destPath);
-  const base = path.basename(destPath, ext);
-  let n = 2;
-  while (fs.existsSync(path.join(dir, `${base} (${n})${ext}`))) n += 1;
-  return path.join(dir, `${base} (${n})${ext}`);
-}
-
 /**
- * @param {{ videoId: string, webpageUrl?: string, sourceUrl?: string, tags: object, destDir?: string }} opts
+ * @param {{ videoId: string, webpageUrl?: string, sourceUrl?: string, tags: object, destDir?: string, destPath?: string }} opts
  * @returns {Promise<{ destPath: string, title: string }>}
  */
 export async function downloadOne(opts) {
-  const { videoId, webpageUrl, sourceUrl, tags, destDir: destDirOverride, destPath: destPathOverride } = opts;
+  const { videoId, webpageUrl, sourceUrl, tags, destPath: destPathOverride } = opts;
   const ytDlp = resolveYtDlpBin();
   const ffmpeg = resolveFfmpegBin();
   const tempRoot = ensureImportTempDir();
@@ -141,20 +127,15 @@ export async function downloadOne(opts) {
     destPath = path.resolve(destPathOverride);
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
   } else {
-    const destDir = destDirOverride || buildDestDir(TRACKS_PATH, {
+    destPath = resolveLibraryAudioDest({
       artist: tags.artist,
       album: tags.album,
+      title: tags.title,
+      ext: '.mp3',
     });
-    fs.mkdirSync(destDir, { recursive: true });
-
-    const title = sanitizePathSegment(tags.title, 'track');
-    destPath = buildDestFilePath(destDir, title);
-    destPath = assertInsideTracksRoot(TRACKS_PATH, destPath);
-    destPath = uniqueDestPath(destPath);
   }
 
   const title = sanitizePathSegment(tags.title, 'track');
-
   const tempOut = path.join(workDir, 'audio.%(ext)s');
 
   try {
@@ -197,6 +178,7 @@ export async function downloadOne(opts) {
       fs.copyFileSync(downloaded, destPath);
     }
 
+    noteIngestedPaths(destPath);
     return { destPath, title: tags.title || title };
   } finally {
     try {
@@ -207,4 +189,4 @@ export async function downloadOne(opts) {
   }
 }
 
-export { buildDestDir, TRACKS_PATH };
+export { TRACKS_PATH };

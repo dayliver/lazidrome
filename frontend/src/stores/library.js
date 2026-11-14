@@ -7,6 +7,7 @@ import { normalizeTracksResponse } from '@/lib/tracksApi'
 import { loadLibraryCache, saveLibraryCache, clearLibraryCache } from '@/lib/libraryCache'
 import { normalizeCatalogResponse } from '@/lib/catalogApi'
 import { getDeviceId, guessDeviceName } from '@/lib/deviceIdentity.js'
+import { createExternalSyncHub } from '@/lib/libraryExternalSync.js'
 
 export const useLibraryStore = defineStore('library', () => {
   const auth = useAuthStore()
@@ -25,9 +26,15 @@ export const useLibraryStore = defineStore('library', () => {
   let fetchPromise = null
 
   /** 메타데이터 저장 후 앨범/태그/플레이리스트 등 "별도 배열"에 붙은 트랙 행을 갱신하기 위한 구독자 */
-  const trackExternalSyncListeners = new Set()
-  const albumExternalSyncListeners = new Set()
-  const artistExternalSyncListeners = new Set()
+  const trackExternalSync = createExternalSyncHub()
+  const albumExternalSync = createExternalSyncHub()
+  const artistExternalSync = createExternalSyncHub()
+  const subscribeTrackExternalSync = trackExternalSync.subscribe
+  const emitTrackExternalSync = trackExternalSync.emit
+  const subscribeAlbumExternalSync = albumExternalSync.subscribe
+  const emitAlbumExternalSync = albumExternalSync.emit
+  const subscribeArtistExternalSync = artistExternalSync.subscribe
+  const emitArtistExternalSync = artistExternalSync.emit
 
   const trackCount = computed(() => tracksTotal.value || tracks.value.length)
 
@@ -467,23 +474,6 @@ export const useLibraryStore = defineStore('library', () => {
     return processedData
   }
 
-  const subscribeArtistExternalSync = (listener) => {
-    if (typeof listener !== 'function') return () => {}
-    artistExternalSyncListeners.add(listener)
-    return () => artistExternalSyncListeners.delete(listener)
-  }
-
-  const emitArtistExternalSync = (normalized) => {
-    if (!normalized) return
-    for (const fn of artistExternalSyncListeners) {
-      try {
-        fn(normalized)
-      } catch (e) {
-        console.error(e)
-      }
-    }
-  }
-
   const updateLocalAlbum = (newData) => {
     const processedData = normalizeAlbumServerPayload(newData)
     if (!processedData) return
@@ -513,23 +503,6 @@ export const useLibraryStore = defineStore('library', () => {
     return processedData
   }
 
-  const subscribeAlbumExternalSync = (listener) => {
-    if (typeof listener !== 'function') return () => {}
-    albumExternalSyncListeners.add(listener)
-    return () => albumExternalSyncListeners.delete(listener)
-  }
-
-  const emitAlbumExternalSync = (normalized) => {
-    if (!normalized) return
-    for (const fn of albumExternalSyncListeners) {
-      try {
-        fn(normalized)
-      } catch (e) {
-        console.error(e)
-      }
-    }
-  }
-
   const normalizeTrackServerPayload = (newData) => {
     if (!newData?.id) return null
     const processedData = { ...newData }
@@ -541,23 +514,6 @@ export const useLibraryStore = defineStore('library', () => {
       }
     }
     return processedData
-  }
-
-  const subscribeTrackExternalSync = (listener) => {
-    if (typeof listener !== 'function') return () => {}
-    trackExternalSyncListeners.add(listener)
-    return () => trackExternalSyncListeners.delete(listener)
-  }
-
-  const emitTrackExternalSync = (normalized) => {
-    if (!normalized) return
-    for (const fn of trackExternalSyncListeners) {
-      try {
-        fn(normalized)
-      } catch (e) {
-        console.error(e)
-      }
-    }
   }
 
   /**

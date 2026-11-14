@@ -4,7 +4,6 @@ import { i18n } from '@/i18n'
 import { useRouter } from 'vue-router'
 import { usePlaylistStore } from '@/stores/playlist'
 import { useAuthStore } from '@/stores/auth' // 💡 커버 이미지 로드용
-import { getCoverUrl } from '@/lib/image'    // 💡 커버 이미지 로드용
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'

@@ -3,7 +3,8 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlaylistStore } from '@/stores/playlist'
 import { Button } from '@/components/ui/button'
-import { X, Save, Info, ListMusic, ImageIcon } from 'lucide-vue-next'
+import { Save, Info, ListMusic, ImageIcon } from 'lucide-vue-next'
+import AppEditShell from '@/components/shared/AppEditShell.vue'
 
 // 탭 컴포넌트 임포트 (곧 생성할 예정)
 import PlaylistBasicInfoTab from './tabs/PlaylistBasicInfoTab.vue'
@@ -87,51 +88,53 @@ const handleSave = async () => {
 </script>
 
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-    <div class="bg-card w-full max-w-5xl h-[85vh] rounded-2xl shadow-2xl border-2 flex flex-col overflow-hidden">
-      
-      <header class="flex items-center justify-between px-8 py-5 border-b bg-muted/20">
-        <h2 class="text-2xl font-black">{{ editTarget ? t('playlist.dialogEdit') : t('playlist.dialogCreate') }}</h2>
-        <Button variant="ghost" size="icon" @click="emit('update:isOpen', false)"><X /></Button>
-      </header>
+  <AppEditShell
+    :open="isOpen"
+    :title="editTarget ? t('playlist.dialogEdit') : t('playlist.dialogCreate')"
+    @close="emit('update:isOpen', false)"
+  >
+    <template #tabs>
+      <button
+        v-for="tab in tabs"
+        :key="tab.id"
+        type="button"
+        class="flex items-center gap-2 py-4 text-sm font-black border-b-2 transition-all whitespace-nowrap focus:outline-none"
+        :class="
+          activeTab === tab.id
+            ? 'border-primary text-primary translate-y-[1px]'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+        "
+        @click="activeTab = tab.id"
+      >
+        <component :is="tab.icon" class="w-4 h-4" />
+        {{ tab.label }}
+      </button>
+    </template>
 
-      <nav class="flex items-center border-b px-8 gap-8 bg-muted/5 shrink-0 overflow-x-auto no-scrollbar">
-        <button 
-          v-for="tab in tabs" :key="tab.id"
-          @click="activeTab = tab.id" 
-          class="flex items-center gap-2 py-4 text-sm font-black border-b-2 transition-all whitespace-nowrap focus:outline-none"
-          :class="activeTab === tab.id ? 'border-primary text-primary translate-y-[1px]' : 'border-transparent text-muted-foreground hover:text-foreground'"
-        >
-          <component :is="tab.icon" class="w-4 h-4" />
-          {{ tab.label }}
-        </button>
-      </nav>
+    <div v-show="activeTab === 'basic'">
+      <PlaylistBasicInfoTab v-model="localData" :is-edit="!!editTarget" />
+    </div>
+    <div v-show="activeTab === 'tracks'">
+      <PlaylistTracksTab v-model="localData.playlistTracks" />
+    </div>
+    <div v-show="activeTab === 'cover'">
+      <CoverArtTab v-model="localData" />
+    </div>
 
-      <main class="flex-1 overflow-y-auto p-8 relative custom-scrollbar">
-        <div v-show="activeTab === 'basic'">
-          <PlaylistBasicInfoTab v-model="localData" :is-edit="!!editTarget" />
-        </div>
-        <div v-show="activeTab === 'tracks'">
-          <PlaylistTracksTab v-model="localData.playlistTracks" />
-        </div>
-        <div v-show="activeTab === 'cover'">
-          <CoverArtTab v-model="localData" />
-        </div>
-      </main>
-
-      <footer class="p-6 border-t bg-muted/20 flex justify-end gap-3">
-        <Button variant="ghost" @click="emit('update:isOpen', false)" class="font-bold">{{ t('common.cancel') }}</Button>
-        <Button @click="handleSave" :disabled="isSubmitting" class="font-black px-12 shadow-lg">
-          <span v-if="isSubmitting" class="mr-2 h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full"></span>
+    <template #footer>
+      <div />
+      <div class="flex justify-end gap-3">
+        <Button variant="ghost" class="font-bold" @click="emit('update:isOpen', false)">
+          {{ t('common.cancel') }}
+        </Button>
+        <Button class="font-black px-12 shadow-lg" :disabled="isSubmitting" @click="handleSave">
+          <span
+            v-if="isSubmitting"
+            class="mr-2 h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full"
+          />
           <Save class="w-4 h-4 mr-2" /> {{ t('playlist.saveButton') }}
         </Button>
-      </footer>
-    </div>
-  </div>
+      </div>
+    </template>
+  </AppEditShell>
 </template>
-
-<style scoped>
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 10px; }
-</style>

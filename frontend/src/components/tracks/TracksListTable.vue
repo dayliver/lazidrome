@@ -28,6 +28,7 @@ import { usePlayerStore } from '@/stores/player'
 import { formatLocaleDateTime } from '@/lib/localeFormat'
 import { formatTrackTime } from '@/lib/audio'
 import { TRACKS_PAGE_SORT_COLUMNS } from '@/lib/trackListQuery'
+import { splitTrailingParentheticals } from '@/lib/titleParts'
 
 const props = defineProps({
   tracks: { type: Array, required: true, default: () => [] },
@@ -95,19 +96,7 @@ function activeNow(trackId) {
   return nowPlayingTrackId.value != null && String(nowPlayingTrackId.value) === String(trackId)
 }
 
-function splitTrackTitle(title) {
-  const raw = String(title ?? '')
-  const m = raw.match(/^(.*?)(\s*(\([^)]*\)\s*)+)$/)
-  if (!m) return { main: raw, suffix: '' }
-  const suffix = (m[2] || '')
-    .replace(/[()]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return {
-    main: m[1].trimEnd() || raw,
-    suffix,
-  }
-}
+const splitTrackTitle = splitTrailingParentheticals
 
 function artistLabel(artist) {
   return getArtistList(artist).join(', ')

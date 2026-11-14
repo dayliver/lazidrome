@@ -4,7 +4,6 @@ import { useLibraryStore } from '@/stores/library'
 import { usePlaybackSyncStore } from '@/stores/playbackSync.js'
 import { useAuthStore } from '@/stores/auth'
 import { useMetadataEditStore } from '@/stores/metadataEdit'
-import { getCoverUrl } from '@/lib/image'
 export function useTrackListRowActions(localTracks) {
   const router = useRouter()
   const library = useLibraryStore()

@@ -29,8 +29,8 @@ export function useYoutubePaste() {
     const kind = classifyYoutubeUrl(text);
     const msg =
       kind === 'playlist'
-        ? t('download.pasteConfirmPlaylist')
-        : t('download.pasteConfirmVideo');
+        ? t('import.pasteConfirmPlaylist')
+        : t('import.pasteConfirmVideo');
 
     if (!confirm(msg)) return;
 

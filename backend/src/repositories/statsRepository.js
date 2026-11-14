@@ -9,6 +9,7 @@ import {
   resolveStatsTimezone,
   sumListenSecByTrack,
 } from '../lib/playHistoryTime.js';
+import { TRACK_LIST_CORE_COLUMNS, TRACK_LIST_FROM } from '../lib/trackListSql.js';
 
 const db = getDB();
 
@@ -239,24 +240,6 @@ export function getPlayStatsPayload(range, deviceId = null) {
   };
 }
 
-const TRACK_LIST_COLUMNS = `
-    t.id, t.title, t.rating, t.starred,
-    COALESCE(t.year, alb.year) AS year, t.tags, t.play_count, t.last_played,
-    COALESCE(t.volume_pct, 100) AS volume_pct,
-    t.custom_cover_type, f.duration, f.format, f.bitrate,
-    alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
-    GROUP_CONCAT(a.name, ', ') as artist
-`;
-
-const TRACK_LIST_JOINS = `
-  FROM track_metadata t
-  JOIN track_filedata f ON t.file_id = f.id
-  LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
-  LEFT JOIN albums alb ON at.album_id = alb.id
-  LEFT JOIN track_artists ta ON t.id = ta.track_id
-  LEFT JOIN artists a ON ta.artist_id = a.id
-`;
-
 const GROUP_BY_TRACK = 'GROUP BY t.id';
 
 function fetchTracksByIdsOrdered(trackIds) {
@@ -265,8 +248,8 @@ function fetchTracksByIdsOrdered(trackIds) {
   const rows = db
     .prepare(
       `
-    SELECT ${TRACK_LIST_COLUMNS}
-    ${TRACK_LIST_JOINS}
+    SELECT ${TRACK_LIST_CORE_COLUMNS.trim()}
+    ${TRACK_LIST_FROM}
     WHERE t.id IN (${placeholders})
     ${GROUP_BY_TRACK}
   `

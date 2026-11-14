@@ -1,5 +1,6 @@
 import { getDB } from '../db.js';
 import { ulid } from 'ulid';
+import { ARTISTS_JSON_NAMES_SUBQUERY } from '../lib/trackListSql.js';
 
 export const DEFAULT_MIX_LIMIT = 50;
 export const MAX_MIX_LIMIT = 200;
@@ -60,8 +61,7 @@ export function buildMixQuery(rulesString) {
       COALESCE(t.volume_pct, 100) AS volume_pct,
       f.duration, 
       alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
-      (SELECT json_group_array(json_object('id', a.id, 'name', a.name))
-       FROM track_artists ta JOIN artists a ON ta.artist_id = a.id WHERE ta.track_id = t.id) as artists_json
+      ${ARTISTS_JSON_NAMES_SUBQUERY} as artists_json
     FROM track_metadata t
     JOIN track_filedata f ON t.file_id = f.id
     LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1

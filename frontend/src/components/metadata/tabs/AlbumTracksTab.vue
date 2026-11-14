@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input'
 
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth' // 💡 추가
-import { getCoverUrl } from '@/lib/image'    // 💡 추가
 import SafeImage from '@/components/shared/SafeImage.vue' // 💡 추가
 const { t } = useI18n()
 

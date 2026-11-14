@@ -4,35 +4,26 @@ import { useI18n } from 'vue-i18n'
 import { notify } from '@/lib/notify'
 import { useAuthStore } from '@/stores/auth'
 import { useLibraryStore } from '@/stores/library'
-import { useThemeStore } from '@/stores/theme'
-import { usePreferencesStore } from '@/stores/preferences'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Sparkles,
   Server,
   RefreshCw,
   LogIn,
   LogOut,
-  Moon,
-  Sun,
   CheckCircle2,
   Circle,
   Package,
-  Languages,
-  Globe,
   Menu,
 } from 'lucide-vue-next'
 import PlaybackDevicesCard from '@/components/settings/PlaybackDevicesCard.vue'
+import SettingsLanguageCard from '@/components/settings/SettingsLanguageCard.vue'
+import SettingsThemeCard from '@/components/settings/SettingsThemeCard.vue'
+import SettingsTimezoneCard from '@/components/settings/SettingsTimezoneCard.vue'
 import {
   fetchFrontendBuildInfo,
   fetchBackendBuildFromHealth,
@@ -41,7 +32,6 @@ import {
 } from '@/lib/buildInfo'
 import ViewHeader from '@/components/shared/ViewHeader.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
-import { Checkbox } from '@/components/ui/checkbox'
 import { useNavItems } from '@/composables/useNavItems'
 import { VueDraggable } from 'vue-draggable-plus'
 import { GripVertical } from 'lucide-vue-next'
@@ -49,8 +39,6 @@ import { GripVertical } from 'lucide-vue-next'
 const { t } = useI18n()
 const auth = useAuthStore()
 const library = useLibraryStore()
-const theme = useThemeStore()
-const prefs = usePreferencesStore()
 const { pinnedPinOptions, unpinnedPinOptions, setPinned, reorderPinned, resetPinned } = useNavItems()
 
 const dragPinned = ref([])
@@ -148,35 +136,7 @@ const handleRefresh = async () => {
       :show-action="false"
     />
 
-    <Card>
-      <CardHeader>
-        <CardTitle class="flex items-center gap-2">
-          <Languages class="w-5 h-5 text-primary" />
-          {{ t('settings.language.title') }}
-        </CardTitle>
-        <CardDescription>{{ t('settings.language.description') }}</CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-3">
-        <div class="flex items-center gap-2">
-          <Button
-            :variant="prefs.locale === 'en' ? 'default' : 'outline'"
-            size="sm"
-            :class="prefs.locale === 'en' ? 'font-bold shadow-sm' : ''"
-            @click="prefs.setLocale('en')"
-          >
-            {{ t('settings.language.en') }}
-          </Button>
-          <Button
-            :variant="prefs.locale === 'ko' ? 'default' : 'outline'"
-            size="sm"
-            :class="prefs.locale === 'ko' ? 'font-bold shadow-sm' : ''"
-            @click="prefs.setLocale('ko')"
-          >
-            {{ t('settings.language.ko') }}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <SettingsLanguageCard />
 
     <Card>
       <CardHeader>
@@ -250,62 +210,7 @@ const handleRefresh = async () => {
       </CardFooter>
     </Card>
 
-    <Card>
-      <CardHeader>
-        <CardTitle class="flex items-center gap-2">
-          <Globe class="w-5 h-5 text-primary" />
-          {{ t('settings.timezone.title') }}
-        </CardTitle>
-        <CardDescription>{{ t('settings.timezone.description') }}</CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-4">
-        <div class="flex flex-wrap items-center gap-2">
-          <Button
-            :variant="prefs.timezoneMode === 'system' ? 'default' : 'outline'"
-            size="sm"
-            :class="prefs.timezoneMode === 'system' ? 'font-bold shadow-sm' : ''"
-            @click="prefs.setTimezoneMode('system')"
-          >
-            {{ t('settings.timezone.system') }}
-          </Button>
-          <Button
-            :variant="prefs.timezoneMode === 'custom' ? 'default' : 'outline'"
-            size="sm"
-            :class="prefs.timezoneMode === 'custom' ? 'font-bold shadow-sm' : ''"
-            @click="prefs.setTimezoneMode('custom')"
-          >
-            {{ t('settings.timezone.custom') }}
-          </Button>
-        </div>
-        <div v-if="prefs.timezoneMode === 'custom'" class="space-y-2">
-          <Label>{{ t('settings.timezone.custom') }}</Label>
-          <Select
-            :model-value="prefs.customTimezone"
-            @update:model-value="(v) => prefs.setCustomTimezone(String(v))"
-          >
-            <SelectTrigger class="w-full max-w-md font-mono text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent class="max-h-72">
-              <SelectItem
-                v-for="tz in prefs.timezoneOptions"
-                :key="tz"
-                :value="tz"
-                class="font-mono text-sm"
-              >
-                {{ tz }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <p class="text-xs text-muted-foreground">
-          {{ t('settings.timezone.current', { zone: prefs.effectiveTimezone }) }}
-          <span v-if="prefs.timezoneMode === 'system'">
-            ({{ prefs.systemTimezone }})
-          </span>
-        </p>
-      </CardContent>
-    </Card>
+    <SettingsTimezoneCard />
 
     <PlaybackDevicesCard v-if="auth.isAuthenticated" />
 
@@ -349,43 +254,7 @@ const handleRefresh = async () => {
       </CardContent>
     </Card>
 
-    <Card>
-      <CardHeader>
-        <CardTitle class="flex items-center gap-2">
-          <component :is="theme.isDark ? Moon : Sun" class="w-5 h-5 text-primary" />
-          {{ t('settings.theme.title') }}
-        </CardTitle>
-        <CardDescription>{{ t('settings.theme.description') }}</CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-3">
-        <div class="flex items-center gap-2">
-          <Button
-            :variant="theme.mode === 'light' ? 'default' : 'outline'"
-            size="sm"
-            :class="theme.mode === 'light' ? 'font-bold shadow-sm' : ''"
-            @click="theme.setMode('light')"
-          >
-            {{ t('settings.theme.light') }}
-          </Button>
-          <Button
-            :variant="theme.mode === 'dark' ? 'default' : 'outline'"
-            size="sm"
-            :class="theme.mode === 'dark' ? 'font-bold shadow-sm' : ''"
-            @click="theme.setMode('dark')"
-          >
-            {{ t('settings.theme.dark') }}
-          </Button>
-          <Button
-            :variant="theme.mode === 'system' ? 'default' : 'outline'"
-            size="sm"
-            :class="theme.mode === 'system' ? 'font-bold shadow-sm' : ''"
-            @click="theme.setMode('system')"
-          >
-            {{ t('settings.theme.system') }}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <SettingsThemeCard />
 
     <Card>
       <CardHeader>

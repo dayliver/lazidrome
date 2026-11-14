@@ -146,6 +146,6 @@
 
 ## 남은 우선 과제
 
-- **0.7.6+:** B9+, F7–F8, F10 · stats 타임존 (/stats)
+- **0.8.x+:** B9+, F7–F8, F10 · stats 타임존 (/stats) · 코드 중복 잔여
 - 모바일 HLS Phase C(트랜스코드 등)는 선택·보장 없음 — 문서 참고
 - B9~B25, F7–F10 백로그 — [ROADMAP-RELEASES.md](./ROADMAP-RELEASES.md)

@@ -4,47 +4,14 @@ import {
   buildTrackListWhere,
   buildTrackListOrder,
 } from '../lib/trackListQuery.js';
+import {
+  TRACK_LIST_SELECT,
+  TRACK_LIST_SELECT_ALBUM,
+  ARTISTS_JSON_SUBQUERY,
+  ARTISTS_JSON_NAMES_SUBQUERY,
+} from '../lib/trackListSql.js';
 
 const db = getDB();
-
-const TRACK_LIST_FROM = `
-    FROM track_metadata t
-    JOIN track_filedata f ON t.file_id = f.id
-    LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
-    LEFT JOIN albums alb ON at.album_id = alb.id
-    LEFT JOIN track_artists ta ON t.id = ta.track_id
-    LEFT JOIN artists a ON ta.artist_id = a.id`;
-
-const TRACK_LIST_SELECT = `
-    SELECT 
-      t.id, t.title, t.rating, t.starred,
-      COALESCE(t.year, alb.year) AS year, t.tags, t.play_count, t.last_played,
-      COALESCE(t.volume_pct, 100) AS volume_pct,
-      t.custom_cover_type, f.duration, f.format, f.bitrate, f.scanned_at,
-      alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
-      at.track_number, at.disc_number,
-      GROUP_CONCAT(a.name, ', ') as artist
-    ${TRACK_LIST_FROM}`;
-
-/** 앨범 상세 스코프: 해당 앨범의 disc/track 번호 사용 */
-const TRACK_LIST_FROM_ALBUM = `
-    FROM track_metadata t
-    JOIN track_filedata f ON t.file_id = f.id
-    JOIN album_tracks at ON t.id = at.track_id AND at.album_id = ?
-    LEFT JOIN albums alb ON at.album_id = alb.id
-    LEFT JOIN track_artists ta ON t.id = ta.track_id
-    LEFT JOIN artists a ON ta.artist_id = a.id`;
-
-const TRACK_LIST_SELECT_ALBUM = `
-    SELECT 
-      t.id, t.title, t.rating, t.starred,
-      COALESCE(t.year, alb.year) AS year, t.tags, t.play_count, t.last_played,
-      COALESCE(t.volume_pct, 100) AS volume_pct,
-      t.custom_cover_type, f.duration, f.format, f.bitrate, f.scanned_at,
-      alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
-      at.track_number, at.disc_number,
-      GROUP_CONCAT(a.name, ', ') as artist
-    ${TRACK_LIST_FROM_ALBUM}`;
 
 export function countTracks() {
   return db
@@ -157,8 +124,7 @@ export function findTrackById(id) {
   return db.prepare(`
     SELECT t.id, t.title, t.rating, t.starred, t.tags, t.genre,
       f.duration, alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
-      (SELECT json_group_array(json_object('id', a.id, 'name', a.name))
-        FROM track_artists ta JOIN artists a ON ta.artist_id = a.id WHERE ta.track_id = t.id) as artists_json
+      ${ARTISTS_JSON_NAMES_SUBQUERY} as artists_json
     FROM track_metadata t
     JOIN track_filedata f ON t.file_id = f.id
     LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
@@ -178,8 +144,7 @@ export function findTrackDetailById(id) {
       t.play_count, t.last_played, t.custom_cover_type,
       f.duration, f.format, f.bitrate, f.path AS filePath, f.size AS fileSize,
       alb.id AS albumId, alb.name AS albumName, alb.cover_type AS albumCoverType,
-      (SELECT json_group_array(json_object('id', a.id, 'name', a.name, 'role_mask', ta.role_mask))
-        FROM track_artists ta JOIN artists a ON ta.artist_id = a.id WHERE ta.track_id = t.id) AS artists_json,
+      ${ARTISTS_JSON_SUBQUERY} AS artists_json,
       (SELECT json_group_array(json_object(
         'id', al.id, 'name', al.name, 'year', al.year, 'cover_type', al.cover_type,
         'is_primary', at2.is_primary, 'disc_number', at2.disc_number, 'track_number', at2.track_number))
@@ -202,8 +167,7 @@ export function findTrackForEnrich(id) {
       COALESCE(t.volume_pct, 100) AS volume_pct,
       alb.id AS currentAlbumId,
       alb.name AS albumName, alb.cover_type AS albumCoverType,
-      (SELECT json_group_array(json_object('id', a.id, 'name', a.name, 'role_mask', ta.role_mask))
-        FROM track_artists ta JOIN artists a ON ta.artist_id = a.id WHERE ta.track_id = t.id) as artists_json
+      ${ARTISTS_JSON_SUBQUERY} as artists_json
     FROM track_metadata t
     LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
     LEFT JOIN albums alb ON at.album_id = alb.id

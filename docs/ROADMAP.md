@@ -16,7 +16,7 @@
 | 1.4 | Rate limit (전역 + 로그인 강화) | ✅ | `@fastify/rate-limit` |
 | 1.5 | 로그인: `ADMIN_PASSWORD` 필수·타이밍 세이프 비교 | ✅ | |
 | 1.6 | 외부 이미지 URL SSRF 차단 (`downloader`) | ✅ | `lib/safeUrl.js` |
-| 1.7 | 업로드: 인증(훅) + 확장자 allowlist | ✅ | `uploadService.js` |
+| 1.7 | 업로드: 인증(훅) + 확장자 allowlist | ✅ | `uploadStagingService.js` |
 | 1.8 | README / `.env.example` 환경 변수 문서화 | ✅ | |
 
 **구현 파일:** `backend/src/index.js`, `lib/envConfig.js`, `lib/apiAuthPolicy.js`, `lib/safeUrl.js`, `lib/downloader.js`

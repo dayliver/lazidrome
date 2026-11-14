@@ -1,23 +1,7 @@
 import { getDB } from '../db.js';
+import { TRACK_LIST_SELECT_HOME as TRACK_LIST_SELECT } from '../lib/trackListSql.js';
 
 const db = getDB();
-
-/** findAllTracks와 동일한 트랙 행 SELECT + 공통 JOIN */
-const TRACK_LIST_SELECT = `
-  SELECT
-    t.id, t.title, t.rating, t.starred,
-    COALESCE(t.year, alb.year) AS year, t.tags, t.play_count, t.last_played,
-    COALESCE(t.volume_pct, 100) AS volume_pct,
-    t.custom_cover_type, f.duration, f.format, f.bitrate,
-    alb.id as albumId, alb.name as albumName, alb.cover_type as albumCoverType,
-    GROUP_CONCAT(a.name, ', ') as artist
-  FROM track_metadata t
-  JOIN track_filedata f ON t.file_id = f.id
-  LEFT JOIN album_tracks at ON t.id = at.track_id AND at.is_primary = 1
-  LEFT JOIN albums alb ON at.album_id = alb.id
-  LEFT JOIN track_artists ta ON t.id = ta.track_id
-  LEFT JOIN artists a ON ta.artist_id = a.id
-`;
 
 const GROUP_BY_TRACK = 'GROUP BY t.id';
 

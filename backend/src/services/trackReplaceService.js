@@ -17,6 +17,7 @@ import {
 import { formatTrackDetail } from './trackService.js';
 import { resolveStagedSource, cancelStagedUpload } from './uploadStagingService.js';
 import { downloadOne } from './youtubeImportService.js';
+import { noteIngestedPaths } from '../lib/ingestDest.js';
 
 function httpError(message, statusCode = 400) {
   const err = new Error(message);
@@ -154,6 +155,7 @@ export async function replaceTrackAudio(trackId, opts) {
       safeUnlink(previousPath);
     }
 
+    noteIngestedPaths(finalPath);
     bumpLibraryRevisionNow();
 
     const detail = findTrackDetailById(trackId);

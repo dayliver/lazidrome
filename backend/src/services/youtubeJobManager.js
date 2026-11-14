@@ -1,7 +1,5 @@
 import { ulid } from 'ulid';
 import { downloadOne } from './youtubeImportService.js';
-import { buildDestDir } from '../lib/pathSanitize.js';
-import { TRACKS_PATH } from '../lib/importEnv.js';
 
 /** @type {Map<string, object>} */
 const jobs = new Map();
@@ -68,11 +66,6 @@ async function runJob(jobId, sourceUrl, items) {
     job.current = item.title;
     row.status = 'downloading';
 
-    const destDir = buildDestDir(TRACKS_PATH, {
-      artist: item.artist,
-      album: item.album,
-    });
-
     try {
       const result = await downloadOne({
         videoId: item.videoId,
@@ -85,7 +78,6 @@ async function runJob(jobId, sourceUrl, items) {
           albumArtist: item.artist,
           trackNo: item.trackNo,
         },
-        destDir,
       });
       row.status = 'done';
       row.destPath = result.destPath;

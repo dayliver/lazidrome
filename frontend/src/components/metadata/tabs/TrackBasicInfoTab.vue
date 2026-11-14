@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
-import { getCoverUrl } from '@/lib/image'
 
 import { 
   TagsInput, TagsInputInput, TagsInputItem, 

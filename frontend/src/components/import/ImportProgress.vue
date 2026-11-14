@@ -21,10 +21,10 @@ const isRunning = computed(
 <template>
   <div v-if="status" class="space-y-4 rounded-xl border p-4 bg-card/60">
     <div class="flex items-center justify-between gap-2">
-      <p class="text-sm font-semibold">{{ t('download.progressTitle') }}</p>
+      <p class="text-sm font-semibold">{{ t('import.progressTitle') }}</p>
       <span class="text-xs text-muted-foreground tabular-nums">
         {{ status.done }} / {{ status.total }}
-        <span v-if="status.failed"> · {{ t('download.failedCount', { n: status.failed }) }}</span>
+        <span v-if="status.failed"> · {{ t('import.failedCount', { n: status.failed }) }}</span>
       </span>
     </div>
 
@@ -36,20 +36,20 @@ const isRunning = computed(
     </div>
 
     <p v-if="isRunning && status.current" class="text-xs text-muted-foreground truncate">
-      {{ t('download.downloading', { title: status.current }) }}
+      {{ t('import.downloading', { title: status.current }) }}
     </p>
 
     <p
       v-else-if="status.status === 'completed'"
       class="text-sm text-primary"
     >
-      {{ t('download.completed') }}
+      {{ t('import.completed') }}
     </p>
     <p
       v-else-if="status.status === 'failed'"
       class="text-sm text-destructive"
     >
-      {{ t('download.allFailed') }}
+      {{ t('import.allFailed') }}
     </p>
 
     <ul
