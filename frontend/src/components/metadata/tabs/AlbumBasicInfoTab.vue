@@ -30,7 +30,7 @@ const updateField = (field, value) => {
 <template>
   <div class="space-y-8 animate-in fade-in duration-500">
     
-    <div class="flex gap-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:gap-6">
       <div class="space-y-2 flex-1">
         <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('metadata.albumTitle') }}</Label>
         <Input 
@@ -39,7 +39,7 @@ const updateField = (field, value) => {
           class="text-lg font-bold h-12 border-2 focus-visible:ring-primary" 
         />
       </div>
-      <div class="space-y-2 w-32 shrink-0">
+      <div class="space-y-2 lg:w-32 lg:shrink-0">
         <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('metadata.releaseYear') }}</Label>
         <Input 
           :model-value="modelValue.year" 

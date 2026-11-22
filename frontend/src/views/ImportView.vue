@@ -79,12 +79,12 @@ async function handleResolveManual() {
     <template v-else>
       <div class="space-y-3 rounded-xl border p-4">
         <Label for="yt-url">{{ t('import.urlLabel') }}</Label>
-        <div class="flex gap-2">
+        <div class="flex flex-col gap-2 lg:flex-row">
           <Input
             id="yt-url"
             v-model="urlInput"
             :placeholder="t('import.urlPlaceholder')"
-            class="font-mono text-sm"
+            class="font-mono text-base sm:text-sm"
             @keyup.enter="handleResolveManual"
           />
           <Button
@@ -115,7 +115,7 @@ async function handleResolveManual() {
           :status="importStore.jobStatus"
         />
 
-        <div v-if="ytPhase === 'form'" class="flex justify-end gap-2">
+        <div v-if="ytPhase === 'form'" class="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button type="button" :disabled="!canSubmitYoutube" @click="startYoutubeImport">
             {{ t('import.start', { count: rows.filter((r) => r.selected).length }) }}
           </Button>

@@ -116,6 +116,7 @@ const subtitleText = computed(() => {
   if (playlist.value.rules && playlist.value.rules.conditions?.length > 0) {
     return playlist.value.rules.conditions
       .map((c) => {
+        if (c.field === 'starred') return t(String(c.value) === '1' ? 'playlist.starredYes' : 'playlist.starredNo')
         const fieldName = c.field === 'rating' ? t('playlist.fieldRating') : c.field === 'tags' ? t('playlist.fieldTags') : c.field
         return `${fieldName} ${c.value}`
       })

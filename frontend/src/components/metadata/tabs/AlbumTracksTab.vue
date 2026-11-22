@@ -184,16 +184,16 @@ const sortedTracks = computed(() => {
         <div 
           v-for="(track, index) in sortedTracks" 
           :key="track.track_id"
-          class="flex items-center gap-4 bg-card border rounded-xl p-3 shadow-sm hover:border-primary/40 transition-colors group"
+          class="flex flex-wrap items-center gap-3 lg:flex-nowrap lg:gap-4 bg-card border rounded-xl p-3 shadow-sm hover:border-primary/40 transition-colors group"
         >
-          <div class="flex gap-2 w-[110px] shrink-0">
+          <div class="grid w-full gap-3 lg:flex lg:w-[110px] lg:shrink-0 lg:gap-2">
             <div class="space-y-1">
               <label class="text-[8px] font-black uppercase text-muted-foreground block text-center">{{ t('metadata.discNumber') }}</label>
-              <Input type="number" v-model="track.disc_number" @change="triggerUpdate" class="h-8 text-xs text-center font-mono font-bold bg-muted/50 focus:bg-background" />
+              <Input type="number" v-model="track.disc_number" @change="triggerUpdate" class="h-11 text-base md:text-base lg:h-8 lg:text-xs text-center font-mono font-bold bg-muted/50 focus:bg-background" />
             </div>
             <div class="space-y-1">
               <label class="text-[8px] font-black uppercase text-muted-foreground block text-center">{{ t('metadata.trackNumber') }}</label>
-              <Input type="number" v-model="track.track_number" @change="triggerUpdate" class="h-8 text-xs text-center font-mono font-bold bg-muted/50 focus:bg-background" />
+              <Input type="number" v-model="track.track_number" @change="triggerUpdate" class="h-11 text-base md:text-base lg:h-8 lg:text-xs text-center font-mono font-bold bg-muted/50 focus:bg-background" />
             </div>
           </div>
 

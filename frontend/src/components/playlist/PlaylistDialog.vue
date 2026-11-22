@@ -89,6 +89,7 @@ const handleSave = async () => {
 
 <template>
   <AppEditShell
+    teleport
     :open="isOpen"
     :title="editTarget ? t('playlist.dialogEdit') : t('playlist.dialogCreate')"
     @close="emit('update:isOpen', false)"
@@ -98,12 +99,13 @@ const handleSave = async () => {
         v-for="tab in tabs"
         :key="tab.id"
         type="button"
-        class="flex items-center gap-2 py-4 text-sm font-black border-b-2 transition-all whitespace-nowrap focus:outline-none"
+        class="flex items-center gap-1 min-h-11 py-2 sm:gap-2 sm:py-4 text-sm font-black border-b-2 transition-all whitespace-nowrap focus:outline-none"
         :class="
           activeTab === tab.id
             ? 'border-primary text-primary translate-y-[1px]'
             : 'border-transparent text-muted-foreground hover:text-foreground'
         "
+        :aria-pressed="activeTab === tab.id"
         @click="activeTab = tab.id"
       >
         <component :is="tab.icon" class="w-4 h-4" />
@@ -122,12 +124,11 @@ const handleSave = async () => {
     </div>
 
     <template #footer>
-      <div />
-      <div class="flex justify-end gap-3">
-        <Button variant="ghost" class="font-bold" @click="emit('update:isOpen', false)">
+      <div class="flex w-full justify-end gap-2 sm:gap-3">
+        <Button variant="ghost" class="min-h-11 font-bold" @click="emit('update:isOpen', false)">
           {{ t('common.cancel') }}
         </Button>
-        <Button class="font-black px-12 shadow-lg" :disabled="isSubmitting" @click="handleSave">
+        <Button class="min-h-11 flex-1 font-black shadow-lg sm:flex-none sm:px-12" :disabled="isSubmitting" @click="handleSave">
           <span
             v-if="isSubmitting"
             class="mr-2 h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full"

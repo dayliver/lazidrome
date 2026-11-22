@@ -25,9 +25,9 @@ const searchModel = computed({
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border bg-muted/20 p-4">
+  <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between rounded-xl border bg-muted/20 p-4">
     <div class="flex flex-wrap items-center gap-3 min-w-0 flex-1">
-      <div class="relative w-full sm:max-w-sm sm:flex-1">
+      <div class="relative w-full lg:max-w-sm lg:flex-1">
         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           v-model="searchModel"

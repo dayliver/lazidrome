@@ -25,6 +25,14 @@ export function buildMixQuery(rulesString) {
     const { field, operator, value } = cond;
     if (value === undefined || value === null || value === '') return;
 
+    if (field === 'starred') {
+      if (value === '1' || value === 1 || value === '0' || value === 0) {
+        whereClauses.push('COALESCE(t.starred, 0) = ?');
+        params.push(Number(value));
+      }
+      return;
+    }
+
     let sqlOp = '=';
     let sqlValue = value;
 

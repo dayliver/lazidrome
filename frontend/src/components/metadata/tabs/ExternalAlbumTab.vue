@@ -109,7 +109,7 @@ const applyAll = () => {
         </div>
       </div>
 
-      <div v-if="searchMethod === 'text'" class="grid grid-cols-2 gap-4">
+      <div v-if="searchMethod === 'text'" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div class="space-y-2">
           <Label class="text-[10px] font-bold ml-1 flex items-center gap-1"><Disc class="w-3 h-3" /> {{ t('external.albumName') }}</Label>
           <Input v-model="searchAlbum" :placeholder="t('external.albumName')" class="bg-background border-2 h-10" />

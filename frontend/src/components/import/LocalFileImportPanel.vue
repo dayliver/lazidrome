@@ -182,7 +182,7 @@ defineExpose({ resetAll })
         :show-track-no="false"
       />
 
-      <div class="flex justify-end gap-2">
+      <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button type="button" variant="outline" @click="resetAll">
           {{ t('import.files.clear') }}
         </Button>

@@ -112,7 +112,7 @@ function applyCommonToSelected() {
       <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {{ t('import.commonMeta') }}
       </p>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div class="space-y-1">
           <Label class="text-xs">{{ t('import.fieldArtist') }}</Label>
           <ImportMetaPicker
@@ -135,8 +135,9 @@ function applyCommonToSelected() {
       </Button>
     </div>
 
-    <div class="rounded-xl border overflow-hidden">
-      <div class="grid grid-cols-[auto_1fr_1fr_1fr_4rem] gap-2 px-3 py-2 bg-muted/30 text-[10px] font-bold uppercase text-muted-foreground">
+    <div class="space-y-3 lg:space-y-0 lg:rounded-xl lg:border">
+      <div class="hidden gap-2 rounded-t-xl bg-muted/30 px-3 py-2 text-[10px] font-bold uppercase text-muted-foreground lg:grid"
+        :class="showTrackNo ? 'grid-cols-[auto_repeat(3,minmax(0,1fr))_4rem]' : 'grid-cols-[auto_repeat(3,minmax(0,1fr))]'">
         <span></span>
         <span>{{ t('import.fieldTitle') }}</span>
         <span>{{ t('import.fieldArtist') }}</span>
@@ -146,40 +147,58 @@ function applyCommonToSelected() {
       <div
         v-for="(row, localIdx) in pagedRows"
         :key="String(row[rowKey] ?? localIdx) + '-' + globalIndex(localIdx)"
-        class="grid gap-2 px-3 py-2 border-t items-center text-sm"
-        :class="showTrackNo ? 'grid-cols-[auto_1fr_1fr_1fr_4rem]' : 'grid-cols-[auto_1fr_1fr_1fr]'"
+        class="grid min-w-0 gap-3 rounded-xl border p-3 text-sm lg:items-center lg:gap-2 lg:rounded-none lg:border-0 lg:border-t lg:py-2"
+        :class="showTrackNo ? 'lg:grid-cols-[auto_repeat(3,minmax(0,1fr))_4rem]' : 'lg:grid-cols-[auto_repeat(3,minmax(0,1fr))]'"
       >
         <input
           type="checkbox"
           class="size-4 rounded border"
+          :aria-label="row.title || t('import.fieldTitle')"
           :checked="row.selected"
           @change="(e) => updateRow(globalIndex(localIdx), { selected: e.target.checked })"
         />
-        <Input
-          :model-value="row.title"
-          class="h-8 text-xs"
-          @update:model-value="(v) => updateRow(globalIndex(localIdx), { title: String(v) })"
-        />
-        <ImportMetaPicker
-          :model-value="row.artist"
-          :options="artistOptions"
-          :placeholder="t('import.fieldArtistHint')"
-          @update:model-value="(v) => updateRow(globalIndex(localIdx), { artist: String(v) })"
-        />
-        <ImportMetaPicker
-          :model-value="row.album"
-          :options="albumOptions"
-          :placeholder="t('import.fieldAlbumHint')"
-          @update:model-value="(v) => updateRow(globalIndex(localIdx), { album: String(v) })"
-        />
-        <Input
-          v-if="showTrackNo"
-          :model-value="row.trackNo != null ? String(row.trackNo) : ''"
-          class="h-8 text-xs text-center"
-          type="number"
-          min="1"
-          @update:model-value="(v) => updateRow(globalIndex(localIdx), { trackNo: v !== '' && v != null ? Number(v) : null })"
-        />
+        <div class="min-w-0 space-y-1">
+          <span class="block text-xs text-muted-foreground lg:hidden" aria-hidden="true">{{ t('import.fieldTitle') }}</span>
+          <Input
+            :aria-label="t('import.fieldTitle')"
+            :model-value="row.title"
+            class="h-10 text-base md:text-base lg:h-8 lg:text-xs"
+            @update:model-value="(v) => updateRow(globalIndex(localIdx), { title: String(v) })"
+          />
+        </div>
+        <div class="min-w-0 space-y-1">
+          <span class="block text-xs text-muted-foreground lg:hidden" aria-hidden="true">{{ t('import.fieldArtist') }}</span>
+          <ImportMetaPicker
+            :input-label="t('import.fieldArtist')"
+            input-class="h-10 text-base md:text-base lg:h-8 lg:text-xs"
+            :model-value="row.artist"
+            :options="artistOptions"
+            :placeholder="t('import.fieldArtistHint')"
+            @update:model-value="(v) => updateRow(globalIndex(localIdx), { artist: String(v) })"
+          />
+        </div>
+        <div class="min-w-0 space-y-1">
+          <span class="block text-xs text-muted-foreground lg:hidden" aria-hidden="true">{{ t('import.fieldAlbum') }}</span>
+          <ImportMetaPicker
+            :input-label="t('import.fieldAlbum')"
+            input-class="h-10 text-base md:text-base lg:h-8 lg:text-xs"
+            :model-value="row.album"
+            :options="albumOptions"
+            :placeholder="t('import.fieldAlbumHint')"
+            @update:model-value="(v) => updateRow(globalIndex(localIdx), { album: String(v) })"
+          />
+        </div>
+        <div v-if="showTrackNo" class="min-w-0 space-y-1">
+          <span class="block text-xs text-muted-foreground lg:hidden" aria-hidden="true">#</span>
+          <Input
+            :aria-label="'#'"
+            :model-value="row.trackNo != null ? String(row.trackNo) : ''"
+            class="h-10 text-base md:text-base lg:h-8 lg:text-xs text-center"
+            type="number"
+            min="1"
+            @update:model-value="(v) => updateRow(globalIndex(localIdx), { trackNo: v !== '' && v != null ? Number(v) : null })"
+          />
+        </div>
       </div>
     </div>
 

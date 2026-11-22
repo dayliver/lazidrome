@@ -7,7 +7,8 @@ const props = defineProps({
   modelValue: { type: String, default: '' },
   options: { type: Array, default: () => [] },
   placeholder: { type: String, default: '' },
-  inputClass: { type: String, default: 'h-8 text-xs' },
+  inputLabel: { type: String, default: undefined },
+  inputClass: { type: String, default: 'h-10 text-base md:text-base lg:h-8 lg:text-xs' },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -42,6 +43,7 @@ function onBlur() {
       class="w-full"
       :class="inputClass"
       :placeholder="placeholder"
+      :aria-label="inputLabel"
       @update:model-value="emit('update:modelValue', String($event ?? ''))"
       @focus="focused = true"
       @blur="onBlur"
@@ -54,7 +56,7 @@ function onBlur() {
         v-for="opt in filtered"
         :key="opt.id ?? opt.name"
         type="button"
-        class="w-full text-left px-3 py-2 hover:bg-muted border-b last:border-b-0"
+        class="w-full min-h-11 text-left px-3 py-2 lg:min-h-0 hover:bg-muted border-b last:border-b-0"
         @mousedown.prevent="emit('update:modelValue', opt.name); focused = false"
       >
         <p class="text-xs font-semibold truncate">{{ opt.name }}</p>
@@ -63,7 +65,7 @@ function onBlur() {
       <button
         v-if="showUseTyped"
         type="button"
-        class="w-full text-left px-3 py-2 hover:bg-primary/10 text-primary text-xs font-semibold border-t"
+        class="w-full min-h-11 text-left px-3 py-2 lg:min-h-0 hover:bg-primary/10 text-primary text-xs font-semibold border-t"
         @mousedown.prevent="emit('update:modelValue', modelValue.trim()); focused = false"
       >
         {{ t('import.files.useTypedValue', { value: modelValue.trim() }) }}

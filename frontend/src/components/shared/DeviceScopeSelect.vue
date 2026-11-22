@@ -52,10 +52,10 @@ const excludedNote = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-3">
+  <div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
     <Label class="text-sm text-muted-foreground shrink-0">{{ t('devices.scopeLabel') }}</Label>
     <Select v-model="selected">
-      <SelectTrigger class="w-[220px]">
+      <SelectTrigger class="w-full lg:w-[220px]">
         <SelectValue :placeholder="t('devices.scopeAll')" />
       </SelectTrigger>
       <SelectContent>

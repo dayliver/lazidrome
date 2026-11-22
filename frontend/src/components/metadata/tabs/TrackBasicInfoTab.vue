@@ -118,7 +118,7 @@ const showUseTypedAlbum = computed(() => {
 <template>
   <div class="space-y-8 animate-in fade-in duration-500">
     
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="space-y-2">
         <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider ml-1">{{ t('metadata.trackTitle') }}</Label>
         <Input 
@@ -144,7 +144,7 @@ const showUseTypedAlbum = computed(() => {
         <div class="h-[1px] flex-1 bg-border"></div>
       </div>
 
-      <div class="flex flex-col md:flex-row gap-8 items-start">
+      <div class="flex flex-col lg:flex-row gap-8 items-start">
         <div class="shrink-0 space-y-2">
           <Label class="text-[11px] font-black text-muted-foreground uppercase block text-center">{{ t('metadata.albumCoverLabel') }}</Label>
           <div 
@@ -204,7 +204,7 @@ const showUseTypedAlbum = computed(() => {
             </div>
           </div>
 
-          <div class="flex gap-4">
+          <div class="flex flex-col gap-4 lg:flex-row">
             <div class="space-y-2 flex-1">
               <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider">{{ t('metadata.albumArtistAuto') }}</Label>
               <Input 
@@ -215,7 +215,7 @@ const showUseTypedAlbum = computed(() => {
                 class="bg-muted/30 font-bold text-muted-foreground h-11 border-dashed cursor-not-allowed"
               />
             </div>
-            <div class="space-y-2 w-28 shrink-0">
+            <div class="space-y-2 lg:w-28 lg:shrink-0">
               <Label class="text-[11px] font-black text-muted-foreground uppercase tracking-wider">{{ t('metadata.trackYear') }}</Label>
               <Input 
                 :model-value="modelValue.year" 

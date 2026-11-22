@@ -274,7 +274,7 @@ const handleRefresh = async () => {
 
         <div v-if="!auth.isAuthenticated" class="space-y-2">
           <Label for="pw">{{ t('settings.server.password') }}</Label>
-          <div class="flex gap-2">
+          <div class="flex flex-col gap-2 lg:flex-row">
             <Input id="pw" v-model="adminPassword" type="password" :placeholder="t('settings.server.passwordPlaceholder')" @keyup.enter="handleLogin" />
             <Button @click="handleLogin">
               <LogIn class="w-4 h-4 mr-2"/> {{ t('settings.server.login') }}

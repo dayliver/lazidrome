@@ -222,14 +222,14 @@ async function onPurge(device) {
           <div v-if="purgeOpenFor === device.id" class="rounded-lg border border-dashed p-3 space-y-3">
             <p class="text-xs font-bold">{{ t('devices.purgeTitle', { name: device.name }) }}</p>
             <p class="text-xs text-muted-foreground">{{ t('devices.purgeHint') }}</p>
-            <div class="flex flex-wrap items-end gap-3">
+            <div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
               <div class="space-y-1">
                 <Label class="text-[11px]">{{ t('devices.purgeFrom') }}</Label>
-                <Input v-model="purgeFrom" type="date" class="h-8 w-[150px] text-xs" />
+                <Input v-model="purgeFrom" type="date" class="h-11 w-full text-base md:text-base lg:h-8 lg:w-[150px] lg:text-xs" />
               </div>
               <div class="space-y-1">
                 <Label class="text-[11px]">{{ t('devices.purgeTo') }}</Label>
-                <Input v-model="purgeTo" type="date" class="h-8 w-[150px] text-xs" />
+                <Input v-model="purgeTo" type="date" class="h-11 w-full text-base md:text-base lg:h-8 lg:w-[150px] lg:text-xs" />
               </div>
               <Button
                 variant="destructive"

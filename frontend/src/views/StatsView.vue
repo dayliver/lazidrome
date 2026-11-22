@@ -90,10 +90,10 @@ const totalListenLabel = computed(() => formatListenSeconds(payload.value?.total
     />
 
     <template v-else>
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
         <Label class="text-sm text-muted-foreground shrink-0">{{ t('stats.range') }}</Label>
         <Select v-model="range">
-          <SelectTrigger class="w-[200px]">
+          <SelectTrigger class="w-full lg:w-[200px]">
             <SelectValue :placeholder="t('stats.range')" />
           </SelectTrigger>
           <SelectContent>

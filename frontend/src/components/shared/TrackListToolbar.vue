@@ -55,7 +55,7 @@ const showReset = computed(() => hasActiveTrackListFilters(props.query))
     <template #extra>
       <Select v-model="sortModel">
         <SelectTrigger
-          class="w-[9.5rem] h-9 bg-background font-bold text-xs shadow-none"
+          class="w-full lg:w-[9.5rem] h-9 bg-background font-bold text-xs shadow-none"
           :title="orderLockedHint || undefined"
         >
           <SelectValue :placeholder="t('trackList.sort.label')" />
