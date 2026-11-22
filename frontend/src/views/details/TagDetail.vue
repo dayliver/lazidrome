@@ -84,7 +84,7 @@ const {
   setMinRating: setTrackMinRating,
   resetFilters: resetTrackFilters,
   hasActiveFilters: hasActiveTrackFilters,
-} = useScopedTracksPageQuery(tagScope, { presetKey: 'tag' })
+} = useScopedTracksPageQuery(tagScope, { presetKey: 'tag', persistSort: true })
 
 const showTracksSection = computed(
   () =>

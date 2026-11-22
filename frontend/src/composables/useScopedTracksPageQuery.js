@@ -19,14 +19,22 @@ function sortsFromDetailQuery(query) {
  * 상세(아티스트·앨범·태그) 트랙 목록 — /api/tracks scoped filter + 페이지네이션.
  * @param {import('vue').MaybeRefOrGetter<{ artistId?: string, albumId?: string, tag?: string }>} scope
  */
-export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 50 } = {}) {
+export function useScopedTracksPageQuery(
+  scope,
+  { presetKey = 'artist', limit = 50, persistSort = false } = {},
+) {
   const library = useLibraryStore()
   const preset = TRACK_SORT_PRESETS[presetKey]
   const storageKey = storageKeyForTrackListPreset(presetKey)
   const persisted = loadPersistedTrackListQuery(storageKey)
+  const savedSort = persistSort ? persisted?.sorts[0] : null
+  const initialSort = preset.sortOptions.some(({ value }) => value === savedSort?.key)
+    ? { sort: savedSort.key, order: savedSort.order }
+    : {}
 
   const query = ref({
     ...preset.defaultQuery,
+    ...initialSort,
     starred: persisted?.starred ?? false,
     minRating: persisted?.minRating ?? null,
   })
@@ -58,10 +66,10 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
     ),
   )
 
-  const persistFilters = () => {
+  const persistQuery = () => {
     persistTrackListQuery(
       {
-        sorts: [],
+        sorts: persistSort ? [{ key: query.value.sort, order: query.value.order }] : [],
         starred: query.value.starred,
         minRating: query.value.minRating,
       },
@@ -188,7 +196,7 @@ export function useScopedTracksPageQuery(scope, { presetKey = 'artist', limit = 
   watch(
     () => [query.value.sort, query.value.order, query.value.starred, query.value.minRating],
     () => {
-      persistFilters()
+      persistQuery()
       void reload()
     },
   )
