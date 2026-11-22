@@ -6,7 +6,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 REMOTE="${LAZI_REMOTE:-home}"
-BACKEND_DIR="${LAZI_REMOTE_DIR:-/projects/lazidrome/backend}"
+BACKEND_DIR="${LAZI_REMOTE_DIR:-/srv/lazidrome/backend}"
 
 echo ""
 echo "═══════════════════════════════════════"

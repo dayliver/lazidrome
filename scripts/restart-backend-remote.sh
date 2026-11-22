@@ -3,7 +3,7 @@
 # 보통 `npm run deploy`가 호출합니다. 재기동만: npm run deploy:restart
 set -euo pipefail
 REMOTE="${LAZI_REMOTE:-home}"
-DIR="${LAZI_REMOTE_DIR:-/projects/lazidrome/backend}"
+DIR="${LAZI_REMOTE_DIR:-/srv/lazidrome/backend}"
 PM2_APP="${LAZI_PM2_APP:-lazidrome-backend}"
 
 ssh "$REMOTE" bash -s <<EOF

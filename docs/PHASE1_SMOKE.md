@@ -12,7 +12,7 @@ npm run smoke:phase1
 npm run smoke:phase1:prod
 
 # 서버에서 (비밀번호·CORS preflight까지)
-ssh home 'PW=$(grep "^ADMIN_PASSWORD=" /projects/lazidrome/backend/.env | sed "s/^ADMIN_PASSWORD=//" | sed "s/[[:space:]]*#.*//" | tr -d "\r") && \
+ssh home 'PW=$(grep "^ADMIN_PASSWORD=" /srv/lazidrome/backend/.env | sed "s/^ADMIN_PASSWORD=//" | sed "s/[[:space:]]*#.*//" | tr -d "\r") && \
   LAZI_BASE_URL=https://lazidrome.hwaryong.com \
   LAZI_ORIGIN=https://lazidrome.hwaryong.com \
   LAZI_CORS_DIRECT=http://127.0.0.1:5294 \

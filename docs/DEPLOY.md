@@ -23,9 +23,9 @@ npm run deploy:restart
 
 | 구성 | 경로·포트 |
 |------|-----------|
-| 정적 프론트 | nginx → `/projects/lazidrome/frontend/dist` |
+| 정적 프론트 | nginx → `/srv/lazidrome/frontend/dist` |
 | API | nginx `location /api/` → `http://127.0.0.1:5294` |
-| 백엔드 소스 | `/projects/lazidrome/backend` |
+| 백엔드 소스 | `/srv/lazidrome/backend` |
 
 nginx SPA 설정 시 **`/assets/`는 반드시 404**로 두세요. 없는 JS에 `index.html`을 내려주면(200 + `text/html`) 배포 직후 lazy route가 깨지고 Cloudflare가 잘못된 응답을 캐시할 수 있습니다.
 
@@ -45,7 +45,7 @@ location / {
 | 변수 | 기본값 |
 |------|--------|
 | `LAZI_REMOTE` | `home` (ssh 호스트) |
-| `LAZI_REMOTE_DIR` | `/projects/lazidrome/backend` |
+| `LAZI_REMOTE_DIR` | `/srv/lazidrome/backend` |
 
 ## 배포 후 확인
 
