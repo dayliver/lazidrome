@@ -1,5 +1,6 @@
 import { ulid } from 'ulid';
 import { downloadOne } from './youtubeImportService.js';
+import { registerLibraryAudio } from './scanner.js';
 
 /** @type {Map<string, object>} */
 const jobs = new Map();
@@ -79,8 +80,9 @@ async function runJob(jobId, sourceUrl, items) {
           trackNo: item.trackNo,
         },
       });
-      row.status = 'done';
       row.destPath = result.destPath;
+      await registerLibraryAudio(result.destPath);
+      row.status = 'done';
       job.done += 1;
     } catch (err) {
       row.status = 'error';

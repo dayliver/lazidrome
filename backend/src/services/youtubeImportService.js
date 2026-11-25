@@ -11,7 +11,7 @@ import {
   ensureImportTempDir,
   TRACKS_PATH,
 } from '../lib/importEnv.js';
-import { resolveLibraryAudioDest, noteIngestedPaths } from '../lib/ingestDest.js';
+import { resolveLibraryAudioDest } from '../lib/ingestDest.js';
 
 function parseYtDlpJsonLines(stdout) {
   const lines = stdout.trim().split('\n').filter(Boolean);
@@ -138,6 +138,8 @@ export async function downloadOne(opts) {
   const title = sanitizePathSegment(tags.title, 'track');
   const tempOut = path.join(workDir, 'audio.%(ext)s');
 
+  const pendingPath = path.join(path.dirname(destPath), `.tagging.${ulid()}.mp3`);
+
   try {
     const dlArgs = [
       '--no-warnings',
@@ -168,19 +170,24 @@ export async function downloadOne(opts) {
       trackNo: tags.trackNo,
     });
 
-    const ffArgs = ['-y', '-i', downloaded, ...metaArgs, '-codec:a', 'libmp3lame', '-qscale:a', '2', destPath];
+    const ffArgs = ['-y', '-i', downloaded, ...metaArgs, '-codec:a', 'libmp3lame', '-qscale:a', '2', pendingPath];
     const ff = await spawnCmd(ffmpeg, ffArgs, { timeoutMs: 300_000 });
     if (ff.code !== 0) {
       // ffmpeg 실패 시 yt-dlp mp3를 그대로 이동
       if (!downloaded.endsWith('.mp3')) {
         throw new Error(ff.stderr?.trim() || 'ffmpeg conversion failed');
       }
-      fs.copyFileSync(downloaded, destPath);
+      fs.copyFileSync(downloaded, pendingPath);
     }
 
-    noteIngestedPaths(destPath);
+    fs.renameSync(pendingPath, destPath);
     return { destPath, title: tags.title || title };
   } finally {
+    try {
+      fs.rmSync(pendingPath, { force: true });
+    } catch {
+      // ignore
+    }
     try {
       fs.rmSync(workDir, { recursive: true, force: true });
     } catch {

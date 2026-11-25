@@ -20,6 +20,7 @@ import {
   findOrCreateArtist,
   findOrCreateAlbumByNameAndArtists,
 } from '../repositories/albumRepository.js';
+import { assertInsideTracksRoot } from '../lib/pathSanitize.js';
 import { markScanCompleted, shouldSkipRecentScan } from '../lib/recentIngestPaths.js';
 
 /** 스캔·감시 제외 폴더명 (경로 어디에든 동일하게 적용) */
@@ -55,162 +56,140 @@ function resolveDurationSec(resolvedDuration, format) {
   return Number.isFinite(fromFormat) && fromFormat > 0 ? fromFormat : 0;
 }
 
-export function startScanner(watchPath) {
-  const resolvedWatchPath = path.resolve(watchPath);
-  const IMAGES_PATH = process.env.IMAGES_PATH || './storage/images';
+async function scanFile(filePath, resolvedWatchPath) {
+  const imagesPath = process.env.IMAGES_PATH || './storage/images';
 
-  console.log(`🔍 스캐너 가동: ${resolvedWatchPath} 감시 중...`);
+  try {
+    const stats = fs.statSync(filePath);
+    if (stats.size < MIN_AUDIO_BYTES) {
+      throw new Error(`파일이 너무 작아 등록할 수 없습니다: ${filePath}`);
+    }
 
-  const handleFile = async (filePath) => {
-    if (!isAudioFilePath(filePath)) return;
-    if (shouldSkipRecentScan(filePath)) return;
+    const mtimeMs = Math.round(stats.mtimeMs);
 
-    try {
-      const stats = fs.statSync(filePath);
-      if (stats.size < MIN_AUDIO_BYTES) {
-        console.warn(`⚠️ 스캔 스킵 (파일 너무 작음): ${filePath}`);
-        return;
+    // 변경 감지: 같은 경로가 같은 size·mtime이면 해싱/파싱 전에 스킵.
+    // mtime_ms가 NULL(마이그레이션 이전 행)이면 size만 비교하고 mtime을 백필한다.
+    const known = db
+      .prepare(`SELECT f.id, f.size, f.mtime_ms FROM track_filedata f
+        JOIN track_metadata t ON t.file_id = f.id WHERE f.path = ?`)
+      .get(filePath);
+    if (known && known.size === stats.size && (known.mtime_ms == null || known.mtime_ms === mtimeMs)) {
+      if (known.mtime_ms == null) {
+        db.prepare('UPDATE track_filedata SET mtime_ms = ? WHERE id = ?').run(mtimeMs, known.id);
       }
+      markScanCompleted(filePath);
+      return;
+    }
 
-      const mtimeMs = Math.round(stats.mtimeMs);
+    const newHash = await sha256FileStream(filePath);
+    const metadata = await mm.parseFile(filePath);
 
-      // 변경 감지: 같은 경로가 같은 size·mtime이면 해싱/파싱 전에 스킵.
-      // mtime_ms가 NULL(마이그레이션 이전 행)이면 size만 비교하고 mtime을 백필한다.
-      const known = db
-        .prepare('SELECT id, size, mtime_ms FROM track_filedata WHERE path = ?')
-        .get(filePath);
-      if (known && known.size === stats.size && (known.mtime_ms == null || known.mtime_ms === mtimeMs)) {
-        if (known.mtime_ms == null) {
-          db.prepare('UPDATE track_filedata SET mtime_ms = ? WHERE id = ?').run(mtimeMs, known.id);
-        }
-        markScanCompleted(filePath);
-        return;
-      }
+    const resolved = resolveScanTrackMeta(filePath, resolvedWatchPath, metadata);
+    const title = resolved.title;
+    const year = resolved.year;
+    const genre = resolved.genre;
+    const albumName = resolved.albumName;
+    const trackNo = resolved.trackNo;
+    const discNo = resolved.discNo;
 
-      const newHash = await sha256FileStream(filePath);
-      const metadata = await mm.parseFile(filePath);
+    const trackArtistNames = resolved.trackArtistNames;
+    const albumArtistTagNames = resolved.albumArtistTagNames;
+    const albumNamesForAlbum = resolved.albumNamesForAlbum;
 
-      const resolved = resolveScanTrackMeta(filePath, resolvedWatchPath, metadata);
-      const title = resolved.title;
-      const year = resolved.year;
-      const genre = resolved.genre;
-      const albumName = resolved.albumName;
-      const trackNo = resolved.trackNo;
-      const discNo = resolved.discNo;
+    const durationSec = resolveDurationSec(resolved.duration, metadata.format);
+    const bitrateKbps = formatBitrateKbps(metadata.format);
+    const format = metadata.format?.container || null;
 
-      const trackArtistNames = resolved.trackArtistNames;
-      const albumArtistTagNames = resolved.albumArtistTagNames;
-      const albumNamesForAlbum = resolved.albumNamesForAlbum;
+    const maskByName = new Map();
+    const addRoleBits = (name, bits) => {
+      const k = name.trim();
+      if (!k) return;
+      maskByName.set(k, (maskByName.get(k) ?? 0) | bits);
+    };
+    const composerNames = splitArtistNames(metadata.common.composer);
+    for (let i = 0; i < trackArtistNames.length; i++) {
+      addRoleBits(
+        trackArtistNames[i],
+        i === 0 ? ROLES.PERFORMER : ROLES.FEATURING,
+      );
+    }
+    for (const n of albumArtistTagNames) addRoleBits(n, ROLES.PERFORMER);
+    for (const n of composerNames) addRoleBits(n, ROLES.COMPOSER);
 
-      const durationSec = resolveDurationSec(resolved.duration, metadata.format);
-      const bitrateKbps = formatBitrateKbps(metadata.format);
-      const format = metadata.format?.container || null;
+    let albumId = null;
 
-      const maskByName = new Map();
-      const addRoleBits = (name, bits) => {
-        const k = name.trim();
-        if (!k) return;
-        maskByName.set(k, (maskByName.get(k) ?? 0) | bits);
-      };
-      const composerNames = splitArtistNames(metadata.common.composer);
-      for (let i = 0; i < trackArtistNames.length; i++) {
-        addRoleBits(
-          trackArtistNames[i],
-          i === 0 ? ROLES.PERFORMER : ROLES.FEATURING,
-        );
-      }
-      for (const n of albumArtistTagNames) addRoleBits(n, ROLES.PERFORMER);
-      for (const n of composerNames) addRoleBits(n, ROLES.COMPOSER);
+    const transaction = db.transaction(() => {
+      const existingByHash = db.prepare('SELECT id, path FROM track_filedata WHERE id = ?').get(newHash);
+      const existingByPath = db.prepare('SELECT id as hash FROM track_filedata WHERE path = ?').get(filePath);
 
-      let albumId = null;
+      if (existingByHash) {
+        db.prepare(`
+          UPDATE track_filedata
+          SET path = ?, size = ?, duration = ?, bitrate = ?, format = ?, mtime_ms = ?
+          WHERE id = ?
+        `).run(filePath, stats.size, durationSec, bitrateKbps, format, mtimeMs, newHash);
 
-      const transaction = db.transaction(() => {
-        const existingByHash = db.prepare('SELECT id, path FROM track_filedata WHERE id = ?').get(newHash);
-        const existingByPath = db.prepare('SELECT id as hash FROM track_filedata WHERE path = ?').get(filePath);
-
-        if (existingByHash) {
-          db.prepare(`
-            UPDATE track_filedata
-            SET path = ?, size = ?, duration = ?, bitrate = ?, format = ?, mtime_ms = ?
-            WHERE id = ?
-          `).run(filePath, stats.size, durationSec, bitrateKbps, format, mtimeMs, newHash);
-
-          const metaRecord = db.prepare('SELECT id FROM track_metadata WHERE file_id = ?').get(newHash);
-          if (metaRecord) {
-            db.prepare('UPDATE track_metadata SET title = ?, year = ?, genre = ? WHERE id = ?').run(
-              title,
-              year,
-              genre,
-              metaRecord.id,
-            );
-            return;
-          }
-        }
-
-        const getOrCreateArtistIds = (names) =>
-          names
-            .map((rawName) => {
-              const name = String(rawName || '').trim();
-              if (!name) return null;
-              return findOrCreateArtist({ name });
-            })
-            .filter(Boolean);
-
-        const albumArtistIds = getOrCreateArtistIds(albumNamesForAlbum);
-        albumId = findOrCreateAlbumByNameAndArtists(albumName, albumArtistIds, year);
-
-        let currentTrackId = null;
-
-        if (existingByHash) {
-          currentTrackId = ulid();
-          db.prepare('INSERT INTO track_metadata (id, file_id, title, year, genre) VALUES (?, ?, ?, ?, ?)').run(
-            currentTrackId,
-            newHash,
+        const metaRecord = db.prepare('SELECT id FROM track_metadata WHERE file_id = ?').get(newHash);
+        if (metaRecord) {
+          db.prepare('UPDATE track_metadata SET title = ?, year = ?, genre = ? WHERE id = ?').run(
             title,
             year,
             genre,
+            metaRecord.id,
           );
-        } else if (existingByPath) {
-          const metaRecord = db.prepare('SELECT id FROM track_metadata WHERE file_id = ?').get(existingByPath.hash);
-          currentTrackId = metaRecord?.id;
+          return;
+        }
+      }
 
-          if (currentTrackId) {
-            db.prepare(`
-              INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source, mtime_ms)
-              VALUES (?, ?, ?, ?, ?, ?, 'scan', ?)
-            `).run(newHash, filePath, stats.size, durationSec, bitrateKbps, format, mtimeMs);
+      const getOrCreateArtistIds = (names) =>
+        names
+          .map((rawName) => {
+            const name = String(rawName || '').trim();
+            if (!name) return null;
+            return findOrCreateArtist({ name });
+          })
+          .filter(Boolean);
 
-            db.prepare('UPDATE track_metadata SET file_id = ?, title = ?, year = ?, genre = ? WHERE id = ?').run(
-              newHash,
-              title,
-              year,
-              genre,
-              currentTrackId,
-            );
-            db.prepare('DELETE FROM track_filedata WHERE id = ?').run(existingByPath.hash);
-            db.prepare('DELETE FROM track_artists WHERE track_id = ?').run(currentTrackId);
-          } else {
-            db.prepare('DELETE FROM track_filedata WHERE id = ?').run(existingByPath.hash);
-            currentTrackId = ulid();
-            db.prepare(`
-              INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source, mtime_ms)
-              VALUES (?, ?, ?, ?, ?, ?, 'scan', ?)
-            `).run(newHash, filePath, stats.size, durationSec, bitrateKbps, format, mtimeMs);
-            db.prepare('INSERT INTO track_metadata (id, file_id, title, year, genre) VALUES (?, ?, ?, ?, ?)').run(
-              currentTrackId,
-              newHash,
-              title,
-              year,
-              genre,
-            );
-          }
-        } else {
-          currentTrackId = ulid();
+      const albumArtistIds = getOrCreateArtistIds(albumNamesForAlbum);
+      albumId = findOrCreateAlbumByNameAndArtists(albumName, albumArtistIds, year);
+
+      let currentTrackId = null;
+
+      if (existingByHash) {
+        currentTrackId = ulid();
+        db.prepare('INSERT INTO track_metadata (id, file_id, title, year, genre) VALUES (?, ?, ?, ?, ?)').run(
+          currentTrackId,
+          newHash,
+          title,
+          year,
+          genre,
+        );
+      } else if (existingByPath) {
+        const metaRecord = db.prepare('SELECT id FROM track_metadata WHERE file_id = ?').get(existingByPath.hash);
+        currentTrackId = metaRecord?.id;
+
+        if (currentTrackId) {
           db.prepare(`
             INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source, mtime_ms)
             VALUES (?, ?, ?, ?, ?, ?, 'scan', ?)
           `).run(newHash, filePath, stats.size, durationSec, bitrateKbps, format, mtimeMs);
 
+          db.prepare('UPDATE track_metadata SET file_id = ?, title = ?, year = ?, genre = ? WHERE id = ?').run(
+            newHash,
+            title,
+            year,
+            genre,
+            currentTrackId,
+          );
+          db.prepare('DELETE FROM track_filedata WHERE id = ?').run(existingByPath.hash);
+          db.prepare('DELETE FROM track_artists WHERE track_id = ?').run(currentTrackId);
+        } else {
+          db.prepare('DELETE FROM track_filedata WHERE id = ?').run(existingByPath.hash);
+          currentTrackId = ulid();
+          db.prepare(`
+            INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source, mtime_ms)
+            VALUES (?, ?, ?, ?, ?, ?, 'scan', ?)
+          `).run(newHash, filePath, stats.size, durationSec, bitrateKbps, format, mtimeMs);
           db.prepare('INSERT INTO track_metadata (id, file_id, title, year, genre) VALUES (?, ?, ?, ?, ?)').run(
             currentTrackId,
             newHash,
@@ -219,79 +198,107 @@ export function startScanner(watchPath) {
             genre,
           );
         }
+      } else {
+        currentTrackId = ulid();
+        db.prepare(`
+          INSERT INTO track_filedata (id, path, size, duration, bitrate, format, source, mtime_ms)
+          VALUES (?, ?, ?, ?, ?, ?, 'scan', ?)
+        `).run(newHash, filePath, stats.size, durationSec, bitrateKbps, format, mtimeMs);
 
-        if (currentTrackId) {
-          const insertTrackArtist = db.prepare(
-            'INSERT INTO track_artists (track_id, artist_id, role_mask) VALUES (?, ?, ?)',
-          );
-          for (const [name, mask] of maskByName) {
-            if (!mask) continue;
-            const artistId = getOrCreateArtistIds([name])[0];
-            insertTrackArtist.run(currentTrackId, artistId, mask);
-          }
-
-          setPrimaryAlbumForTrack(currentTrackId, albumId, {
-            trackNumber: trackNo,
-            discNumber: discNo,
-          });
-        }
-      });
-
-      transaction();
-
-      markScanCompleted(filePath);
-
-      if (albumId && metadata.common.picture && metadata.common.picture.length > 0) {
-        const albumCover = db.prepare('SELECT cover_type FROM albums WHERE id = ?').get(albumId);
-
-        if (!albumCover?.cover_type) {
-          const pic = metadata.common.picture[0];
-          const fileName = `${albumId}.jpg`;
-          fs.mkdirSync(path.join(IMAGES_PATH, 'albums'), { recursive: true });
-          const targetPath = path.join(IMAGES_PATH, 'albums', fileName);
-
-          try {
-            await sharp(pic.data)
-              .resize(600, 600, { fit: 'cover', position: 'center' })
-              .jpeg({ quality: 85 })
-              .toFile(targetPath);
-
-            db.prepare('UPDATE albums SET cover_type = ? WHERE id = ?').run('.jpg', albumId);
-            console.log(`🖼️ [Scanner] 내장 커버 추출 완료: ${albumId}.jpg`);
-          } catch (sharpErr) {
-            console.error('❌ [Scanner] 커버 처리 중 오류:', sharpErr.message);
-          }
-        }
+        db.prepare('INSERT INTO track_metadata (id, file_id, title, year, genre) VALUES (?, ?, ?, ?, ?)').run(
+          currentTrackId,
+          newHash,
+          title,
+          year,
+          genre,
+        );
       }
 
-      bumpLibraryRevision();
+      if (currentTrackId) {
+        const insertTrackArtist = db.prepare(
+          'INSERT INTO track_artists (track_id, artist_id, role_mask) VALUES (?, ?, ?)',
+        );
+        for (const [name, mask] of maskByName) {
+          if (!mask) continue;
+          const artistId = getOrCreateArtistIds([name])[0];
+          insertTrackArtist.run(currentTrackId, artistId, mask);
+        }
+
+        setPrimaryAlbumForTrack(currentTrackId, albumId, {
+          trackNumber: trackNo,
+          discNumber: discNo,
+        });
+      }
+    });
+
+    transaction();
+
+    markScanCompleted(filePath);
+
+    if (albumId && metadata.common.picture && metadata.common.picture.length > 0) {
+      const albumCover = db.prepare('SELECT cover_type FROM albums WHERE id = ?').get(albumId);
+
+      if (!albumCover?.cover_type) {
+        const pic = metadata.common.picture[0];
+        const fileName = `${albumId}.jpg`;
+        fs.mkdirSync(path.join(imagesPath, 'albums'), { recursive: true });
+        const targetPath = path.join(imagesPath, 'albums', fileName);
+
+        try {
+          await sharp(pic.data)
+            .resize(600, 600, { fit: 'cover', position: 'center' })
+            .jpeg({ quality: 85 })
+            .toFile(targetPath);
+
+          db.prepare('UPDATE albums SET cover_type = ? WHERE id = ?').run('.jpg', albumId);
+          console.log(`🖼️ [Scanner] 내장 커버 추출 완료: ${albumId}.jpg`);
+        } catch (sharpErr) {
+          console.error('❌ [Scanner] 커버 처리 중 오류:', sharpErr.message);
+        }
+      }
+    }
+
+    bumpLibraryRevision();
+  } catch (err) {
+    if (err.code !== 'EBUSY' && err.code !== 'ENOENT') {
+      console.error(`❌ 스캔 오류 (${filePath}):`, err.message);
+    }
+    throw err;
+  }
+}
+
+let queue = Promise.resolve();
+
+function enqueueScan(operation) {
+  const result = queue.then(operation);
+  queue = result.catch(() => {});
+  return result;
+}
+
+async function scanWithRetry(filePath, root) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await scanFile(filePath, root);
     } catch (err) {
-      if (err.code !== 'EBUSY' && err.code !== 'ENOENT') {
-        console.error(`❌ 스캔 오류 (${filePath}):`, err.message);
-      }
-      throw err;
+      if (attempt === 3 || !['EBUSY', 'ENOENT'].includes(err.code)) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
     }
-  };
+  }
+}
 
-  const processWithRetry = async (filePath, retries = 3) => {
-    for (let i = 0; i < retries; i++) {
-      try {
-        await handleFile(filePath);
-        return;
-      } catch (err) {
-        const retryable = err?.code === 'EBUSY' || err?.code === 'ENOENT';
-        if (!retryable || i === retries - 1) {
-          if (!retryable) {
-            console.error(`❌ 스캔 실패 (재시도 불가) ${filePath}:`, err.message);
-          } else {
-            console.error(`❌ 스캔 실패 (재시도 소진) ${filePath}:`, err.message);
-          }
-          return;
-        }
-        await new Promise((r) => setTimeout(r, 250 * (i + 1)));
-      }
-    }
-  };
+export function registerLibraryAudio(filePath, watchPath = process.env.TRACKS_PATH || './storage/tracks') {
+  const root = path.resolve(watchPath);
+  const absolutePath = assertInsideTracksRoot(root, filePath);
+  if (!isAudioFilePath(absolutePath) || isExcludedScanPath(absolutePath)) {
+    throw new Error(`라이브러리에 등록할 수 없는 파일입니다: ${absolutePath}`);
+  }
+  return enqueueScan(() => scanWithRetry(absolutePath, root));
+}
+
+export function startScanner(watchPath) {
+  const resolvedWatchPath = path.resolve(watchPath);
+
+  console.log(`🔍 스캐너 가동: ${resolvedWatchPath} 감시 중...`);
 
   const watcher = chokidar.watch(resolvedWatchPath, {
     ignored: (p) => isIgnoredWatchPath(p),
@@ -303,7 +310,6 @@ export function startScanner(watchPath) {
     },
   });
 
-  let queue = Promise.resolve();
   const scheduled = new Map();
   const debounceMs = 350;
 
@@ -312,8 +318,11 @@ export function startScanner(watchPath) {
     if (prev) clearTimeout(prev);
     const timer = setTimeout(() => {
       scheduled.delete(filePath);
-      queue = queue
-        .then(() => processWithRetry(filePath))
+      enqueueScan(() => {
+        if (isAudioFilePath(filePath) && !shouldSkipRecentScan(filePath)) {
+          return scanWithRetry(filePath, resolvedWatchPath);
+        }
+      })
         .catch((e) => {
           console.error('❌ 스캔 큐 처리 중 오류:', e?.message || e);
         });
@@ -323,24 +332,23 @@ export function startScanner(watchPath) {
 
   const handleUnlink = (filePath) => {
     if (isExcludedScanPath(filePath)) return;
-    queue = queue
-      .then(() => {
-        const row = db.prepare('SELECT id FROM track_filedata WHERE path = ?').get(filePath);
-        if (!row) return;
-        db.prepare('DELETE FROM track_filedata WHERE id = ?').run(row.id);
-        try {
-          const { albumsRemoved, artistsRemoved, artistsMerged } = cleanupOrphans();
-          if (albumsRemoved || artistsRemoved || artistsMerged) {
-            console.log(
-              `🧹 [Scanner] orphan 정리: 앨범 ${albumsRemoved}개 · 아티스트 ${artistsRemoved}개 제거` +
-                (artistsMerged ? ` · 이름 중복 ${artistsMerged}건 병합` : ''),
-            );
-          }
-        } catch (cleanupErr) {
-          console.error('❌ orphan 정리 중 오류:', cleanupErr?.message || cleanupErr);
+    enqueueScan(() => {
+      const row = db.prepare('SELECT id FROM track_filedata WHERE path = ?').get(filePath);
+      if (!row) return;
+      db.prepare('DELETE FROM track_filedata WHERE id = ?').run(row.id);
+      try {
+        const { albumsRemoved, artistsRemoved, artistsMerged } = cleanupOrphans();
+        if (albumsRemoved || artistsRemoved || artistsMerged) {
+          console.log(
+            `🧹 [Scanner] orphan 정리: 앨범 ${albumsRemoved}개 · 아티스트 ${artistsRemoved}개 제거` +
+              (artistsMerged ? ` · 이름 중복 ${artistsMerged}건 병합` : ''),
+          );
         }
-        bumpLibraryRevision();
-      })
+      } catch (cleanupErr) {
+        console.error('❌ orphan 정리 중 오류:', cleanupErr?.message || cleanupErr);
+      }
+      bumpLibraryRevision();
+    })
       .catch((e) => {
         console.error(`❌ 삭제 동기화 오류 (${filePath}):`, e?.message || e);
       });

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import Fastify from 'fastify';
 import fastifyJwt from '@fastify/jwt';
 import cors from '@fastify/cors';
@@ -6,7 +7,6 @@ import fastifyMultipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import crypto from 'node:crypto';
 import path from 'node:path';
-import dotenv from 'dotenv';
 import { initDB } from './db.js';
 import { startScanner } from './services/scanner.js';
 import { startPageVisitsPruneScheduler } from './services/pageVisitsPrune.js';
@@ -36,8 +36,6 @@ import filesRoutes from './routes/files.js';
 import playbackRoutes from './routes/playback.js';
 import deviceRoutes from './routes/devices.js';
 import playHistoryRoutes from './routes/playHistory.js';
-
-dotenv.config();
 
 const JWT_SECRET = resolveJwtSecret();
 const ADMIN_PASSWORD = resolveAdminPassword();

@@ -9,7 +9,8 @@ import {
   TRACKS_PATH,
 } from '../lib/importEnv.js';
 import { AUDIO_EXT_SET } from '../lib/audioExtensions.js';
-import { resolveLibraryAudioDest, noteIngestedPaths } from '../lib/ingestDest.js';
+import { resolveLibraryAudioDest } from '../lib/ingestDest.js';
+import { registerLibraryAudio } from './scanner.js';
 
 const STAGING_SUBDIR = 'staging';
 const STAGING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -171,8 +172,14 @@ export async function commitStagedUpload(item) {
     ext: manifest.ext,
   });
 
-  await writeFileWithMetadata(sourcePath, destPath, { title, artist, album });
-  noteIngestedPaths(destPath);
+  const pendingPath = path.join(path.dirname(destPath), `.tagging.${ulid()}${manifest.ext}`);
+  try {
+    await writeFileWithMetadata(sourcePath, pendingPath, { title, artist, album });
+    fs.renameSync(pendingPath, destPath);
+  } finally {
+    fs.rmSync(pendingPath, { force: true });
+  }
+  await registerLibraryAudio(destPath);
 
   try {
     fs.rmSync(workDir, { recursive: true, force: true });
